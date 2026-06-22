@@ -1,0 +1,9 @@
+{
+    "name": "codeops",
+    "description": "Universal AI-development workflow: planning, requirements engineering, reverse-engineering, disambiguation, preflight audits, architecture docs, roadmaps, upgrades, and git commit flows. Ported from codeops-mcp.",
+    "author": {
+        "name": "blendsdk"
+    },
+    "homepage": "https://github.com/blendsdk/claude-codeops",
+    "license": "MIT"
+}

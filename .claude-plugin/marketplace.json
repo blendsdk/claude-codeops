@@ -1,0 +1,13 @@
+{
+  "name": "codeops-marketplace",
+  "owner": {
+    "name": "blendsdk"
+  },
+  "plugins": [
+    {
+      "name": "codeops",
+      "source": ".",
+      "description": "CodeOps AI-development workflow as Claude Code skills + commands."
+    }
+  ]
+}

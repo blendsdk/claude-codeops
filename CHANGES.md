@@ -1,0 +1,193 @@
+# CHANGES — CodeOps MCP → Claude Code Skills
+
+This records the migration of the `codeops-mcp` server (built for Cline, served via MCP) into
+native Claude Code **skills**, **slash commands**, and **CLAUDE.md** content. The original repo
+is preserved untouched in `../codeops-mcp-src/` for reference.
+
+Version stamp adopted for the ported artifacts: **CodeOps Skills v2.0.0** (replaces the old
+`codeops-mcp` package version that plans/requirements used to stamp).
+
+---
+
+## 1. What moved where
+
+| Original protocol / rule doc | New home | Type |
+|---|---|---|
+| `make_plan` (creation half of make_plan.md) | `skills/make_plan/` | Skill |
+| `exec_plan` (execution half of make_plan.md) | `skills/exec_plan/` | Skill |
+| `make_requirements` / `add_requirement` / `review_requirements` (requirements.md) | `skills/make_requirements/` | Skill (3 modes) |
+| `retro_requirements` (retro_requirements.md) | `skills/retro_requirements/` | Skill |
+| `grill_me` (grill_me.md) | `skills/grill_me/` | Skill |
+| `preflight` (preflight.md) | `skills/preflight/` | Skill |
+| `make_techdocs` / `review_techdocs` (techdocs.md) | `skills/techdocs/` | Skill (2 modes) |
+| `make_roadmap` / `update_roadmap` / `review_roadmap` / `archive_roadmap` (roadmap.md) | `skills/roadmap/` | Skill (4 actions) |
+| `upgrade_plan` / `upgrade_requirements` (upgrade_plan.md) | `skills/upgrade_plan/` | Skill (2 targets) |
+| `gitcm` (git-commands.md) | `commands/gitcm.md` | Slash command |
+| `gitcmp` (git-commands.md) | `commands/gitcmp.md` | Slash command |
+| `analyze_project` (MCP tool) | `commands/analyze_project.md` | Slash command (now writes `CLAUDE.md`) |
+| `add_requirement`, `review_requirements`, `make_techdocs`, `review_techdocs`, `make_roadmap`, `update_roadmap`, `review_roadmap`, `archive_roadmap`, `upgrade_requirements` | `commands/<verb>.md` | Thin alias commands → delegate to the parent skill |
+| `code.md` + `testing.md` + universal parts of `agents.md` | `CLAUDE.md.snippet` | Always-on standards (global) |
+| `project-template.md` (`.clinerules/project.md` template) | template inside `commands/analyze_project.md` | Per-project `CLAUDE.md` |
+| — (new) | `commands/migrate_clinerules.md` | Slash command — converts an existing `.clinerules/project.md` into `CLAUDE.md`, preserving user content and stripping Cline/MCP cruft |
+| MCP tools `get_rule` / `list_rules` / `search_rules` / `get_setup_guide` | **dropped** | Obsoleted by progressive disclosure |
+| Entire `src/` TypeScript server + tests | **not ported** | Kept only as reference |
+
+**Consolidations vs. the original keyword set.** Several keywords that were distinct triggers now
+share one skill (the body branches on the user's phrasing/arguments):
+- `make_requirements` skill also handles `add_requirement` and `review_requirements`.
+- `techdocs` skill handles both `make_techdocs` and `review_techdocs`.
+- `roadmap` skill handles `make_roadmap`/`update_roadmap`/`review_roadmap`/`archive_roadmap`.
+- `upgrade_plan` skill handles both `upgrade_plan` and `upgrade_requirements`.
+
+**Wrapper commands restore every original trigger word as typeable.** So muscle memory still works
+for the non-primary verbs, each consolidated verb also ships as a thin alias command in
+`commands/` that delegates to its parent skill in the right mode (via the Skill tool). These
+aliases are `disable-model-invocation: true` (manual-only) so they don't compete with the parent
+skills for auto-trigger and don't consume the skill-listing description budget — only the parent
+skill auto-triggers from natural language. The wrappers:
+`add_requirement`, `review_requirements` → `make_requirements`; `make_techdocs`,
+`review_techdocs` → `techdocs`; `make_roadmap`, `update_roadmap`, `review_roadmap`,
+`archive_roadmap` → `roadmap`; `upgrade_requirements` → `upgrade_plan`.
+
+---
+
+## 2. Cline / MCP-specific things removed (applied across ALL ported docs)
+
+These were stripped everywhere they appeared:
+
+- **MCP tool calls** — every `get_rule("…")`, `list_rules`, `search_rules`, `analyze_project`,
+  `get_setup_guide`. Cross-references like `get_rule("roadmap")` became "the roadmap skill".
+  Progressive disclosure replaces the entire load-on-demand mechanism the MCP existed to fake.
+- **The "MANDATORY: load rules before any work" preamble** (from `project-template.md`) — deleted
+  outright. CLAUDE.md is always loaded and skills self-trigger, so the ritual is unnecessary.
+- **`.clinerules/project.md`** references (50+) — rewritten to "the project's CLAUDE.md
+  (or detected project conventions)".
+- **`clear && sleep 3 &&` shell prefix** (VS Code terminal warm-up) — removed from all commands.
+- **Cline tool names** — `write_to_file`/`replace_in_file` → normal file writes/edits;
+  `ask_followup_question` → "ask the user"; `list_files` → normal file listing;
+  `attempt_completion` → "before ending the session/task".
+- **`/compact` + context-window-threshold (90%) / multi-session-survival mechanics** — removed;
+  Claude Code auto-compacts. Genuine "save progress to a file and resume" guidance was kept and
+  rephrased natively (e.g. `requirements/_draft/`, `requirements/_retro/_progress.md`,
+  `_grill_me_notes.md`, `_preflight_notes.md`, `docs/_draft/techdocs-progress.md`, `--continue`).
+- **"NEVER run raw git, ALWAYS use gitcm/gitcmp" mandate** — softened to "commit using `/gitcm`
+  or `/gitcmp` (or a normal git commit)". Claude Code runs git natively; the commands are now
+  conveniences, not a hard gate.
+- **Dynamic version stamp from `codeops-mcp` package.json** — replaced with the static
+  `> **CodeOps Skills Version**: 2.0.0`. Upgrade-detection logic now compares against this constant.
+- **Doc-to-doc cross-references** (`see make_plan.md`, `testing.md`, etc.) — rewritten to
+  "the <X> skill", or to "your project's coding/testing standards (CLAUDE.md)" for the
+  always-on `code.md`/`testing.md` material.
+- **npm/MCP install & configuration language** — removed; replaced by this repo's `install.sh`.
+
+The intent of every protocol — every phase, every hard gate, every output document set and
+folder layout — was preserved. See per-skill notes below for anything specific.
+
+---
+
+## 3. Enhancements made (across the port)
+
+- **Progressive disclosure built in.** Every `SKILL.md` is lean (most just a couple hundred lines;
+  `grill_me` is the one larger single-file skill at ~320, and every `description` stays within Claude
+  Code's ~1024-char display budget) with bulky templates/protocols moved into sibling reference files
+  that are linked relatively and loaded only when Claude follows the link. This is the behavior the
+  MCP was hand-rolling; it's now native.
+- **Trigger-word-first descriptions.** Each `description` leads with the use case and the literal
+  original trigger words plus natural-language variants, so the skills auto-invoke reliably.
+- **Mode-dispatch tables** added to the consolidated skills (make_requirements, techdocs, roadmap,
+  upgrade_plan) so one skill cleanly handles several former keywords.
+- **Consistent house style** across all nine skills: frontmatter conventions, a "Related skills"
+  pointer block, 🚨 markers preserved only on load-bearing gates, native session-resume guidance.
+- **Argument hints** (`argument-hint`, `arguments`) added where the original took parameters
+  (exec_plan flags, preflight target, retro `--scope`/`--continue`, upgrade feature name).
+
+---
+
+## 4. Per-skill / per-file notes
+
+### skills/make_plan (creation only)
+- Removed: 90%-context tables, the agent.sh session ritual, the raw-git "BANNED `-m`" banners,
+  rule-number citations into Cline rule files.
+- Files: `SKILL.md`, `zero-ambiguity-gate.md` (Phase 1C), `templates.md` (all plan docs +
+  spec-first ordering + project-type table), `quality-checklist.md` (Phase 3).
+- Preserved: Phases 1A/1B/1C, the `plans/<feature>/` doc set (00-ambiguity-register …
+  99-execution-plan), the hard Zero-Ambiguity Gate, the Master Progress Checklist mandate, and the
+  `> **Implements**: RD-NN` linkage used by the roadmap skill.
+
+### skills/exec_plan (execution only)
+- Files: `SKILL.md`, `execution-protocol.md`, `commit-modes.md`.
+- Commit modes mapped to commands: `--ask-commit` (ask after each verified task), `--auto-commit`
+  (uses `/gitcmp`), `--no-commit`. "Context limit mid-task" reframed as generic "session interrupted
+  mid-task" recovery. Post-completion hooks point to the techdocs skill, `/analyze_project`, and the
+  roadmap skill. Version check compares against `2.0.0` and points to the upgrade_plan skill.
+
+### skills/make_requirements (make / add / review)
+- Files: `SKILL.md`, `discovery-phases.md`, `zero-ambiguity-gate.md`, `templates.md`,
+  `review-and-add.md`. Added a Step-0 mode-detection table.
+- Preserved: proactive-domain-consultant principle, Phases 1/2/2B/3/4, the hard Zero-Ambiguity Gate
+  + ambiguity register + AR back-references, mandatory non-functional RD, acceptance-criteria
+  specificity, the "Did You Consider…" checklist, and the `requirements/` layout.
+
+### skills/retro_requirements
+- Files: `SKILL.md`, `phases.md`, `triage-gate.md`, `confidence-classification.md`.
+- Normalization: standardized the brief filename to `09-reconstruction-brief.md` everywhere
+  (source used both `reconstruction-brief.md` and `09-…`).
+- Preserved: all 9 phases, ✅/⚠️/🔴 confidence classification, the hard Phase 8B Bug-or-Feature
+  Triage Gate (A/B/C decisions), `requirements/_retro/` layout, `--scope`/`--continue`,
+  WHAT-not-HOW extraction.
+
+### skills/grill_me
+- Single `SKILL.md` (fit cleanly). Preserved: the 4-step protocol, the 7 behavior rules, standalone
+  mode, and the note that the downstream make_plan Phase 1C / make_requirements Phase 2B gates
+  **still fire** with grill_me output as pre-resolved context.
+
+### skills/preflight
+- Files: `SKILL.md`, `dimensions.md` (13 dimensions incl. Dimension 13's 10 sub-checks),
+  `report-format.md` (PF-NNN findings, persistence, batch rules, same-agent-bias). Severity icons
+  (🔴🟠🟡🔵) kept in SKILL.md.
+- Preserved: adversarial core directive, the non-negotiable Codebase Reconnaissance step,
+  iterative re-scan numbering, the report at `…/00-preflight-report.md`.
+
+### skills/techdocs (make / review + auto-update hook)
+- Files: `SKILL.md`, `templates.md` (all VitePress files + ADR template), `vitepress-setup.md`,
+  `authoring-and-update.md` (incl. the Design Intent Preservation rule + 7-dimension health check).
+- Preserved: the `docs/index.md` `techdocs: true` opt-in marker, ask-once-then-auto-update, the
+  technical-vs-product scope split, the full VitePress layout. ASCII opt-in flowchart replaced with
+  a compact numbered decision.
+
+### skills/roadmap (make / update / review / archive)
+- Files: `SKILL.md`, `template.md`, `stage-hooks.md`. The agents.md "roadmap is source of truth"
+  rule is now stated directly in the skill; "blocks attempt_completion" → "before ending a
+  session/task".
+- Preserved: the 9-state lifecycle, stage-transition map, `plans/00-roadmap.md` template,
+  Blocked/Deferred (DEF-n) handling, ask-if-missing / sync-if-exists, deterministic
+  `> **Implements**: RD-NN` linking, and the `archive_roadmap` procedure.
+
+### skills/upgrade_plan (plan / requirements)
+- Files: `SKILL.md`, `content-quality-gate.md` (Phase 2B), `upgrade-checklists.md` (Phase 3).
+- Key change: staleness is detected by comparing the artifact's stamp against `2.0.0` (no stamp =
+  pre-versioning/outdated); post-upgrade stamp is `> **CodeOps Skills Version**: 2.0.0`.
+- Preserved: 4 phases, the upgrade-report-before-changes choice, the hard Content Quality Gate
+  (12 categories, vague-language flags, register `(upgrade)` tag, 5 gate-open conditions), the
+  Content Preservation Rules, Phase 4 verification, and "does NOT auto-advance the roadmap".
+
+### commands/gitcm.md & commands/gitcmp.md
+- Deterministic git flows as flat command files, `disable-model-invocation: true` (manual only —
+  they have side effects) with `allowed-tools` pre-approving the git operations.
+- Kept the file-based commit message (`git commit -F`, never `-m`), the Conventional Commit format,
+  scope guidance, the STOP-and-ask Conflict Protocol, and Push Failure Recovery. Dropped the
+  `clear && sleep 3 &&` prefix and the "new Cline task" advice. The hard "all commits must go
+  through gitcm" mandate is now an offered convenience, not a global rule.
+
+### commands/analyze_project.md
+- Reimplements the old MCP `analyze_project` tool as a command that scans manifests/structure and
+  writes a **project-level `CLAUDE.md`** (instead of `.clinerules/project.md`). Keeps the
+  non-destructive merge behavior: auto-detectable sections refreshed, user-authored sections
+  (Conventions, Git conventions, Special rules) preserved verbatim. The old "MANDATORY load rules"
+  preamble is gone.
+
+### CLAUDE.md.snippet
+- A distilled, always-on merge of `code.md` (35 standards), `testing.md` essentials (incl. the
+  spec-vs-impl test separation), and the universal working-style bits of `agents.md`. Kept lean for
+  global `~/.claude/CLAUDE.md`. The detailed spec-first red/green protocol is enforced operationally
+  by the make_plan/exec_plan skills; the snippet states the principle.

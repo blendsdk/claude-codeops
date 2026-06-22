@@ -1,0 +1,10 @@
+# Internal planning docs (not part of the distributed plugin)
+plans/
+
+# local install/uninstall bookkeeping
+.codeops-skills-manifest
+*.codeops-bak.*
+
+# OS / editor cruft
+.DS_Store
+*.swp
