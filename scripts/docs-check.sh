@@ -20,6 +20,15 @@ CONFIG="docs/.vitepress/config.ts"
 GITIGNORE=".gitignore"
 BASE_PATH="/claude-codeops/"
 
+# The 9 skills that MUST each have a docs page (ST-4).
+SKILLS=(make_plan exec_plan make_requirements retro_requirements grill_me preflight techdocs roadmap upgrade_plan)
+# Required pages per section (ST-4b).
+GUIDE_PAGES=(introduction install verify update concepts)
+TUTORIAL_PAGES=(index first-plan full-pipeline reverse-engineer)
+REFERENCE_PAGES=(standards repo-map troubleshooting)
+# The five mandatory headings on every skill page (impl check — see 03-02).
+SKILL_HEADINGS=("## What it does" "## When to use it" "## Trigger phrases" "## Worked example" "## Related skills")
+
 FAILURES=0
 
 pass() { printf '  \033[32mPASS\033[0m %s\n' "$1"; }
@@ -61,6 +70,49 @@ for entry in "node_modules/" "docs/.vitepress/dist" "docs/.vitepress/cache"; do
     fail "$GITIGNORE does not ignore $entry"
   fi
 done
+
+# -----------------------------------------------------------------------------
+# ST-4 — every skill has a page + a Commands page; each skill page has the 5 headings
+# -----------------------------------------------------------------------------
+section "ST-4: per-skill pages exist with the required structure"
+for s in "${SKILLS[@]}"; do
+  page="docs/skills/${s}.md"
+  if [[ -f "$page" ]]; then
+    missing=""
+    for h in "${SKILL_HEADINGS[@]}"; do
+      grep -qF -- "$h" "$page" || missing+=" \"$h\""
+    done
+    if [[ -z "$missing" ]]; then
+      pass "$page exists with all 5 sections"
+    else
+      fail "$page is missing section(s):$missing"
+    fi
+  else
+    fail "$page is missing"
+  fi
+done
+for extra in "docs/skills/index.md" "docs/skills/commands.md"; do
+  if [[ -f "$extra" ]]; then
+    pass "$extra exists"
+  else
+    fail "$extra is missing"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-4b — all Guide, Tutorial, and Reference pages exist
+# -----------------------------------------------------------------------------
+section "ST-4b: Guide / Tutorial / Reference pages exist"
+for g in "${GUIDE_PAGES[@]}"; do
+  if [[ -f "docs/guide/${g}.md" ]]; then pass "docs/guide/${g}.md exists"; else fail "docs/guide/${g}.md is missing"; fi
+done
+for t in "${TUTORIAL_PAGES[@]}"; do
+  if [[ -f "docs/tutorials/${t}.md" ]]; then pass "docs/tutorials/${t}.md exists"; else fail "docs/tutorials/${t}.md is missing"; fi
+done
+for r in "${REFERENCE_PAGES[@]}"; do
+  if [[ -f "docs/reference/${r}.md" ]]; then pass "docs/reference/${r}.md exists"; else fail "docs/reference/${r}.md is missing"; fi
+done
+if [[ -f "docs/index.md" ]]; then pass "docs/index.md (home) exists"; else fail "docs/index.md (home) is missing"; fi
 
 # -----------------------------------------------------------------------------
 # Summary

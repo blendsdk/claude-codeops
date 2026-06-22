@@ -9,6 +9,9 @@ window wouldn't blow up; Claude Code does that natively via **skill progressive 
 each skill's name + description load up front, the body loads when used). So the machinery is gone
 and only the knowledge remains. See [CHANGES.md](CHANGES.md) for the full migration record.
 
+> 📖 **Documentation site:** <https://blendsdk.github.io/claude-codeops/> — full guides, a usage page
+> for every skill, and end-to-end tutorials.
+>
 > **New here?** Follow the step-by-step [TUTORIAL.md](TUTORIAL.md) — it walks install → verify →
 > use → update on a fresh machine.
 
