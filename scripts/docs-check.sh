@@ -29,6 +29,10 @@ REFERENCE_PAGES=(standards repo-map troubleshooting)
 # The five mandatory headings on every skill page (impl check — see 03-02).
 SKILL_HEADINGS=("## What it does" "## When to use it" "## Trigger phrases" "## Worked example" "## Related skills")
 
+WORKFLOW=".github/workflows/docs.yml"
+# Least-privilege permissions the Pages deploy needs — and nothing more (ST-6).
+WORKFLOW_PERMS=("contents: read" "pages: write" "id-token: write")
+
 FAILURES=0
 
 pass() { printf '  \033[32mPASS\033[0m %s\n' "$1"; }
@@ -113,6 +117,54 @@ for r in "${REFERENCE_PAGES[@]}"; do
   if [[ -f "docs/reference/${r}.md" ]]; then pass "docs/reference/${r}.md exists"; else fail "docs/reference/${r}.md is missing"; fi
 done
 if [[ -f "docs/index.md" ]]; then pass "docs/index.md (home) exists"; else fail "docs/index.md (home) is missing"; fi
+
+# -----------------------------------------------------------------------------
+# ST-6 — deploy workflow exists with least-privilege perms, Node 20, only actions/*,
+#        and a Pages concurrency group
+# -----------------------------------------------------------------------------
+section "ST-6: deploy workflow is well-formed and least-privilege"
+if [[ -f "$WORKFLOW" ]]; then
+  pass "$WORKFLOW exists"
+
+  for perm in "${WORKFLOW_PERMS[@]}"; do
+    if grep -qF -- "$perm" "$WORKFLOW"; then
+      pass "permission present: $perm"
+    else
+      fail "permission missing: $perm"
+    fi
+  done
+
+  # No blanket write-all permission.
+  if grep -Eq 'permissions:[[:space:]]*write-all' "$WORKFLOW"; then
+    fail "workflow grants permissions: write-all (must be least-privilege)"
+  else
+    pass "no blanket write-all permission"
+  fi
+
+  # Node 20.
+  if grep -Eq 'node-version:[[:space:]]*["'\'']?20' "$WORKFLOW"; then
+    pass "pins Node 20"
+  else
+    fail "does not pin Node 20"
+  fi
+
+  # Every `uses:` must reference an official actions/* action (no third-party actions).
+  non_official="$(grep -E '^\s*-?\s*uses:' "$WORKFLOW" | grep -vE 'uses:\s*actions/' || true)"
+  if [[ -z "$non_official" ]]; then
+    pass "all actions are official actions/* "
+  else
+    fail "non-official action(s) referenced:"$'\n'"$non_official"
+  fi
+
+  # Pages concurrency group.
+  if grep -Eq 'group:[[:space:]]*pages' "$WORKFLOW"; then
+    pass "declares a Pages concurrency group"
+  else
+    fail "no 'group: pages' concurrency declaration"
+  fi
+else
+  fail "$WORKFLOW is missing"
+fi
 
 # -----------------------------------------------------------------------------
 # Summary
