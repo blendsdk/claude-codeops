@@ -1,0 +1,193 @@
+---
+name: preflight
+description: >-
+  Runs a rigorous multi-dimensional quality audit of a plan, requirements, or any artifact,
+  grounded in the actual codebase. Use for "preflight", "quality audit", "review gate",
+  "audit this plan", "audit these requirements", or "review my plan/requirements before I build it".
+  An adversarial review gate that hunts for every ambiguity, contradiction, gap, and risk, verifies
+  every claim against the real code, scores findings on a 13-dimension scan, and presents each one
+  with options and a recommendation for the user to decide — it never fixes silently. Takes an
+  artifact target (e.g. requirements, requirements RD-03, <feature-name>, <feature-name> 03-api-design,
+  or a file/dir path) plus optional --continue to resume an interrupted session.
+when_to_use: >-
+  Use to AUDIT an existing artifact (requirements set, implementation plan, or ad-hoc document)
+  against the real codebase. Run after the make_requirements or make_plan skills, before exec_plan,
+  or standalone any time. Trigger on /preflight, "preflight <artifact>", "audit this plan",
+  "review gate", or "--continue" to resume. This is a REVIEW protocol, not a creation or
+  modification protocol — it finds and reports issues; it only applies fixes when explicitly asked.
+argument-hint: "<artifact> [--continue]"
+arguments: artifact
+---
+
+# preflight — Multi-Dimensional, Codebase-Grounded Quality Audit
+
+> **CodeOps Skills Version**: 2.0.0
+
+Run a rigorous quality audit of the artifact named in `$ARGUMENTS`, **grounded in the actual
+codebase**. Find every issue, ambiguity, contradiction, gap, and risk; verify every claim and
+assumption against the real code; present each finding with options + a recommendation; iterate
+until the artifact passes clean.
+
+`preflight --continue` resumes an interrupted session (see [Session resume](#session-resume)).
+
+## Artifact reference formats
+
+| User types | What gets reviewed |
+|---|---|
+| `preflight requirements` | All requirement docs in `requirements/` |
+| `preflight requirements RD-03` | A specific requirement doc |
+| `preflight <feature-name>` | All plan docs in `plans/<feature-name>/` |
+| `preflight <feature-name> 03-api-design` | A specific plan doc |
+| `preflight <path>` | Any ad-hoc file or directory |
+
+## Core directive
+
+> **You are a senior technical reviewer performing a formal quality audit GROUNDED IN THE ACTUAL
+> CODEBASE. Find every defect, gap, ambiguity, contradiction, and risk in this artifact — and
+> verify every claim, reference, and assumption against the real code. Be thorough, systematic,
+> relentless. For every issue, analyze the options and present your recommended resolution. Do NOT
+> fix anything silently — every finding must be presented to the user for decision.**
+
+You are NOT a rubber stamp. You are actively trying to **break** the artifact — and to **reality-
+check** it against the codebase it targets. Assume it has issues until proven otherwise.
+
+> **Without codebase grounding, preflight is nothing but a document-correction exercise.** The
+> entire value depends on holding the artifact accountable to the real files, architecture,
+> patterns, and dependencies.
+
+The creation-time gates inside the make_plan skill (its Phase 1C gate) and the make_requirements
+skill (its Phase 2B gate) catch issues during authoring. Preflight is the **post-creation safety
+net** — fresh eyes that catch what those gates missed and what evolved since.
+
+## The 8-step protocol (overview)
+
+1. **Load & identify artifact type** — read the complete artifact; classify it as a requirements
+   set, implementation plan, or ad-hoc document. Load the project's CLAUDE.md (or detected project
+   conventions) and any Ambiguity Register (`00-ambiguity-register.md`).
+2. **🚨 Codebase Reconnaissance — NON-NEGOTIABLE.** Build a real understanding of the code the
+   artifact targets, map every document reference to actual code, then present a **Codebase Context
+   Summary**. This is what separates a real preflight from a document-correction exercise. Full
+   what/why/how table, recon depth by artifact type, and the summary template are in
+   [dimensions.md](dimensions.md).
+3. **13-dimension scan** — review the artifact across all 13 dimensions (below), every check
+   informed by Step 2. Depth adapts by artifact type. Full detail in [dimensions.md](dimensions.md).
+4. **Compile the Preflight Report** — every finding gets a numbered `PF-NNN` entry with severity.
+   Templates and report header in [report-format.md](report-format.md).
+5. **Present findings & collect decisions** — grouped by severity, one finding at a time, recording
+   the user's decision on each. Batch rules in [report-format.md](report-format.md).
+6. **Determine pass/fail** — Clean / Passed / Passed With Notes / Blocked (see [Pass tiers](#pass-tiers)).
+7. **Apply fixes (only if requested)** — preflight is a review protocol, not a modification one.
+   Never apply fixes without explicit instruction.
+8. **Roadmap sync** — after a pass, advance the target's row via the roadmap skill if a roadmap exists.
+
+## The 13 dimensions (names only — detail in [dimensions.md](dimensions.md))
+
+1. Ambiguities
+2. Implicit Assumptions
+3. Logical Contradictions
+4. Completeness Gaps
+5. Dependency Issues
+6. Feasibility Concerns
+7. Testability
+8. Security Blind Spots
+9. Edge Cases
+10. Scope Creep Indicators
+11. Ordering & Sequencing
+12. Consistency
+13. **Codebase Alignment** — the master reality check (10 sub-checks; entirely codebase-grounded)
+
+Scan all 13 every time. Depth adapts (🔥 Deep / Standard / Light) by artifact type — see the
+dimension-depth-by-artifact-type table in [dimensions.md](dimensions.md). Dimension 13 and its
+10 sub-checks (Phantom References, Stale Assumptions, Architecture Mismatch, Impact Blindness,
+Redundancy, Test Impact, Dependency Reality, Convention Violations, Scope vs. Reality, Migration &
+Compatibility) are the heart of the audit — read that section before scanning a plan.
+
+## Severity scale
+
+| Severity | Icon | Meaning | Must fix? |
+|---|---|---|---|
+| **CRITICAL** | 🔴 | Will cause implementation failure, data loss, security breach, or fundamental design flaw | YES — blocks execution |
+| **MAJOR** | 🟠 | Will cause significant rework, incorrect behavior, user-facing bugs, or architectural problems | YES — strongly recommended |
+| **MINOR** | 🟡 | Friction, tech debt, minor inconsistencies, suboptimal patterns | Recommended, not blocking |
+| **OBSERVATION** | 🔵 | Suggestion / style preference / optimization — not a defect | Optional |
+
+Calibrate honestly — never inflate to get attention, never deflate to avoid conflict.
+
+## Pass tiers
+
+| Tier | Criteria | Header |
+|---|---|---|
+| **✅ PASSED — Clean** | Zero findings across all 13 dimensions | `✅ PREFLIGHT PASSED — clean scan, 0 findings` |
+| **✅ PASSED** | All 🔴/🟠 resolved; zero 🟡/🔵 remaining | `✅ PREFLIGHT PASSED — all [X] findings resolved` |
+| **✅ PASSED WITH NOTES** | All 🔴/🟠 resolved; some 🟡/🔵 explicitly accepted | `✅ PREFLIGHT PASSED WITH NOTES — [X] resolved, [Y] accepted` |
+| **❌ BLOCKED** | Any 🔴/🟠 still unresolved | `❌ PREFLIGHT BLOCKED — [X] critical/major unresolved` |
+
+A clean first-scan pass is cause for celebration, not suspicion. **Never invent findings** to
+justify the review — if the artifact is solid, say so.
+
+## Report persistence
+
+Save the report as a permanent file alongside the artifact:
+
+| Artifact type | Report location |
+|---|---|
+| Requirements | `requirements/00-preflight-report.md` |
+| Implementation plan | `plans/<feature-name>/00-preflight-report.md` |
+| Ad-hoc | `<artifact-directory>/preflight-report.md` |
+
+The report is separate from the Ambiguity Register (decisions made during creation) — see
+[report-format.md](report-format.md) for the relationship and cross-referencing.
+
+## Iterative re-scanning
+
+Run preflight as many times as needed. Iteration 2+ verifies prior fixes, checks for regressions,
+and re-scans all 13 dimensions. **Findings numbered continuously** — if iteration 1 ends at PF-012,
+iteration 2 starts at PF-013; numbers never reuse. Loop until a clean pass, the user stops, or only
+🔵 observations remain. Full re-scan header and numbering rules in [report-format.md](report-format.md).
+
+## Session resume
+
+If a session is interrupted (or context is filling up), save progress to a `_preflight_notes.md`
+file in the artifact directory — record completed dimensions, findings so far, pending dimensions,
+user decisions collected, and codebase reconnaissance notes (key files examined, references
+mapped). When the user runs `preflight --continue`, read that file, summarize where you left off,
+and resume from the next unscanned dimension. **Do NOT repeat reconnaissance** — reuse the notes;
+re-read specific files only when a finding needs deeper inspection.
+
+## Same-agent bias awareness — 🚨 NON-NEGOTIABLE
+
+When the same model created the artifact and reviews it, systematic blind spots are likely. You
+MUST counteract this. If the artifact was created in the **current session**, note it at the top of
+the report (`⚠️ SAME-SESSION REVIEW … consider a new session for review independence`). For any
+behavior bound to an external standard, **cite the specific standard text** rather than reasoning
+from memory; flag explicitly if you can't. Before concluding the scan, run the adversarial-question
+checklist. Full safeguards in [report-format.md](report-format.md).
+
+## Key agent behavior rules
+
+- **Be adversarial, not hostile** — findings should feel helpful, not critical.
+- **Specificity over volume** — one precise finding beats ten vague ones; never pad.
+- **Don't invent problems** — a clean pass is a valid, trustworthy outcome.
+- **Options must be real** — no strawman options to flatter a recommendation.
+- **Respect previous decisions** — don't re-litigate Ambiguity Register entries without new info.
+- **Cross-document awareness** — many issues only surface when reading docs together.
+- **Codebase evidence is not optional** — for dimensions 2, 4, 5, 6, 11, 13 (and any claim about
+  the code) cite the specific file and code; if you can't verify, say so explicitly.
+- **Reconnaissance is proportional** — read what the artifact touches and its direct dependents;
+  don't read the whole codebase for a small artifact.
+
+## Related skills & integrations
+
+- After the **make_requirements** skill → `preflight requirements` (catches issues past its Phase 2B gate).
+- After the **make_plan** skill → `preflight <feature>` (catches issues past its Phase 1C gate).
+- Before the **exec_plan** skill → if no `00-preflight-report.md` exists, exec_plan MAY softly
+  suggest running preflight first (soft suggestion, not a hard gate).
+- The **grill_me** skill interrogates the user's intent *before* creation; preflight audits the
+  *created* artifact against the code *after*. Complementary, opposite directions.
+- The **roadmap** skill — a passing preflight advances the target's row to `RD Preflighted` (🔎) or
+  `Plan Preflighted` (🔬); a BLOCKED outcome does not advance it.
+- Reference your project's coding/testing standards (CLAUDE.md) for what plans/requirements should target.
+
+**Standalone:** when used without a follow-up, finish the scan + resolution, present the final
+status, then ask the user what to do next (apply fixes, create a plan, start execution, or review
+specific findings).
