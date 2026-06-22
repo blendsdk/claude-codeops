@@ -8,3 +8,8 @@ plans/
 # OS / editor cruft
 .DS_Store
 *.swp
+
+# Node / VitePress build artifacts (docs website)
+node_modules/
+docs/.vitepress/dist
+docs/.vitepress/cache
