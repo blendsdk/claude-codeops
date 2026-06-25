@@ -80,6 +80,8 @@ For each task, in order:
 > `00-ambiguity-register.md`, STOP, present options to the user, wait for an explicit decision,
 > record it in `00-ambiguity-register.md` (tag `(runtime)`), then resume. Never guess.
 
+> **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides.
+
 ### Step 3 — Session wrap-up
 
 1. Finish the current task before stopping.

@@ -51,6 +51,15 @@ These apply to all code I write unless this project's `CLAUDE.md` overrides a sp
 - **Ask before assuming.** When a request is ambiguous, ask clarifying questions and suggest improvements rather than guessing. (For deep, structured disambiguation, the `grill_me` skill exists.)
 - **Don't overcomplicate.** Use existing infrastructure and patterns before adding new ones.
 - **Verify previous work** before building on it; confirm a task actually meets its acceptance criteria before calling it done.
+- **Grounded options & recommendations (NON-NEGOTIABLE).** Whenever you present options, choices, or recommendations — from analysis, defect/bug findings, a direction to fix a bug, requirements choices, plan-making, or plan execution:
+  1. **Filter** — present only genuinely viable options; drop weakly-grounded options that realistically won't be chosen and never pad with strawmen. Present ≥2 options only when ≥2 are genuinely viable; when one path clearly dominates, present it alone, say it is the only viable one, and name what you rejected and why.
+  2. **Second-guess** — critique and stress-test each surviving option *before* presenting it, not after.
+  3. **Ground in the code** — for any option that involves modifying existing code, verify it against the actual current code (read the real files) before presenting and cite the evidence as `file:line`; if you could not verify, say so explicitly.
+  4. **Recommend** — lead with your recommended option and a concrete, grounded reason. You recommend; the user decides — never decide for them.
+  - **Proportionality** — match the ceremony to the stakes. Trivial, easily-reversible, or obvious choices get a one-line recommendation; the full four-step treatment is for consequential or code-modifying decisions. Drowning the user in analysis wastes their time as surely as strawman options do.
+  - **Presentation** (consequential decisions) — lead with the recommendation, then each surviving option with its viability, terse pros/cons, and (for code-touching options) a `file:line` evidence cite; close with a one-line "considered and dropped: …" when you filtered options out.
+  - ✅ *"Recommend **A** — cache in the existing `UserRepo.find` (`repo/user.ts:42`), no new layer. **B** (new cache service) adds infra we don't need here. Dropped: client-side cache — can't share across requests."*
+    ❌ *"There are a few ways: A, B, or C — let me know which you prefer."* (no recommendation, no code grounding, options unfiltered)
 
 > Project-specific commands, structure, and conventions live in this project's `CLAUDE.md`
 > (generate/refresh it with `/analyze_project`). Multi-step CodeOps workflows are available as

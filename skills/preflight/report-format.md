@@ -35,8 +35,10 @@ Every finding gets a numbered, structured entry.
 
 **Rules for findings:**
 
-- **Every finding MUST have options** — at least 2, even if one is obviously correct, so the user
-  makes a conscious choice. Options must be *real*, never strawmen.
+- **Options must be genuinely viable, never strawmen** — present ≥2 options only when ≥2 are
+  genuinely viable. When one resolution clearly dominates, present it alone, state it is the only
+  viable one, and name what you considered and dropped and why. Never pad to a count to manufacture
+  a choice.
 - **Every finding MUST have a recommendation, with rationale** — never just "Option B is better".
 - **Findings are numbered sequentially** — `PF-001`, `PF-002`, ... Numbers never reuse across iterations.
 - **Location must be specific** — "plans/my-feature/03-api-design.md, section 'Error Handling'", not

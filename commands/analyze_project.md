@@ -88,6 +88,13 @@ import style, documentation format. Hand-edit this — it is preserved on re-run
 <anything project-specific that doesn't fit above. Preserved on re-run.>
 ```
 
+Always include, under `## Conventions`, this one-line pointer (verbatim) so the project echoes the
+always-on directive:
+
+> **Grounded Options & Recommendations** — follow the always-on directive in the coding standards:
+> filter out non-viable options (no strawmen), second-guess each, ground any code-modifying option
+> in the real code, and lead with a recommendation and its reason; match ceremony to stakes.
+
 Keep the generated file lean — it is always-on context. State facts, not narration. The
 CodeOps skills (make_plan, make_requirements, exec_plan, etc.) read this file to adapt their
 verify command, commit scope, structure, and conventions to this project.

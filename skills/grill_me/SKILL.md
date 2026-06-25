@@ -95,10 +95,12 @@ For each branch, follow this drilling pattern:
 > Which direction are you leaning, and why?"
 
 **Rules:**
-- Always present at least 2 options, ideally 3
+- Present ≥2 options only when ≥2 are genuinely viable; if one path clearly dominates, present it alone and name what you considered and dropped (never pad with strawmen)
 - Include trade-offs for each option
 - If the user's domain has industry-standard approaches, mention them
 - If you have a recommendation, state it and explain why
+
+> **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides.
 
 #### 2c. Drill Into the Choice
 

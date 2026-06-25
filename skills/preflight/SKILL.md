@@ -165,6 +165,8 @@ checklist. Full safeguards in [report-format.md](report-format.md).
 
 ## Key agent behavior rules
 
+> **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides.
+
 - **Be adversarial, not hostile** — findings should feel helpful, not critical.
 - **Specificity over volume** — one precise finding beats ten vague ones; never pad.
 - **Don't invent problems** — a clean pass is a valid, trustworthy outcome.

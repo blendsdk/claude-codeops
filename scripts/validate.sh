@@ -326,6 +326,41 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# ST-12 — Grounded Options & Recommendations directive present + reconciled
+# -----------------------------------------------------------------------------
+section "ST-12: Grounded Options directive present and enforced"
+
+# 12a — sentinel present in the standards, every scoped skill, and analyze_project
+GROUNDED_SENTINEL="grounded options"
+grounded_targets=(
+  "$STANDARDS"
+  "skills/preflight/SKILL.md"
+  "skills/make_plan/SKILL.md"
+  "skills/make_requirements/SKILL.md"
+  "skills/exec_plan/SKILL.md"
+  "skills/grill_me/SKILL.md"
+  "skills/upgrade_plan/SKILL.md"
+  "skills/retro_requirements/SKILL.md"
+  "commands/analyze_project.md"
+)
+for f in "${grounded_targets[@]}"; do
+  if [[ -f "$f" ]] && grep -qi "$GROUNDED_SENTINEL" "$f"; then
+    pass "$f references the Grounded Options directive"
+  else
+    fail "$f is missing the Grounded Options directive reference"
+  fi
+done
+
+# 12b — viable-only reconciliation replaced the old "always >=2 options" rule
+for f in "skills/preflight/report-format.md" "skills/grill_me/SKILL.md"; do
+  if [[ -f "$f" ]] && grep -qi "genuinely viable" "$f"; then
+    pass "$f carries the viable-only reconciliation"
+  else
+    fail "$f is missing the viable-only reconciliation (\"genuinely viable\")"
+  fi
+done
+
+# -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
 section "Summary"

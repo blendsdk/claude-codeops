@@ -57,3 +57,6 @@ in the repo — this page is a summary. A project's own `CLAUDE.md` may override
 - **Ask before assuming** — clarify ambiguity rather than guessing (see [`grill_me`](/skills/grill_me)).
 - **Don't overcomplicate** — use existing infrastructure and patterns first.
 - **Verify previous work** before building on it.
+- **Grounded options & recommendations** — present only genuinely viable options (no strawmen),
+  second-guess each, ground any code-change option in the real code (`file:line`), and lead with a
+  recommendation and its reason; match ceremony to the stakes. The user decides.
