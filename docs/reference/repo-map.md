@@ -7,7 +7,7 @@ codeops-skills/                # repo root == plugin root
 ├── .claude-plugin/
 │   ├── marketplace.json       # marketplace manifest (source: ".")
 │   └── plugin.json            # plugin manifest (no version → rolling updates)
-├── skills/                    # 9 skills → /codeops:<name>
+├── skills/                    # 10 skills → /codeops:<name>
 │   ├── make_plan/             #   create a multi-document implementation plan
 │   ├── exec_plan/             #   execute a plan task-by-task (commit modes)
 │   ├── make_requirements/     #   gather/add/review requirements (RDs)
@@ -16,8 +16,9 @@ codeops-skills/                # repo root == plugin root
 │   ├── preflight/             #   13-dimension quality audit of a plan/requirements
 │   ├── techdocs/              #   VitePress architecture docs + ADRs
 │   ├── roadmap/               #   feature-set lifecycle tracker
-│   └── upgrade_plan/          #   upgrade outdated plans/requirements
-├── commands/                  # 13 slash commands → /codeops:<name>
+│   ├── upgrade_plan/          #   upgrade outdated plans/requirements
+│   └── setup_routing/         #   per-project model & effort routing (Opus/Sonnet by tag)
+├── commands/                  # 14 slash commands → /codeops:<name>
 │   ├── gitcm.md / gitcmp.md   #   commit (and push) with a Conventional Commit message
 │   ├── analyze_project.md     #   generate/refresh this project's CLAUDE.md
 │   ├── migrate_clinerules.md  #   convert a legacy .clinerules/project.md → CLAUDE.md

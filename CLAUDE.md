@@ -5,7 +5,7 @@
 
 ## Overview
 - **Type:** Claude Code plugin (skills + commands library) with a VitePress documentation site
-- **Description:** The CodeOps AI-development workflow — 9 skills + 13 slash commands + always-on
+- **Description:** The CodeOps AI-development workflow — 10 skills + 14 slash commands + always-on
   coding standards — packaged as an installable Claude Code plugin (the repo root **is** the plugin
   root). Ported from `codeops-mcp`. A user-facing docs site lives under `docs/` and deploys to
   GitHub Pages.
@@ -27,8 +27,8 @@
 
 ## Project structure
 - `.claude-plugin/` — `marketplace.json` (`source: "."`) + `plugin.json` (no version → rolling updates)
-- `skills/<name>/SKILL.md` — the 9 skills (frontmatter `name` + `description`, then body)
-- `commands/*.md` — the 13 slash commands (frontmatter `description`)
+- `skills/<name>/SKILL.md` — the 10 skills (frontmatter `name` + `description`, then body)
+- `commands/*.md` — the 14 slash commands (frontmatter `description`)
 - `hooks/hooks.json` — SessionStart hook that injects the standards every session
 - `standards/coding-standards.md` — always-on standards (single source)
 - `scripts/` — `validate.sh` (plugin guard), `docs-check.sh` (docs spec suite)

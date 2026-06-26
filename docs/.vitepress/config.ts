@@ -45,6 +45,7 @@ export default defineConfig({
             { text: 'techdocs', link: '/skills/techdocs' },
             { text: 'roadmap', link: '/skills/roadmap' },
             { text: 'upgrade_plan', link: '/skills/upgrade_plan' },
+            { text: 'setup_routing', link: '/skills/setup_routing' },
             { text: 'Commands', link: '/skills/commands' },
           ],
         },

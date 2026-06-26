@@ -1,6 +1,6 @@
 # CodeOps for Claude Code
 
-The CodeOps AI-development workflow — **9 skills + 13 slash commands + always-on coding
+The CodeOps AI-development workflow — **10 skills + 14 slash commands + always-on coding
 standards** — packaged as an installable [Claude Code plugin](https://code.claude.com/docs/en/plugins).
 
 Ported from the original [`codeops-mcp`](https://github.com/blendsdk/codeops-mcp) server (built for
@@ -100,7 +100,7 @@ codeops-skills/                # repo root == plugin root
 ├── .claude-plugin/
 │   ├── marketplace.json       # marketplace manifest (source: ".")
 │   └── plugin.json            # plugin manifest (no version → rolling updates)
-├── skills/                    # 9 skills → /codeops:<name>
+├── skills/                    # 10 skills → /codeops:<name>
 │   ├── make_plan/             #   create a multi-document implementation plan
 │   ├── exec_plan/             #   execute a plan task-by-task (commit modes)
 │   ├── make_requirements/     #   gather/add/review requirements (RDs)
@@ -109,8 +109,9 @@ codeops-skills/                # repo root == plugin root
 │   ├── preflight/             #   13-dimension quality audit of a plan/requirements
 │   ├── techdocs/              #   VitePress architecture docs + ADRs
 │   ├── roadmap/               #   feature-set lifecycle tracker
-│   └── upgrade_plan/          #   upgrade outdated plans/requirements
-├── commands/                  # 13 slash commands → /codeops:<name>
+│   ├── upgrade_plan/          #   upgrade outdated plans/requirements
+│   └── setup_routing/         #   per-project model & effort routing (Opus/Sonnet by tag)
+├── commands/                  # 14 slash commands → /codeops:<name>
 │   ├── gitcm.md / gitcmp.md   #   commit (and push) with a Conventional Commit message
 │   ├── analyze_project.md     #   generate/refresh this project's CLAUDE.md
 │   ├── migrate_clinerules.md  #   convert a legacy .clinerules/project.md → CLAUDE.md
@@ -137,6 +138,7 @@ codeops-skills/                # repo root == plugin root
 | `make_techdocs` / `review_techdocs` | Create/maintain VitePress architecture docs + ADRs |
 | `make_roadmap` / `update_roadmap` / … | Track a whole feature-set across its lifecycle |
 | `upgrade_plan <feature>` / `upgrade_requirements` | Bring an outdated artifact to current standards |
+| `setup_routing` / `/setup-routing` | Analyze the repo, then wire per-project model & effort routing (Opus/Sonnet by task tag) into `CLAUDE.md` + `.claude/agents/` |
 | `/gitcm` / `/gitcmp` | Commit (and push) with a detailed Conventional Commit message |
 | `/analyze_project` | Generate/refresh this project's `CLAUDE.md` |
 | `/migrate_clinerules` | Convert a legacy `.clinerules/project.md` into `CLAUDE.md` |
@@ -145,8 +147,8 @@ The consolidated skills cover several verbs each, and thin **alias commands** ma
 typeable (they delegate to the parent skill in the right mode): `/add_requirement`,
 `/review_requirements` → `make_requirements`; `/make_techdocs`, `/review_techdocs` → `techdocs`;
 `/make_roadmap`, `/update_roadmap`, `/review_roadmap`, `/archive_roadmap` → `roadmap`;
-`/upgrade_requirements` → `upgrade_plan`. These aliases are manual-only — only the parent skills
-auto-trigger from natural language.
+`/upgrade_requirements` → `upgrade_plan`; `/setup-routing` → `setup_routing`. These aliases are
+manual-only — only the parent skills auto-trigger from natural language.
 
 The skills compose into the original CodeOps pipelines, e.g.
 `grill_me → make_requirements → preflight → make_plan → preflight → exec_plan`, with `roadmap`

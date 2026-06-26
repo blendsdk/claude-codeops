@@ -191,3 +191,28 @@ folder layout — was preserved. See per-skill notes below for anything specific
   spec-vs-impl test separation), and the universal working-style bits of `agents.md`. Kept lean for
   global `~/.claude/CLAUDE.md`. The detailed spec-first red/green protocol is enforced operationally
   by the make_plan/exec_plan skills; the snippet states the principle.
+
+---
+
+## 5. Post-migration additions
+
+These are new to `claude-codeops` — they had no `codeops-mcp` predecessor.
+
+### skills/setup_routing (+ commands/setup-routing.md alias)
+- **New skill** — configures per-project model & effort routing so Opus + high/xhigh thinking is
+  spent only where it changes output quality and high-volume mechanical work runs on Sonnet.
+  Files: `SKILL.md`, `templates.md`. Exposed as `/codeops:setup_routing` plus the typeable alias
+  `/setup-routing` (`commands/setup-routing.md`, manual-only).
+- **Two-layer design.** A sentinel-delimited (`<!-- CODEOPS-ROUTING -->`) block in the project
+  `CLAUDE.md` is the soft *policy* (which executor a tagged task is delegated to); pinned-model
+  executor subagents in `.claude/agents/` (`plan-task-executor` → Sonnet, `plan-task-executor-opus`
+  → Opus) are the hard *enforcement*. The skill writes executors first and never references one that
+  does not exist.
+- **Tag-driven routing** over a fixed vocabulary (`trivial`/`standard`/`complex`/`sensitive`) across
+  four sensitivity profiles (Opus-dominant, Mixed core/scaffold, Sonnet-default, Balanced fallback).
+  Reuses the `analyze_project` non-destructive merge discipline, tightened with explicit sentinels
+  for idempotency. Operates only on the current project — never on global user files. Hard
+  confirmation gate before any write.
+- Count bumped to **10 skills + 14 slash commands** across README, project `CLAUDE.md`, and the docs
+  site; new skill page `docs/skills/setup_routing.md` added to the sidebar and the `docs-check.sh`
+  spec suite.
