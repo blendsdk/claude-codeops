@@ -198,11 +198,11 @@ folder layout — was preserved. See per-skill notes below for anything specific
 
 These are new to `claude-codeops` — they had no `codeops-mcp` predecessor.
 
-### skills/setup_routing (+ commands/setup-routing.md alias)
+### skills/setup_routing (+ commands/setup_routing.md alias)
 - **New skill** — configures per-project model & effort routing so Opus + high/xhigh thinking is
   spent only where it changes output quality and high-volume mechanical work runs on Sonnet.
   Files: `SKILL.md`, `templates.md`. Exposed as `/codeops:setup_routing` plus the typeable alias
-  `/setup-routing` (`commands/setup-routing.md`, manual-only).
+  `/setup_routing` (`commands/setup_routing.md`, manual-only).
 - **Two-layer design.** A sentinel-delimited (`<!-- CODEOPS-ROUTING -->`) block in the project
   `CLAUDE.md` is the soft *policy* (which executor a tagged task is delegated to); pinned-model
   executor subagents in `.claude/agents/` (`plan-task-executor` → Sonnet, `plan-task-executor-opus`

@@ -31,7 +31,7 @@ idempotent: re-running updates the managed block in place and creates executors 
 
 "setup_routing", "set up model routing", "configure model routing", "route tasks by model/cost",
 "make this project use Opus/Sonnet per task". Explicit: `/codeops:setup_routing <description>` or
-the alias `/setup-routing`.
+the alias `/setup_routing`.
 
 ## Sensitivity profiles
 
@@ -63,4 +63,4 @@ trusting Sonnet on borderline tasks.
 - [`make_plan`](/skills/make_plan) — the routing block asks it to tag each generated task.
 - [`exec_plan`](/skills/exec_plan) — consumes the routing block, delegating tasks to executors by tag.
 - [`preflight`](/skills/preflight) — always Opus under every profile.
-- See the [Commands page](/skills/commands) for the `/setup-routing` alias.
+- See the [Commands page](/skills/commands) for the `/setup_routing` alias.

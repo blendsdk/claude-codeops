@@ -26,7 +26,7 @@ parent skills auto-trigger from natural language.
 | `/make_techdocs`, `/review_techdocs` | [`techdocs`](/skills/techdocs) |
 | `/make_roadmap`, `/update_roadmap`, `/review_roadmap`, `/archive_roadmap` | [`roadmap`](/skills/roadmap) |
 | `/upgrade_requirements` | [`upgrade_plan`](/skills/upgrade_plan) |
-| `/setup-routing` | [`setup_routing`](/skills/setup_routing) |
+| `/setup_routing` | [`setup_routing`](/skills/setup_routing) |
 
 ## Example
 

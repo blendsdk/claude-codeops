@@ -1,9 +1,9 @@
 ---
 name: setup_routing
 description: >-
-  Configures per-project model and effort routing so Opus + high/xhigh thinking is spent only where it changes output quality and high-volume mechanical work runs on Sonnet. Use when the user says "setup_routing", "/setup-routing", "set up model routing", "configure model routing", "route tasks by model", or "make this project use Opus/Sonnet per task". Independently analyzes the repo, classifies it into a sensitivity profile (Opus-dominant, Mixed core/scaffold, Sonnet-default, or a Balanced fallback), proposes a tag-driven routing policy, waits for explicit confirmation, then writes a sentinel-delimited routing block into the project CLAUDE.md and the pinned-model executor subagents in .claude/agents/ that the policy references.
+  Configures per-project model and effort routing so Opus + high/xhigh thinking is spent only where it changes output quality and high-volume mechanical work runs on Sonnet. Use when the user says "setup_routing", "/setup_routing", "set up model routing", "configure model routing", "route tasks by model", or "make this project use Opus/Sonnet per task". Independently analyzes the repo, classifies it into a sensitivity profile (Opus-dominant, Mixed core/scaffold, Sonnet-default, or a Balanced fallback), proposes a tag-driven routing policy, waits for explicit confirmation, then writes a sentinel-delimited routing block into the project CLAUDE.md and the pinned-model executor subagents in .claude/agents/ that the policy references.
 when_to_use: >-
-  Trigger on "setup_routing", "/setup-routing", "set up / configure model routing", "route tasks by model / cost", or any request to make a project spend Opus only where it matters and Sonnet elsewhere. Operates on the CURRENT project's CLAUDE.md and .claude/agents/ — never on global user files. Re-runnable and non-destructive.
+  Trigger on "setup_routing", "/setup_routing", "set up / configure model routing", "route tasks by model / cost", or any request to make a project spend Opus only where it matters and Sonnet elsewhere. Operates on the CURRENT project's CLAUDE.md and .claude/agents/ — never on global user files. Re-runnable and non-destructive.
 argument-hint: "[short description of the project]"
 ---
 
@@ -14,7 +14,7 @@ argument-hint: "[short description of the project]"
 Configure **per-project model and effort routing** for the project the user is currently in, so
 that expensive reasoning (Opus, high/xhigh thinking) is spent only where it changes output
 quality, and high-volume mechanical work runs on Sonnet. Invoked as `/codeops:setup_routing` or
-the typeable alias `/setup-routing`.
+the typeable alias `/setup_routing`.
 
 ## The two-layer principle (preserve this throughout)
 

@@ -138,7 +138,7 @@ codeops-skills/                # repo root == plugin root
 | `make_techdocs` / `review_techdocs` | Create/maintain VitePress architecture docs + ADRs |
 | `make_roadmap` / `update_roadmap` / … | Track a whole feature-set across its lifecycle |
 | `upgrade_plan <feature>` / `upgrade_requirements` | Bring an outdated artifact to current standards |
-| `setup_routing` / `/setup-routing` | Analyze the repo, then wire per-project model & effort routing (Opus/Sonnet by task tag) into `CLAUDE.md` + `.claude/agents/` |
+| `setup_routing` / `/setup_routing` | Analyze the repo, then wire per-project model & effort routing (Opus/Sonnet by task tag) into `CLAUDE.md` + `.claude/agents/` |
 | `/gitcm` / `/gitcmp` | Commit (and push) with a detailed Conventional Commit message |
 | `/analyze_project` | Generate/refresh this project's `CLAUDE.md` |
 | `/migrate_clinerules` | Convert a legacy `.clinerules/project.md` into `CLAUDE.md` |
@@ -147,7 +147,7 @@ The consolidated skills cover several verbs each, and thin **alias commands** ma
 typeable (they delegate to the parent skill in the right mode): `/add_requirement`,
 `/review_requirements` → `make_requirements`; `/make_techdocs`, `/review_techdocs` → `techdocs`;
 `/make_roadmap`, `/update_roadmap`, `/review_roadmap`, `/archive_roadmap` → `roadmap`;
-`/upgrade_requirements` → `upgrade_plan`; `/setup-routing` → `setup_routing`. These aliases are
+`/upgrade_requirements` → `upgrade_plan`; `/setup_routing` → `setup_routing`. These aliases are
 manual-only — only the parent skills auto-trigger from natural language.
 
 The skills compose into the original CodeOps pipelines, e.g.
