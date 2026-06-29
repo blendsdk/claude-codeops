@@ -372,7 +372,9 @@ done
 # =============================================================================
 
 # Shared layout-convention doc and the skills that must link it (03-01, 03-05 / AR #7, #22).
-SHARED_DOC="skills/_shared/layout-convention.md"
+# Lives at the PLUGIN ROOT (not under skills/) so the plugin loader never sees a SKILL.md-less
+# dir under skills/ — the documented-safe location (supersedes AR #7's skills/_shared/, see AR #30).
+SHARED_DOC="_shared/layout-convention.md"
 AFFECTED_SKILLS=(roadmap make_requirements make_plan exec_plan preflight upgrade_plan retro_requirements)
 # A sample marker exercises the schema/detection rule without a full nested fixture (03-01).
 SAMPLE_MARKER="scripts/fixtures/sample.codeops.yml"
@@ -380,18 +382,24 @@ SAMPLE_MARKER="scripts/fixtures/sample.codeops.yml"
 # -----------------------------------------------------------------------------
 # ST-13 — shared convention doc present; _shared/ holds no SKILL.md (SPEC-4)
 # -----------------------------------------------------------------------------
-section "ST-13: shared layout-convention doc present; _shared/ is not a skill"
+section "ST-13: shared layout-convention doc present; skills/ holds only real skills"
 if [[ -s "$SHARED_DOC" ]]; then
-  pass "$SHARED_DOC exists and is non-empty"
+  pass "$SHARED_DOC exists and is non-empty (at the plugin root, not under skills/)"
 else
   fail "$SHARED_DOC is missing or empty"
 fi
-# skills/_shared/ is a shared-reference dir, not a skill — a SKILL.md there would make the
-# plugin loader treat it as a loadable skill (compatibility requirement, 03-01).
-if [[ -e "skills/_shared/SKILL.md" ]]; then
-  fail "skills/_shared/SKILL.md exists — _shared/ must not be loaded as a skill"
+# The plugin loader treats each skills/<dir> as a skill (must have a SKILL.md). The shared docs
+# deliberately live OUTSIDE skills/ (AR #30) so the loader never meets a SKILL.md-less subdir.
+# Assert that invariant directly: every subdirectory of skills/ contains a SKILL.md.
+non_skill_dirs=""
+for d in skills/*/; do
+  [[ -d "$d" ]] || continue
+  [[ -f "${d}SKILL.md" ]] || non_skill_dirs+=" $d"
+done
+if [[ -z "$non_skill_dirs" ]]; then
+  pass "every skills/<dir> contains a SKILL.md (no non-skill dirs under skills/)"
 else
-  pass "skills/_shared/ contains no SKILL.md"
+  fail "skills/ contains subdir(s) without a SKILL.md:$non_skill_dirs"
 fi
 
 # -----------------------------------------------------------------------------

@@ -19,7 +19,7 @@ argument-hint: "[make | update | review | archive]"
 
 ## Resolve paths first (layout-aware)
 
-Before any action, determine the layout via **[../_shared/layout-convention.md](../_shared/layout-convention.md)**:
+Before any action, determine the layout via **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**:
 
 - **Flat layout** (no `codeops/.codeops.yml`): a single roadmap at `plans/00-roadmap.md`. Behaves
   **exactly as flat layout always has** — everything below that mentions "the roadmap" means this one file, and the
@@ -78,7 +78,7 @@ A feature's roadmap also tracks **lightweight tasks** (`T-NN`) beside its RD row
 compact lifecycle `⬜ Backlog → 🔄 Executing → ✅ Done` (with `⛔`/`⏸️` overlays) and never the
 RD/Plan-Preflight stages. A trivial task is a row with no RD and no plan link; a non-trivial task
 links a single mini-plan. `T-NN` and `RD-NN` are separate per-feature namespaces (no collisions).
-Full task model + routing: [../_shared/layout-convention.md](../_shared/layout-convention.md).
+Full task model + routing: [../../_shared/layout-convention.md](../../_shared/layout-convention.md).
 
 ## Two governing rules (apply to every action)
 

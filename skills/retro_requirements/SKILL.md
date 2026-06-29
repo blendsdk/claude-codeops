@@ -29,7 +29,7 @@ application from scratch.
 > **Resolve output paths layout-aware.** The reconstruction brief and any requirements it seeds
 > live at a flat path (`requirements/_retro/…`) or, in a nested-layout repo, under the target
 > feature (`codeops/features/<f>/requirements/…`) — resolve via
-> **[../_shared/layout-convention.md](../_shared/layout-convention.md)**. In a nested repo, ask
+> **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**. In a nested repo, ask
 > which feature the reconstruction targets (create it lazily); never guess.
 
 This skill is the **inverse** of the make_requirements skill and **upstream** of

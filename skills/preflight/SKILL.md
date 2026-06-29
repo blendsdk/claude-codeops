@@ -30,7 +30,7 @@ until the artifact passes clean.
 
 > **Resolve artifact paths layout-aware.** A requirements set or plan named in `$ARGUMENTS` lives at
 > a flat path (`requirements/`, `plans/<feature>/`) or, in a nested-layout repo, under
-> `codeops/features/<f>/…` — resolve it via **[../_shared/layout-convention.md](../_shared/layout-convention.md)**.
+> `codeops/features/<f>/…` — resolve it via **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**.
 > If the target feature is ambiguous in a nested repo, ask; never guess.
 
 `preflight --continue` resumes an interrupted session (see [Session resume](#session-resume)).

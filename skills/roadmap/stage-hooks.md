@@ -3,7 +3,7 @@
 The roadmap sits **above** the per-feature execution plan. It does not replace
 the execution plan — it indexes and summarizes across many of them.
 
-Resolve paths via **[../_shared/layout-convention.md](../_shared/layout-convention.md)**. In
+Resolve paths via **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**. In
 **nested layout** there are two roadmap altitudes (per-feature + portfolio); in **flat layout**
 there is a single roadmap and the portfolio cascade step below is inert.
 

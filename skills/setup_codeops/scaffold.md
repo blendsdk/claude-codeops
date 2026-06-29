@@ -1,7 +1,7 @@
 # Fresh Scaffold
 
 > Read this when `setup_codeops` detects **neither** a marker nor a flat layout — a repo with no
-> CodeOps artifacts yet. Resolve paths via [_shared/layout-convention.md](../_shared/layout-convention.md).
+> CodeOps artifacts yet. Resolve paths via [_shared/layout-convention.md](../../_shared/layout-convention.md).
 
 ## What to create
 
@@ -31,7 +31,7 @@ front. Those appear lazily when the first RD, plan, or task is authored (AR #5).
 
 ```yaml
 # CodeOps layout marker. Presence of this file opts the repo into the nested layout.
-# Sole writer: the setup_codeops skill. Schema: skills/_shared/layout-convention.md
+# Sole writer: the setup_codeops skill. Schema: _shared/layout-convention.md
 codeopsLayout: nested
 layoutVersion: "3.0.0"
 conventions:

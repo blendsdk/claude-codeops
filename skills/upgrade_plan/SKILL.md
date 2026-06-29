@@ -32,7 +32,7 @@ requirements set use the make_requirements skill.
 
 > **Resolve paths layout-aware, and don't migrate layout here.** A plan/requirements set lives at a
 > flat path (`plans/<feature>/`, `requirements/`) or, in a nested-layout repo, under
-> `codeops/features/<f>/…` — resolve it via **[../_shared/layout-convention.md](../_shared/layout-convention.md)**.
+> `codeops/features/<f>/…` — resolve it via **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**.
 > This skill upgrades **content/version** in place; it never moves a repo between layouts. Converting
 > a flat repo to the nested `codeops/` layout is the **`setup_codeops`** skill's job — point the user
 > there for that, and keep upgrades within the existing layout.

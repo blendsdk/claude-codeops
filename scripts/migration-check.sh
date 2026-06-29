@@ -137,6 +137,22 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# Regression: a loose file directly under plans/ (not 00-roadmap.md, not in a plan dir) must be
+# surfaced, never silently orphaned. The move map only relocates plan dirs + plans/00-roadmap.md.
+# -----------------------------------------------------------------------------
+section "Regression: loose file under plans/ is warned (not silently left behind)"
+repo_loose="$(make_repo)"
+printf '# stray\n' >"$repo_loose/plans/NOTES.md"
+git -C "$repo_loose" -c user.email=test@example.com -c user.name=test add -A
+git -C "$repo_loose" -c user.email=test@example.com -c user.name=test commit -q -m "loose file"
+run_engine "$repo_loose" --dry-run
+if grep -qiE 'WARN.*plans/NOTES\.md' <<<"$OUT"; then
+  pass "warns: plans/NOTES.md is a loose file that won't be migrated"
+else
+  fail "no warning for the loose file plans/NOTES.md (would be silently orphaned)"
+fi
+
+# -----------------------------------------------------------------------------
 # SPEC-8 — no roadmap → slug falls back to the repo/dir name; preview states the source
 # -----------------------------------------------------------------------------
 section "SPEC-8: slug fallback when no roadmap header"

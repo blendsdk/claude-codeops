@@ -15,7 +15,7 @@ Set up the CodeOps **nested `codeops/` layout** for the git repo the user is cur
 `/codeops:setup_codeops` or the typeable alias `/setup_codeops`. This is the one skill that
 **creates and owns the layout marker** `codeops/.codeops.yml`; every other skill only reads it.
 
-Resolve all paths and the marker schema via **[_shared/layout-convention.md](../_shared/layout-convention.md)** —
+Resolve all paths and the marker schema via **[_shared/layout-convention.md](../../_shared/layout-convention.md)** —
 it is the single source of truth for the layout. Do not re-encode paths here.
 
 ## Scope
@@ -66,7 +66,7 @@ Never re-derive the move map in prose — read it from the engine's output and p
 
 - [scaffold.md](scaffold.md) — the minimal fresh-repo skeleton.
 - [migration.md](migration.md) — the flat→nested migration UX (invoke the engine, preview, confirm, report).
-- [_shared/layout-convention.md](../_shared/layout-convention.md) — the layout/path/ID/marker source of truth.
+- [_shared/layout-convention.md](../../_shared/layout-convention.md) — the layout/path/ID/marker source of truth.
 
 ## Grounded Options & Recommendations
 

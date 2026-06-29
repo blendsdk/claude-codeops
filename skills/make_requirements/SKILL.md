@@ -41,7 +41,7 @@ The user's input is NEVER the final requirements. The value of this skill is in
 
 ## Resolve paths first (layout-aware)
 
-Determine the layout via **[../_shared/layout-convention.md](../_shared/layout-convention.md)** before writing anything:
+Determine the layout via **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)** before writing anything:
 
 - **Flat layout** (no `codeops/.codeops.yml`): RDs live in `requirements/RD-NN-*.md` with a single
   repo-wide RD sequence — exactly as flat layout always has.
@@ -59,7 +59,7 @@ chore, or small change) is **not** a feature: in a nested-layout repo it is a li
 discovery, no Zero-Ambiguity Gate**. If the user's request is really a small fix, route them to
 the task lane (a roadmap row + `make_plan` for a non-trivial mini-plan) instead of drafting an RD.
 If it is genuinely unclear, ask — never default to the heavy pipeline silently. The task model and
-routing rule live in **[../_shared/layout-convention.md](../_shared/layout-convention.md)**.
+routing rule live in **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**.
 (Flat-layout repos have no task lane — proceed as flat layout always has.)
 
 ## Step 0: Detect the Mode

@@ -151,6 +151,15 @@ if [[ -f plans/00-roadmap.md ]]; then
     fi
   done
 fi
+# (a2) loose files directly under plans/ that are NOT the roadmap and NOT inside a plan dir.
+#      The move map only relocates plan dirs + plans/00-roadmap.md, so these would otherwise be
+#      left behind in a surviving plans/ after the marker is written — a half-migrated state. We
+#      cannot guess a feature target for a stray file, so we surface it (never silently orphan it).
+for f in plans/*; do
+  [[ -f "$f" ]] || continue
+  [[ "$(basename "$f")" == "00-roadmap.md" ]] && continue
+  warnings+=("loose-file-not-migrated: $f is directly under plans/ and is left in place (move it by hand)")
+done
 # (b) relative links in plan docs that point OUT of the planning tree (into source, etc.).
 #     A structure-preserving move keeps intra-codeops links valid; only out-of-tree links can
 #     break, so we surface them as warnings rather than silently rewriting them (AR #16).
@@ -234,7 +243,7 @@ find plans requirements -type d -empty -delete 2>/dev/null || true
 # Marker — written LAST so an interrupted run never leaves a false "already migrated" flag.
 cat > codeops/.codeops.yml <<'YML'
 # CodeOps layout marker. Presence of this file opts the repo into the nested layout.
-# Sole writer: the setup_codeops skill (via codeops-migrate.sh). Schema: skills/_shared/layout-convention.md
+# Sole writer: the setup_codeops skill (via codeops-migrate.sh). Schema: _shared/layout-convention.md
 codeopsLayout: nested
 layoutVersion: "3.0.0"
 conventions:

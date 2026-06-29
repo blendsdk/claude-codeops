@@ -2,7 +2,7 @@
 
 > Read this when `setup_codeops` detects an existing **flat layout** (a `requirements/` dir, a
 > `plans/00-roadmap.md`, or any `plans/<dir>/`). Resolve paths via
-> [_shared/layout-convention.md](../_shared/layout-convention.md).
+> [_shared/layout-convention.md](../../_shared/layout-convention.md).
 
 ## Division of labour (PF-003 — do not blur this)
 
@@ -65,6 +65,7 @@ setup_codeops — migration preview (flat → nested)
 |------|------------------|------------------------|
 | No roadmap to read the slug from | Falls back to the repo/dir name, states the source | "Slug taken from the directory name; rename later if you want a different feature name." |
 | Plans on disk not in the roadmap | Migrated under the feature **and** listed as a warning | List them so the user knows they were included. |
+| Loose file directly under `plans/` (not `00-roadmap.md`, not in a plan dir) | Left in place **and** warned (`loose-file-not-migrated`) — no feature target to guess | Tell the user to move it by hand; it is not auto-relocated. |
 | Relative link into source | Surfaced as a warning, never rewritten | Flag each for manual fixing after the move. |
 | Dirty working tree | Refuses (non-zero), no changes | Ask to commit/stash, then re-run. |
 | Re-run after migration | No-op (marker present) | Report "already migrated". |

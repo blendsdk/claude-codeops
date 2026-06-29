@@ -2,7 +2,7 @@
 #
 # A committed, schema-valid example of codeops/.codeops.yml. Used by scripts/validate.sh ST-16
 # to assert the marker schema parses and carries `codeopsLayout`. The canonical schema is
-# documented in skills/_shared/layout-convention.md. This is sample data, not a live marker.
+# documented in _shared/layout-convention.md. This is sample data, not a live marker.
 codeopsLayout: nested
 layoutVersion: "3.0.0"
 conventions:

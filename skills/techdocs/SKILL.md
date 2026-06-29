@@ -121,7 +121,7 @@ Once opted in, update techdocs at these checkpoints:
 Gather from: existing `requirements/`, existing `plans/*/`, the current codebase (structure,
 patterns, dependencies), and the project's CLAUDE.md (or detected project conventions). In a
 **nested-layout** repo these sources live under `codeops/features/<f>/{requirements,plans}/`
-(resolve via [../_shared/layout-convention.md](../_shared/layout-convention.md)); in flat layout
+(resolve via [../../_shared/layout-convention.md](../../_shared/layout-convention.md)); in flat layout
 they are the top-level `requirements/` and `plans/*/` as before. If this skill runs right after
 make_requirements or exec_plan, most of this is already in context.
 

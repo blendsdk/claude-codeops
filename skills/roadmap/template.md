@@ -1,6 +1,6 @@
 # Roadmap Template & Tracker Reference
 
-Resolve where the roadmap lives via **[../_shared/layout-convention.md](../_shared/layout-convention.md)**:
+Resolve where the roadmap lives via **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**:
 
 - **Flat layout** (no marker): a single roadmap at `plans/00-roadmap.md` — exactly as before.
 - **Nested layout** (marker present): a **per-feature roadmap** at

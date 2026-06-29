@@ -27,7 +27,7 @@ This skill covers **execution only**. To create a plan, use the make_plan skill.
 
 ## Resolve the plan path first (layout-aware)
 
-Determine the layout via **[../_shared/layout-convention.md](../_shared/layout-convention.md)**:
+Determine the layout via **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**:
 
 - **Flat layout** (no marker): the plan is at `plans/$ARGUMENTS/99-execution-plan.md` — as flat layout always has.
 - **Nested layout** (marker present): the plan is under a feature —
@@ -57,7 +57,7 @@ ordering still applies *when the task warrants tests* (e.g. a bugfix's regressio
 
 A **trivial task** has **no plan document** to run: do the work directly, then record it as a
 `T-NN` roadmap row + the commit (no execution-plan loop). The task model and routing rule live in
-**[../_shared/layout-convention.md](../_shared/layout-convention.md)**. (Flat-layout repos have no
+**[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**. (Flat-layout repos have no
 task lane — treat such work as a small plan, as in flat layout.)
 
 ## Execution protocol (summary)
