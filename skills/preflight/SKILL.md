@@ -21,7 +21,7 @@ arguments: artifact
 
 # preflight — Multi-Dimensional, Codebase-Grounded Quality Audit
 
-> **CodeOps Skills Version**: 3.0.0
+> **CodeOps Skills Version**: 3.1.0
 
 Run a rigorous quality audit of the artifact named in `$ARGUMENTS`, **grounded in the actual
 codebase**. Find every issue, ambiguity, contradiction, gap, and risk; verify every claim and
@@ -170,7 +170,7 @@ checklist. Full safeguards in [report-format.md](report-format.md).
 
 ## Key agent behavior rules
 
-> **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides.
+> **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides. **Recommendation hardening:** apply `_shared/recommendation-hardening.md` — for **high-stakes** findings (CRITICAL/MAJOR severity) spawn one independent challenger and reconcile *before* recording the recommendation; for all consequential findings run the in-context layers and close with the `Confidence:` / `Hardening:` disclosure.
 
 - **Be adversarial, not hostile** — findings should feel helpful, not critical.
 - **Specificity over volume** — one precise finding beats ten vague ones; never pad.

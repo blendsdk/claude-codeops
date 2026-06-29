@@ -1,6 +1,6 @@
 # Preflight — Report Format, Presentation & Persistence (detail)
 
-> **CodeOps Skills Version**: 3.0.0
+> **CodeOps Skills Version**: 3.1.0
 
 Covers Steps 4-8 of the protocol: compiling the report, presenting findings and collecting
 decisions, pass/fail determination, applying fixes, and roadmap sync — plus iterative re-scan
@@ -40,6 +40,10 @@ Every finding gets a numbered, structured entry.
   viable one, and name what you considered and dropped and why. Never pad to a count to manufacture
   a choice.
 - **Every finding MUST have a recommendation, with rationale** — never just "Option B is better".
+- **High-stakes findings (CRITICAL/MAJOR) get the hardening challenger** — per
+  `_shared/recommendation-hardening.md`, run one independent challenger (blind to your pick) and
+  reconcile *before* recording the recommendation; close consequential findings with the
+  `Confidence:` / `Hardening:` disclosure (presentation-only — not a required saved field).
 - **Findings are numbered sequentially** — `PF-001`, `PF-002`, ... Numbers never reuse across iterations.
 - **Location must be specific** — "plans/my-feature/03-api-design.md, section 'Error Handling'", not
   "somewhere in the plan".

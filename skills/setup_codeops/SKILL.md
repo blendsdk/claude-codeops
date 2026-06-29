@@ -9,7 +9,7 @@ argument-hint: "[--dry-run | --yes]"
 
 # CodeOps Layout Setup (`setup_codeops`)
 
-> **CodeOps Skills Version**: 3.0.0
+> **CodeOps Skills Version**: 3.1.0
 
 Set up the CodeOps **nested `codeops/` layout** for the git repo the user is currently in. Run as
 `/codeops:setup_codeops` or the typeable alias `/setup_codeops`. This is the one skill that
@@ -73,4 +73,5 @@ Never re-derive the move map in prose — read it from the engine's output and p
 When a migration surfaces choices (e.g. an ambiguous slug source, or warnings the user must act
 on), present only **genuinely viable** options, second-guessed and grounded in what the engine
 actually reported, and lead with a recommendation. The user decides; never apply a migration
-without an explicit confirmation (or `--yes`).
+without an explicit confirmation (or `--yes`). For consequential choices, apply the
+recommendation-hardening protocol (`_shared/recommendation-hardening.md`).

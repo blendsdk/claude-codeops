@@ -15,6 +15,11 @@ user-confirmed decision**. If you cannot point to a specific user answer for any
 feature spec, behavioral definition, scope boundary, edge-case handling, or
 technical choice — you have failed this gate.
 
+> **Recommendation hardening (complex/sensitive decisions).** When you present options for an
+> ambiguity tagged complex or sensitive, apply `_shared/recommendation-hardening.md` — spawn one
+> independent challenger and reconcile before recommending; close every option presentation with
+> the `Confidence:` / `Hardening:` disclosure.
+
 ## The Ambiguity Register
 
 Before Phase 3, compile and present an **Ambiguity Register** — a formal,
