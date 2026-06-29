@@ -12,6 +12,10 @@ risk in an artifact, **verifies every claim against the real code**, scores find
 It never fixes anything silently — it is a review protocol that finds and reports issues, applying
 changes only when you explicitly ask.
 
+For **high-stakes** findings (CRITICAL/MAJOR), preflight hardens its recommendation with an
+independent challenger before presenting it, and closes consequential findings with a `Confidence:` /
+`Hardening:` line (see [Concepts → Recommendation hardening](/guide/concepts#recommendation-hardening)).
+
 ## When to use it
 
 - After [`make_requirements`](/skills/make_requirements) or [`make_plan`](/skills/make_plan), before

@@ -9,7 +9,7 @@ argument-hint: "[short description of the project]"
 
 # Model & Effort Routing Setup (`setup_routing`)
 
-> **CodeOps Skills Version**: 3.0.0
+> **CodeOps Skills Version**: 3.1.0
 
 Configure **per-project model and effort routing** for the project the user is currently in, so
 that expensive reasoning (Opus, high/xhigh thinking) is spent only where it changes output
@@ -57,7 +57,9 @@ rewrites the user's own sections. It reuses the non-destructive merge discipline
 - **Grounded options & recommendations.** When you present the profile, the proposal, or any
   adjustment choice, follow the always-on Grounded Options directive in the coding standards:
   present only viable options, second-guess each, ground claims in the real repo, and lead with a
-  recommendation and its reason. You recommend; the user decides.
+  recommendation and its reason. You recommend; the user decides. For consequential
+  recommendations also apply the recommendation-hardening protocol
+  (`_shared/recommendation-hardening.md`).
 
 ---
 

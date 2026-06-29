@@ -14,7 +14,9 @@ with concrete specification test cases, and a `99-execution-plan.md` that struct
 phases and sessions following **specification-first** test ordering.
 
 Every decision in the plan traces back to an explicit, user-confirmed entry in the ambiguity
-register — nothing is guessed on your behalf.
+register — nothing is guessed on your behalf. For **high-stakes** gate decisions (tagged
+complex/sensitive), an independent challenger hardens the recommendation before you decide (see
+[Concepts → Recommendation hardening](/guide/concepts#recommendation-hardening)).
 
 ## When to use it
 

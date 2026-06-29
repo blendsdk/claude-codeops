@@ -6,6 +6,8 @@ This is the most important quality gate in the planning process. Read it before 
 
 Plans built on ambiguity produce implementations built on guesswork. When you guess, the user gets code they didn't ask for, behaviors they didn't expect, and architectures they didn't choose. Every item in every plan document must trace back to an **explicit, user-confirmed decision**. If you cannot point to a specific user answer for a design choice, technical detail, behavioral spec, edge case, or scope boundary, you have failed this gate.
 
+> **Recommendation hardening (complex/sensitive decisions).** When you present options for an ambiguity tagged complex or sensitive, apply `_shared/recommendation-hardening.md` — spawn one independent challenger and reconcile before recommending; close every option presentation with the `Confidence:` / `Hardening:` disclosure.
+
 ## The Ambiguity Register
 
 Before Phase 2, compile and present an **Ambiguity Register** — a formal, numbered inventory of every identified gap, ambiguity, unstated assumption, undefined behavior, and open question. Hunt systematically across ALL of these categories:

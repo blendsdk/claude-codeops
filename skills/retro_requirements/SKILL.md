@@ -19,7 +19,7 @@ argument-hint: "[--scope <path>] [--continue]"
 
 # Reverse Requirements Engineering
 
-> **CodeOps Skills Version**: 3.0.0
+> **CodeOps Skills Version**: 3.1.0
 
 Analyze an existing codebase — any language, any framework — and produce a
 structured **reconstruction brief** that can be fed to the make_requirements
@@ -152,7 +152,7 @@ flagged and added to Open Questions; and the register header reads
 `✅ GATE PASSED`. While blocked, you MUST NOT write the brief, proceed to Phase 9,
 or assume a suspicious behavior is intentional because the code is "clean".
 
-> **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides.
+> **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides. Apply the recommendation-hardening protocol (`_shared/recommendation-hardening.md`) to consequential recommendations; escalate to an independent challenger only when the decision is genuinely high-stakes.
 
 ---
 

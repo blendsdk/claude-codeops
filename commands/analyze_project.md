@@ -95,6 +95,9 @@ always-on directive:
 > filter out non-viable options (no strawmen), second-guess each, ground any code-modifying option
 > in the real code, and lead with a recommendation and its reason; match ceremony to stakes.
 
+The always-on standards carry the fuller **recommendation-hardening** protocol
+(`_shared/recommendation-hardening.md`); keep the *generated* pointer above to the one-liner shown.
+
 Keep the generated file lean — it is always-on context. State facts, not narration. The
 CodeOps skills (make_plan, make_requirements, exec_plan, etc.) read this file to adapt their
 verify command, commit scope, structure, and conventions to this project.

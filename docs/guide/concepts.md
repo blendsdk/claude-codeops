@@ -61,6 +61,23 @@ gap, assumption, and open question is hunted across a fixed set of categories, c
 **Ambiguity Register**, and resolved by **you** — never guessed by the model. The gate opens only
 when every item is explicitly resolved and you have confirmed the complete register.
 
+## Recommendation hardening
+
+CodeOps institutionalizes the question *"are these your best recommendations?"* so it runs **before**
+you ever see the answer — and so the result *converges* on a verified-best option instead of drifting
+under pressure. Before presenting a consequential recommendation the model (1) **reframes** — what
+would it recommend with 10× the budget, what would a contrarian expert push, what would make its pick
+obsolete; (2) passes a **definition-of-done** rubric — a genuinely non-obvious option considered,
+confidence stated, the strongest counter-argument named; and (3) discloses a `Confidence:` /
+`Hardening:` line so residual uncertainty is visible and you know where to push.
+
+For **high-stakes** decisions — [`preflight`](/skills/preflight) findings at CRITICAL/MAJOR severity,
+or [`make_plan`](/skills/make_plan) / [`make_requirements`](/skills/make_requirements) gate decisions
+tagged complex/sensitive — an **independent challenger** is spawned in a fresh context (blind to the
+model's pick) and reconciled, because a self-critique in the same context inherits the same blind
+spots. The protocol is the always-on directive plus `_shared/recommendation-hardening.md`; it reaches
+every installation automatically via [rolling updates](#rolling-updates) and the always-on standards.
+
 ## Specification-first testing
 
 CodeOps separates **specification tests** (derived from requirements/acceptance criteria — immutable

@@ -60,3 +60,7 @@ in the repo — this page is a summary. A project's own `CLAUDE.md` may override
 - **Grounded options & recommendations** — present only genuinely viable options (no strawmen),
   second-guess each, ground any code-change option in the real code (`file:line`), and lead with a
   recommendation and its reason; match ceremony to the stakes. The user decides.
+- **Recommendation hardening** — before presenting a consequential recommendation, run the reframing
+  prompts + a definition-of-done rubric and close with a `Confidence:` / `Hardening:` disclosure; for
+  high-stakes decisions an independent challenger is spawned and reconciled. See
+  [Concepts → Recommendation hardening](/guide/concepts#recommendation-hardening).

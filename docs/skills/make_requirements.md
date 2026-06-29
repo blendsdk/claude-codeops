@@ -7,7 +7,10 @@
 `make_requirements` acts as a proactive domain consultant. It absorbs a seed idea (a brain dump or a
 bare one-liner), expands it with features comparable systems have, challenges it with edge cases,
 then decomposes everything into numbered RDs behind a hard **Zero-Ambiguity Gate**. The result is a
-structured `requirements/` set that [`make_plan`](/skills/make_plan) can consume directly.
+structured `requirements/` set that [`make_plan`](/skills/make_plan) can consume directly. For
+**high-stakes** gate decisions (tagged complex/sensitive), an independent challenger hardens the
+recommendation before you decide (see
+[Concepts → Recommendation hardening](/guide/concepts#recommendation-hardening)).
 
 It covers three modes:
 

@@ -1,6 +1,6 @@
 # Preflight — The 13-Dimension Scan (detail)
 
-> **CodeOps Skills Version**: 3.0.0
+> **CodeOps Skills Version**: 3.1.0
 
 Read this file before executing Step 3 of the protocol — and especially before auditing a plan,
 where Dimension 13 (Codebase Alignment) carries the most weight. Steps 1 and 2 set up the scan;

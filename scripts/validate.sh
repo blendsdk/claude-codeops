@@ -416,9 +416,13 @@ for s in "${AFFECTED_SKILLS[@]}"; do
 done
 
 # -----------------------------------------------------------------------------
-# ST-15 — version stamps bumped to 3.0.0; no 2.0.0 left in the shipped surface (SPEC-26)
+# ST-15 — no stale 2.0.0 left in the shipped surface; current stamp present (SPEC-26)
 # -----------------------------------------------------------------------------
-section "ST-15: no stale 2.0.0 version stamps; current stamp is 3.0.0"
+# NOTE: ST-24 is the authoritative version check (all CodeOps Skills Version stamps == the
+# current version and agree). ST-15 only guards against (a) stale 2.0.0 and (b) accidental stamp
+# deletion. `3.0.0` may legitimately remain in skills/ as the compatibility floor (upgrade/exec
+# thresholds) and as `layoutVersion` (the nested-layout schema version), so ST-15 does NOT ban it.
+section "ST-15: no stale 2.0.0 version stamps; current stamp present"
 # 15a — no 2.0.0 anywhere in the distributed skills/ + commands/ surface (fixtures under
 # scripts/ are test data and intentionally excluded).
 stale_stamps="$(grep -rln '2\.0\.0' skills/ commands/ 2>/dev/null || true)"
@@ -427,11 +431,11 @@ if [[ -z "$stale_stamps" ]]; then
 else
   fail "stale 2.0.0 stamp(s) found in:"$'\n'"$stale_stamps"
 fi
-# 15b — guard against deleting (rather than bumping) the stamps: 3.0.0 must be present.
-if grep -rqF '3.0.0' skills/; then
-  pass "current 3.0.0 stamp present in skills/"
+# 15b — guard against deleting (rather than bumping) the stamps: the current 3.1.0 must be present.
+if grep -rqF '3.1.0' skills/; then
+  pass "current 3.1.0 stamp present in skills/"
 else
-  fail "no 3.0.0 stamp found in skills/ (stamps must be bumped, not removed)"
+  fail "no 3.1.0 stamp found in skills/ (stamps must be bumped, not removed)"
 fi
 
 # -----------------------------------------------------------------------------
@@ -463,6 +467,125 @@ for f in "skills/setup_codeops/SKILL.md" "commands/setup_codeops.md"; do
     fail "$f is missing or empty"
   fi
 done
+
+# =============================================================================
+# Recommendation-hardening checks (ST-18…ST-24)
+#
+# SPECIFICATION tests for the recommendation-hardening work, written from the spec
+# (plans/recommendation-hardening/07-testing-strategy.md), BEFORE the implementation, so
+# they fail (red) on the unmodified repo and pass (green) once each phase lands. Mapping:
+# ST-18→FR-6, ST-19→FR-1..4, ST-20→FR-6/AR-15, ST-21→FR-5, ST-22→FR-7, ST-23→FR-6, ST-24→FR-9.
+# =============================================================================
+
+HARDENING_DOC="_shared/recommendation-hardening.md"
+# Tier-A skills get explicit challenger-escalation machinery (AR-6).
+HARDENING_TIER_A=(preflight make_plan make_requirements)
+# Tier-B files reference the protocol only (no bespoke escalation).
+HARDENING_TIER_B=(
+  "skills/exec_plan/SKILL.md"
+  "skills/grill_me/SKILL.md"
+  "skills/upgrade_plan/SKILL.md"
+  "skills/retro_requirements/SKILL.md"
+  "skills/setup_routing/SKILL.md"
+  "skills/setup_codeops/SKILL.md"
+  "commands/analyze_project.md"
+)
+EXPECTED_VERSION="3.1.0"
+
+# -----------------------------------------------------------------------------
+# ST-18 — shared hardening protocol doc present and non-empty (FR-6 / AR-2)
+# -----------------------------------------------------------------------------
+section "ST-18: recommendation-hardening protocol doc present"
+if [[ -s "$HARDENING_DOC" ]]; then
+  pass "$HARDENING_DOC exists and is non-empty (plugin root, not under skills/)"
+else
+  fail "$HARDENING_DOC is missing or empty"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-19 — shared doc defines all four layers (FR-1..FR-4 / AR-9,10,11,5)
+# -----------------------------------------------------------------------------
+section "ST-19: shared doc carries a sentinel for each of the four layers"
+hardening_layer_sentinels=("forced reframing" "definition-of-done" "independent challenger" "Hardening:")
+if [[ -s "$HARDENING_DOC" ]]; then
+  for sentinel in "${hardening_layer_sentinels[@]}"; do
+    if grep -qiF "$sentinel" "$HARDENING_DOC"; then
+      pass "layer sentinel present: \"$sentinel\""
+    else
+      fail "layer sentinel missing from $HARDENING_DOC: \"$sentinel\""
+    fi
+  done
+else
+  fail "cannot check layer sentinels — $HARDENING_DOC missing"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-20 — directive references the protocol AND keeps the ST-12 grounded sentinel (FR-6 / AR-15)
+# -----------------------------------------------------------------------------
+section "ST-20: standards directive points at the protocol and retains the grounded sentinel"
+if grep -qF "recommendation-hardening.md" "$STANDARDS"; then
+  pass "$STANDARDS references recommendation-hardening.md"
+else
+  fail "$STANDARDS does not reference recommendation-hardening.md"
+fi
+if grep -qi "$GROUNDED_SENTINEL" "$STANDARDS"; then
+  pass "$STANDARDS still carries the \"$GROUNDED_SENTINEL\" sentinel (ST-12a preserved)"
+else
+  fail "$STANDARDS lost the \"$GROUNDED_SENTINEL\" sentinel"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-21 — shared doc states the high-stakes trigger (FR-5 / AR-8)
+# -----------------------------------------------------------------------------
+section "ST-21: shared doc defines the high-stakes escalation trigger"
+if [[ -s "$HARDENING_DOC" ]]; then
+  if grep -qiF "CRITICAL/MAJOR" "$HARDENING_DOC" && grep -qiF "complex/sensitive" "$HARDENING_DOC"; then
+    pass "high-stakes trigger names CRITICAL/MAJOR and complex/sensitive"
+  else
+    fail "high-stakes trigger must name both CRITICAL/MAJOR and complex/sensitive"
+  fi
+else
+  fail "cannot check high-stakes trigger — $HARDENING_DOC missing"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-22 — Tier-A skills link the protocol and reference the high-stakes hook (FR-7 / AR-6)
+# -----------------------------------------------------------------------------
+section "ST-22: Tier-A skills carry the escalation hook"
+for s in "${HARDENING_TIER_A[@]}"; do
+  skillfile="skills/$s/SKILL.md"
+  if [[ -f "$skillfile" ]] && grep -qF "recommendation-hardening.md" "$skillfile" && grep -qiF "high-stakes" "$skillfile"; then
+    pass "$skillfile links the protocol and references the high-stakes hook"
+  else
+    fail "$skillfile must link recommendation-hardening.md and reference \"high-stakes\""
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-23 — Tier-B files reference the protocol (FR-6 / AR-6)
+# -----------------------------------------------------------------------------
+section "ST-23: Tier-B files reference the protocol"
+for f in "${HARDENING_TIER_B[@]}"; do
+  if [[ -f "$f" ]] && grep -qF "recommendation-hardening.md" "$f"; then
+    pass "$f references recommendation-hardening.md"
+  else
+    fail "$f does not reference recommendation-hardening.md"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-24 — all CodeOps Skills Version stamps are 3.1.0 and agree (FR-9 / AR-14)
+# -----------------------------------------------------------------------------
+section "ST-24: version stamps are $EXPECTED_VERSION and consistent"
+stamp_lines="$(grep -rhoE 'CodeOps (Skills )?Version[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' skills/ commands/ standards/ _shared/ 2>/dev/null || true)"
+uniq_versions="$(printf '%s\n' "$stamp_lines" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u | tr '\n' ' ' | sed 's/ *$//')"
+if [[ -z "$uniq_versions" ]]; then
+  fail "no CodeOps Skills Version stamps found in the shipped surface"
+elif [[ "$uniq_versions" == "$EXPECTED_VERSION" ]]; then
+  pass "all version stamps == $EXPECTED_VERSION"
+else
+  fail "version stamps disagree or are not $EXPECTED_VERSION (found: $uniq_versions)"
+fi
 
 # -----------------------------------------------------------------------------
 # Summary

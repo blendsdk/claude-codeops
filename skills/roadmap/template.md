@@ -21,7 +21,7 @@ verbatim when creating either. The portfolio is a separate, higher-altitude temp
 > **Created**: [YYYY-MM-DD]
 > **Last Updated**: [YYYY-MM-DD HH:MM]
 > **Progress**: [Done RDs] / [Total RDs] ([Z]%)
-> **CodeOps Skills Version**: 3.0.0
+> **CodeOps Skills Version**: 3.1.0
 
 ## Legend
 
@@ -48,7 +48,7 @@ verbatim when creating either. The portfolio is a separate, higher-altitude temp
 - **Status** — `In Progress` while active; `Archived` once `archive_roadmap` runs.
 - **Created** / **Last Updated** — `Last Updated` bumps on every transition.
 - **Progress** — `[Done RDs] / [Total RDs] ([Z]%)`; counts only top-level RD rows that reached `Done`.
-- **CodeOps Skills Version** — static `3.0.0`.
+- **CodeOps Skills Version** — static `3.1.0`.
 
 ## Tracker columns
 
@@ -76,7 +76,7 @@ plans are `<feature>/00-index.md`.
 > **Created**: 2026-05-01
 > **Last Updated**: 2026-05-14 16:20
 > **Progress**: 1 / 4 (25%)
-> **CodeOps Skills Version**: 3.0.0
+> **CodeOps Skills Version**: 3.1.0
 
 ## Legend
 
@@ -121,7 +121,7 @@ one links a single mini-plan). RD and `T` ids are separate per-feature namespace
 > **Status**: Active
 > **Last Updated**: [YYYY-MM-DD HH:MM]
 > **Features**: [Done] / [Total] done
-> **CodeOps Skills Version**: 3.0.0
+> **CodeOps Skills Version**: 3.1.0
 
 ## Legend
 
