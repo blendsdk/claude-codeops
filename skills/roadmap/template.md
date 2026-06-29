@@ -1,10 +1,17 @@
 # Roadmap Template & Tracker Reference
 
-The roadmap lives at `plans/00-roadmap.md`. Use the template below verbatim when
-creating it (`make_roadmap`), and the column/legend reference when reading or
-updating it.
+Resolve where the roadmap lives via **[../_shared/layout-convention.md](../_shared/layout-convention.md)**:
 
-## The `plans/00-roadmap.md` template
+- **Flat layout** (no marker): a single roadmap at `plans/00-roadmap.md` — exactly as before.
+- **Nested layout** (marker present): a **per-feature roadmap** at
+  `codeops/features/<f>/00-roadmap.md` (the template below, scoped to one feature, **plus task
+  rows**) and a **portfolio roadmap** at `codeops/00-roadmap.md` (one row per feature — see
+  [The portfolio roadmap template](#the-portfolio-roadmap-template)).
+
+The per-feature roadmap and the flat roadmap share the same template, columns, and legend; use it
+verbatim when creating either. The portfolio is a separate, higher-altitude template.
+
+## The single / per-feature roadmap template
 
 ````markdown
 # Roadmap: [Feature-Set Name]
@@ -14,7 +21,7 @@ updating it.
 > **Created**: [YYYY-MM-DD]
 > **Last Updated**: [YYYY-MM-DD HH:MM]
 > **Progress**: [Done RDs] / [Total RDs] ([Z]%)
-> **CodeOps Skills Version**: 2.0.0
+> **CodeOps Skills Version**: 3.0.0
 
 ## Legend
 
@@ -41,13 +48,13 @@ updating it.
 - **Status** — `In Progress` while active; `Archived` once `archive_roadmap` runs.
 - **Created** / **Last Updated** — `Last Updated` bumps on every transition.
 - **Progress** — `[Done RDs] / [Total RDs] ([Z]%)`; counts only top-level RD rows that reached `Done`.
-- **CodeOps Skills Version** — static `2.0.0`.
+- **CodeOps Skills Version** — static `3.0.0`.
 
 ## Tracker columns
 
 | Column | Meaning |
 |--------|---------|
-| ID | `RD-NN` for a top-level requirement; `↳ DEF-n` for a nested discovered dependency. |
+| ID | `RD-NN` for a top-level requirement; `T-NN` for a lightweight task (nested layout — separate per-feature namespace, see the task-lane spec); `↳ DEF-n` for a nested discovered dependency. |
 | Title | Short human label. |
 | RD | Relative link to `requirements/RD-*.md`, or `—` if not yet drafted. |
 | Plan | Relative link to the plan folder's `00-index.md`, or `—` if no plan yet. |
@@ -69,7 +76,7 @@ plans are `<feature>/00-index.md`.
 > **Created**: 2026-05-01
 > **Last Updated**: 2026-05-14 16:20
 > **Progress**: 1 / 4 (25%)
-> **CodeOps Skills Version**: 2.0.0
+> **CodeOps Skills Version**: 3.0.0
 
 ## Legend
 
@@ -93,3 +100,73 @@ plans are `<feature>/00-index.md`.
 
 Here RD-02 is `Blocked` by the nested `DEF-1` sub-row; once DEF-1 reaches `Done`,
 RD-02 resumes from its prior stage.
+
+In a **nested-layout** repo this same roadmap lives at `codeops/features/<f>/00-roadmap.md` and
+may also carry `T-NN` **task rows** beside its RD rows (a trivial task is just a row; a non-trivial
+one links a single mini-plan). RD and `T` ids are separate per-feature namespaces and never collide.
+
+---
+
+## The portfolio roadmap template
+
+> **Nested layout only.** Lives at `codeops/00-roadmap.md`. One row per feature in the repo; it is
+> a *derived summary* of the per-feature roadmaps, never the detailed record. Each feature's Stage
+> Summary, Progress, and Status roll up from that feature's own roadmap (any executing → 🔄; all
+> done → ✅; any blocked → ⛔). The portfolio **auto-cascades**: every per-feature stage transition
+> immediately updates that feature's portfolio row (see [stage-hooks.md](stage-hooks.md)).
+
+````markdown
+# Portfolio Roadmap: [Repo / Product Name]
+
+> **Status**: Active
+> **Last Updated**: [YYYY-MM-DD HH:MM]
+> **Features**: [Done] / [Total] done
+> **CodeOps Skills Version**: 3.0.0
+
+## Legend
+
+⬜ Backlog · 🔄 In progress · ✅ Done · ⛔ Blocked · ⏸️ Deferred · 📦 Archived
+
+## Features
+
+| Feature | Roadmap | Stage Summary | Progress | Status | Last Updated |
+|---------|---------|---------------|----------|--------|--------------|
+| billing | [→](features/billing/00-roadmap.md) | 2 RDs · 1 plan executing | 1/2 RDs | 🔄 | 2026-06-29 |
+| auth    | [→](features/auth/00-roadmap.md)    | backlog | 0/3 RDs | ⬜ | 2026-06-20 |
+
+## Archived
+
+| Feature | Roadmap | Completed | Last Updated |
+|---------|---------|-----------|--------------|
+| onboarding | [→](_archive/onboarding/00-roadmap.md) | 4/4 RDs | 2026-05-30 |
+
+## Notes
+
+[Cross-feature running log: dependencies (name them feature-qualified, e.g. `billing waiting on
+auth/RD-02`), detours, decisions.]
+````
+
+### Portfolio header fields
+
+- **Status** — `Active` while the repo has live features; informational.
+- **Last Updated** — bumps on every cascade.
+- **Features** — `[Done] / [Total] done`, counting feature rows whose rolled-up Status is ✅.
+
+### Portfolio columns
+
+| Column | Meaning |
+|--------|---------|
+| Feature | The feature folder name under `codeops/features/`. |
+| Roadmap | Relative link to that feature's `00-roadmap.md`. |
+| Stage Summary | Short derived phrase (e.g. "2 RDs · 1 plan executing"). |
+| Progress | Derived count (e.g. "1/2 RDs"). |
+| Status | Rolled-up emoji (🔄 / ✅ / ⛔ / ⬜ / ⏸️). |
+| Last Updated | Date of the last cascade to this row. |
+
+### Archived section
+
+Archiving a feature **moves** its row here (📦) — never deletes it (AR #11). The feature folder is
+`git mv`d to `codeops/_archive/<f>/`, so the Roadmap link points under `_archive/`.
+
+A fresh-scaffolded or just-migrated repo seeds this portfolio automatically (the `setup_codeops`
+migration writes a one-feature portfolio; refine it with `update`).

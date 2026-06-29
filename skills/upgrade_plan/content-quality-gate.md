@@ -92,7 +92,7 @@ Upgrade entries are tagged `(upgrade)` to distinguish them from original plannin
 > *(When all resolved, change to: ✅ GATE PASSED — all [X] content gaps resolved)*
 > **Last Updated**: [Date]
 > **Upgrade From**: [old version or "pre-versioning"]
-> **Upgrade To**: 2.0.0
+> **Upgrade To**: 3.0.0
 
 | # | Category | Gap / Ambiguity Found | Source Document | Options Presented | User Decision | Status |
 |---|----------|-----------------------|-----------------|-------------------|---------------|--------|

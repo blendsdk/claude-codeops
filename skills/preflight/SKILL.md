@@ -21,12 +21,17 @@ arguments: artifact
 
 # preflight — Multi-Dimensional, Codebase-Grounded Quality Audit
 
-> **CodeOps Skills Version**: 2.0.0
+> **CodeOps Skills Version**: 3.0.0
 
 Run a rigorous quality audit of the artifact named in `$ARGUMENTS`, **grounded in the actual
 codebase**. Find every issue, ambiguity, contradiction, gap, and risk; verify every claim and
 assumption against the real code; present each finding with options + a recommendation; iterate
 until the artifact passes clean.
+
+> **Resolve artifact paths layout-aware.** A requirements set or plan named in `$ARGUMENTS` lives at
+> a flat path (`requirements/`, `plans/<feature>/`) or, in a nested-layout repo, under
+> `codeops/features/<f>/…` — resolve it via **[../_shared/layout-convention.md](../_shared/layout-convention.md)**.
+> If the target feature is ambiguous in a nested repo, ask; never guess.
 
 `preflight --continue` resumes an interrupted session (see [Session resume](#session-resume)).
 

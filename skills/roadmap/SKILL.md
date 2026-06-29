@@ -1,12 +1,13 @@
 ---
 name: roadmap
 description: >-
-  Tracks an entire feature-set across its lifecycle in a live roadmap at plans/00-roadmap.md —
-  every RD and plan and the lifecycle stage each is in. Use when the user says "roadmap",
-  "make_roadmap", "update_roadmap", "review_roadmap", or "archive_roadmap". Covers four actions:
-  make_roadmap (create the roadmap and seed rows from disk), update_roadmap (re-infer stages and
-  sync to current disk state), review_roadmap (read-only health check for drift and broken links),
-  and archive_roadmap (move a completed feature-set into plans/_archive/<feature-set>/). Detects the
+  Tracks features across their lifecycle in a live, per-repo roadmap — every RD, plan, and task and
+  the lifecycle stage each is in. Layout-aware: a single plans/00-roadmap.md in flat layout, or a
+  two-tier per-feature + portfolio roadmap under codeops/ in nested layout. Use when the user says
+  "roadmap", "make_roadmap", "update_roadmap", "review_roadmap", or "archive_roadmap". Covers four
+  actions: make_roadmap (create the roadmap and seed rows from disk), update_roadmap (re-infer
+  stages, sync to disk, cascade to the portfolio), review_roadmap (read-only health check for drift
+  and broken links), and archive_roadmap (move a completed feature to the archive). Detects the
   action from the user's phrasing or arguments and branches. The roadmap is the cross-session source
   of truth at the RD/plan altitude, above any single execution plan.
 argument-hint: "[make | update | review | archive]"
@@ -14,14 +15,24 @@ argument-hint: "[make | update | review | archive]"
 
 # roadmap — Live Feature-Set Roadmap Keeper
 
-> **CodeOps Skills Version**: 2.0.0
+> **CodeOps Skills Version**: 3.0.0
 
-The roadmap is a single living document — `plans/00-roadmap.md` — that tracks an
-entire **feature-set** at a higher altitude than any individual execution plan.
-Where `99-execution-plan.md` tracks the tasks *within one feature*, the roadmap
-tracks *every requirement (RD) and plan* across the whole feature-set and the
-lifecycle stage each one is in. It is the user's cross-session lifeline: open it
-to see, at a glance, what is done, in flight, blocked, or still in the backlog.
+## Resolve paths first (layout-aware)
+
+Before any action, determine the layout via **[../_shared/layout-convention.md](../_shared/layout-convention.md)**:
+
+- **Flat layout** (no `codeops/.codeops.yml`): a single roadmap at `plans/00-roadmap.md`. Behaves
+  **exactly as flat layout always has** — everything below that mentions "the roadmap" means this one file, and the
+  portfolio tier does not exist (its cascade steps are inert).
+- **Nested layout** (marker present): **two tiers** — a per-feature roadmap at
+  `codeops/features/<f>/00-roadmap.md` and a **portfolio roadmap** at `codeops/00-roadmap.md` (one
+  row per feature, auto-cascaded). In nested layout the skill asks/confirms the **target feature**
+  before acting on a per-feature roadmap, and creates the feature folder lazily (never guesses).
+
+The roadmap is a living document that tracks an entire **feature** at a higher altitude than any
+individual execution plan. Where `99-execution-plan.md` tracks the tasks *within one feature*, the
+roadmap tracks *every requirement (RD), plan, and task* and the lifecycle stage each is in. It is
+the user's cross-session lifeline: open it to see what is done, in flight, blocked, or in backlog.
 
 It never replaces the execution plan; it indexes and summarizes across many of them.
 
@@ -61,6 +72,14 @@ The full stage-transition map (which lifecycle events advance which rows, and wh
 skill fires each hook) is in [stage-hooks.md](stage-hooks.md) — read it when wiring
 or reasoning about transitions.
 
+## Task rows (nested layout)
+
+A feature's roadmap also tracks **lightweight tasks** (`T-NN`) beside its RD rows. A task uses the
+compact lifecycle `⬜ Backlog → 🔄 Executing → ✅ Done` (with `⛔`/`⏸️` overlays) and never the
+RD/Plan-Preflight stages. A trivial task is a row with no RD and no plan link; a non-trivial task
+links a single mini-plan. `T-NN` and `RD-NN` are separate per-feature namespaces (no collisions).
+Full task model + routing: [../_shared/layout-convention.md](../_shared/layout-convention.md).
+
 ## Two governing rules (apply to every action)
 
 **Ask-if-missing / sync-if-exists** — the roadmap is never auto-created silently:
@@ -80,6 +99,12 @@ crash or hit context limits at any moment; if the roadmap is stale the user lose
 their cross-session view. Keep it always reflecting reality, and never end a
 session/task with a stale roadmap.
 
+**Portfolio cascade mandate (nested layout only)** — the real-time update extends one altitude
+up. After completing a per-feature stage transition, **immediately** update that feature's row in
+`codeops/00-roadmap.md` (re-roll Stage Summary / Progress / Status; bump the portfolio counts)
+**before** verify/commit/next. In flat layout this step is inert. Full cascade rule and the
+status roll-up are in [stage-hooks.md](stage-hooks.md).
+
 ## Deterministic linking (RD ↔ plan)
 
 Plan folders are named by feature (e.g. `plans/billing/`) and carry **no encoded RD
@@ -87,8 +112,9 @@ id**, and the repo can hold multiple unrelated feature-sets at once, so "everyth
 under `plans/`" is **not** a valid membership rule. Link deterministically instead:
 
 - Every plan declares the requirement it implements as a `> **Implements**: RD-NN`
-  line in its `00-index.md`. The `Plan Created` hook reads this line and links the
-  plan to the matching RD row.
+  line in its `00-index.md` (feature-qualified `> **Implements**: <feature>/RD-NN` in nested
+  layout — see the ID rules in the convention doc). The `Plan Created` hook reads this line and
+  links the plan to the matching RD row in that feature's roadmap.
 - A plan with **no declared RD** is linked only when the user explicitly states which
   RD (or `DEF-n`) it belongs to. Unrelated plans are never silently swept in.
 
@@ -108,8 +134,10 @@ it blocks so the dependency is obvious at a glance.
 
 ## make — create the roadmap
 
-Create the roadmap at `plans/00-roadmap.md` using the template in
-[template.md](template.md) (read it for the header, legend, and tracker columns).
+Create the roadmap using the template in [template.md](template.md) (header, legend, tracker
+columns; and the **portfolio template** for nested layout). Path per the convention doc.
+
+**Flat layout** → create `plans/00-roadmap.md`:
 
 1. **Ask the user once for the feature-set name** — used in the header and as the
    archive folder slug.
@@ -121,6 +149,16 @@ Create the roadmap at `plans/00-roadmap.md` using the template in
 3. **If the roadmap already exists:** do NOT ask — sync it from disk state instead
    (the update action).
 
+**Nested layout** → two tiers:
+
+1. **Portfolio** (`codeops/00-roadmap.md`): create it if absent (a fresh-scaffolded or just-migrated
+   repo already has a seeded one). Seed one row per `codeops/features/<f>/` present, each row
+   derived from that feature's roadmap.
+2. **Per-feature roadmap** (`codeops/features/<f>/00-roadmap.md`): ask/confirm the target feature,
+   create the feature folder lazily if new, then seed it from that feature's `requirements/` +
+   `plans/` (same suggest-don't-sweep rule), and add `T-NN` task rows where tasks exist.
+3. After creating/seeding a feature roadmap, **cascade** its summary to the portfolio row.
+
 ## update — re-infer stages and sync to disk
 
 Advance stages and sync the roadmap to current disk state.
@@ -128,6 +166,9 @@ Advance stages and sync the roadmap to current disk state.
 - Walk each row, re-infer its stage from disk (RD present, plan present, checklist
   completion), and update `Stage`, `Status`, and `Last Updated`.
 - Recompute the header `Progress` counter and `Last Updated`.
+- **Nested layout:** re-infer each feature's per-feature roadmap, then **cascade** every changed
+  feature's rolled-up summary into its `codeops/00-roadmap.md` row (Stage Summary, Progress,
+  Status) and refresh the portfolio `Features` count + `Last Updated`.
 - **If the roadmap is missing:** fall back to **make** — ask whether to create it, then create it.
 
 ## review — read-only health check
@@ -140,11 +181,14 @@ Run a health check and report findings; change nothing on disk.
 - Every `Blocked` row has a live `DEF-n` sub-row; if the `DEF-n` is already `Done`,
   flag the parent as ready to unblock.
 - The header `Progress` counter matches the number of `Done` rows.
+- **Nested layout (both tiers):** every portfolio row links an existing feature roadmap; each
+  portfolio row's Stage Summary / Progress / Status matches the rolled-up state of that feature's
+  roadmap (flag any **cascade drift**); the `Features` count matches the ✅ feature rows.
 - **If the roadmap is missing:** return the error below.
 
-## archive — archive a completed feature-set
+## archive — archive a completed feature
 
-Membership is **explicit**: move only the rows actually listed in the roadmap.
+**Flat layout** (membership is **explicit** — move only the rows listed in the roadmap):
 
 1. Read the feature-set slug from the roadmap header.
 2. Create `plans/_archive/<feature-set>/`.
@@ -155,15 +199,28 @@ Membership is **explicit**: move only the rows actually listed in the roadmap.
 5. A fresh roadmap can then be created for the next feature-set.
 6. **If the roadmap is missing:** return the error below.
 
+**Nested layout** (feature-level, whole-folder — FR-12 / AR #11):
+
+1. Confirm the feature to archive (its rolled-up Status should be ✅ Done; warn if not). Never
+   fragment a live feature — archive the whole folder, not individual plans.
+2. `git mv codeops/features/<f> codeops/_archive/<f>` (preserves history; intra-feature links
+   survive because the whole folder shifts).
+3. In `codeops/00-roadmap.md`, **move** the feature's row from `## Features` to `## Archived`
+   (mark 📦, update the Roadmap link to `_archive/<f>/00-roadmap.md`) — **never delete it** — and
+   refresh the `Features` count + `Last Updated`.
+4. **If the portfolio is missing:** return the error below.
+
 ---
 
 ## Error handling
 
 | Error case | Handling |
 |------------|----------|
-| **review** / **archive** when roadmap missing | Return `**Error:** No roadmap found at plans/00-roadmap.md. Run make_roadmap first.` |
+| **review** / **archive** when roadmap missing | Return `**Error:** No roadmap found at <resolved roadmap path>. Run make_roadmap first.` (path per the convention doc — `plans/00-roadmap.md` flat, `codeops/00-roadmap.md` or the feature roadmap nested) |
 | **update** when roadmap missing | Fall back to **make** (ask-if-missing, then create) |
 | **make** when roadmap already exists | Do NOT ask; sync from disk state (the update action) |
+| Nested: per-feature transition but portfolio row stale | Cascade is mandatory + immediate; `review` flags the drift (AR #8) |
+| Nested: target feature ambiguous | Ask the user; never guess (AR #26) |
 
 ## Project conventions
 

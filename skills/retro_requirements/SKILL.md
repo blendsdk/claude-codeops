@@ -19,12 +19,18 @@ argument-hint: "[--scope <path>] [--continue]"
 
 # Reverse Requirements Engineering
 
-> **CodeOps Skills Version**: 2.0.0
+> **CodeOps Skills Version**: 3.0.0
 
 Analyze an existing codebase — any language, any framework — and produce a
 structured **reconstruction brief** that can be fed to the make_requirements
 skill to generate formal requirement documents capable of rebuilding the entire
 application from scratch.
+
+> **Resolve output paths layout-aware.** The reconstruction brief and any requirements it seeds
+> live at a flat path (`requirements/_retro/…`) or, in a nested-layout repo, under the target
+> feature (`codeops/features/<f>/requirements/…`) — resolve via
+> **[../_shared/layout-convention.md](../_shared/layout-convention.md)**. In a nested repo, ask
+> which feature the reconstruction targets (create it lazily); never guess.
 
 This skill is the **inverse** of the make_requirements skill and **upstream** of
 the full forward pipeline:

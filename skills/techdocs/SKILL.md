@@ -22,7 +22,7 @@ argument-hint: "[--continue]"
 
 # techdocs — Technical Architecture Documentation
 
-> **CodeOps Skills Version**: 2.0.0
+> **CodeOps Skills Version**: 3.0.0
 
 Create and maintain a living, VitePress-compatible technical architecture documentation set in
 the project's `docs/` directory, capturing accumulated design knowledge across requirements and
@@ -119,8 +119,11 @@ Once opted in, update techdocs at these checkpoints:
 ### Phase 1 — Information gathering
 
 Gather from: existing `requirements/`, existing `plans/*/`, the current codebase (structure,
-patterns, dependencies), and the project's CLAUDE.md (or detected project conventions). If this
-skill runs right after make_requirements or exec_plan, most of this is already in context.
+patterns, dependencies), and the project's CLAUDE.md (or detected project conventions). In a
+**nested-layout** repo these sources live under `codeops/features/<f>/{requirements,plans}/`
+(resolve via [../_shared/layout-convention.md](../_shared/layout-convention.md)); in flat layout
+they are the top-level `requirements/` and `plans/*/` as before. If this skill runs right after
+make_requirements or exec_plan, most of this is already in context.
 
 **Ask clarifying questions only on a true first run with no requirements/plans:** system purpose,
 key stakeholders and their experience level, architecture style (monolith / microservices /

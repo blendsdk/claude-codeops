@@ -25,16 +25,16 @@ If the execution plan can't be loaded cleanly, **STOP** and handle as follows:
 
 ### Version Check (auto-suggest)
 
-After loading, check the version stamp against the current **CodeOps Skills Version: 2.0.0**:
+After loading, check the version stamp against the current **CodeOps Skills Version: 3.0.0**:
 
 1. Read `00-index.md` or `99-execution-plan.md`.
 2. Look for `> **CodeOps Version**: X.Y.Z` (or `CodeOps Skills Version`).
-3. Compare against `2.0.0`.
+3. Compare against `3.0.0`.
 
 | Condition | Action |
 |-----------|--------|
-| Matches `2.0.0` | Proceed normally — plan is current |
-| Older than `2.0.0` | Suggest: "This plan was created with an older CodeOps version (current: 2.0.0). Consider running the upgrade_plan skill. Proceed anyway?" |
+| Matches `3.0.0` | Proceed normally — plan is current |
+| Older than `3.0.0` | Suggest: "This plan was created with an older CodeOps version (current: 3.0.0). Consider running the upgrade_plan skill. Proceed anyway?" |
 | No version stamp | Suggest: "This plan has no version stamp. Consider running the upgrade_plan skill to bring it to current standards. Proceed anyway?" |
 
 Suggestion only — the user may proceed without upgrading.

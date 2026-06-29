@@ -16,7 +16,7 @@ description: >-
 
 # Requirements Gathering & Documentation
 
-> **CodeOps Skills Version**: 2.0.0
+> **CodeOps Skills Version**: 3.0.0
 
 Transform a rough project idea into a structured, complete set of formal
 **requirement documents (RDs)**. This skill is upstream of, and independent
@@ -38,6 +38,29 @@ The user's input is NEVER the final requirements. The value of this skill is in
 > **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides.
 
 ---
+
+## Resolve paths first (layout-aware)
+
+Determine the layout via **[../_shared/layout-convention.md](../_shared/layout-convention.md)** before writing anything:
+
+- **Flat layout** (no `codeops/.codeops.yml`): RDs live in `requirements/RD-NN-*.md` with a single
+  repo-wide RD sequence — exactly as flat layout always has.
+- **Nested layout** (marker present): RDs live in `codeops/features/<f>/requirements/RD-NN-*.md`.
+  **Ask/confirm the target feature** before drafting (create the feature folder **lazily** if new
+  — never guess the feature). **RD ids reset per feature** (`billing/RD-01` and `auth/RD-01` are
+  both valid and independent), and any cross-feature reference is **feature-qualified**
+  (`billing/RD-01`). Everywhere below that says `requirements/` means the feature's requirements dir.
+
+## Route first: is this a feature or a task?
+
+Requirements (RDs) are for **features** — new cohesive capabilities. Ad-hoc work (a bugfix,
+chore, or small change) is **not** a feature: in a nested-layout repo it is a lightweight **task**
+(`T-NN`), tracked with a roadmap row (trivial) or a single mini-plan (non-trivial) — **no RD, no
+discovery, no Zero-Ambiguity Gate**. If the user's request is really a small fix, route them to
+the task lane (a roadmap row + `make_plan` for a non-trivial mini-plan) instead of drafting an RD.
+If it is genuinely unclear, ask — never default to the heavy pipeline silently. The task model and
+routing rule live in **[../_shared/layout-convention.md](../_shared/layout-convention.md)**.
+(Flat-layout repos have no task lane — proceed as flat layout always has.)
 
 ## Step 0: Detect the Mode
 
