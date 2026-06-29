@@ -1,6 +1,6 @@
 # Plan Document Templates
 
-Read this when writing the Phase 2 documents. Create files in `plans/<feature-name>/`. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 2.0.0`.
+Read this when writing the Phase 2 documents. Create files in `plans/<feature-name>/`. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.0.0`.
 
 Folder layout:
 
@@ -26,7 +26,7 @@ plans/<feature-name>/
 > **Status**: Planning Complete
 > **Created**: [Date]
 > **Implements**: RD-NN   (only if based on a requirements document; omit otherwise)
-> **CodeOps Skills Version**: 2.0.0
+> **CodeOps Skills Version**: 3.0.0
 
 ## Overview
 
@@ -316,7 +316,7 @@ Every execution plan MUST follow this template, MUST include the **Master Progre
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: [YYYY-MM-DD HH:MM]
 > **Progress**: 0/X tasks (0%)
-> **CodeOps Skills Version**: 2.0.0
+> **CodeOps Skills Version**: 3.0.0
 
 ## Overview
 

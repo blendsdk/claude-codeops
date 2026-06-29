@@ -17,6 +17,7 @@ SRC="$SCRIPT_DIR"
 CLAUDE_DIR="${CLAUDE_HOME:-$HOME/.claude}"
 DEST_SKILLS="$CLAUDE_DIR/skills"
 DEST_COMMANDS="$CLAUDE_DIR/commands"
+DEST_SHARED="$CLAUDE_DIR/_shared"
 MANIFEST="$CLAUDE_DIR/.codeops-skills-manifest"
 
 DRY_RUN=0
@@ -75,6 +76,10 @@ else
       say "  - remove $(basename "$t")"; run "rm -f \"$t\""; removed=$((removed+1))
     fi
   done
+  # Shared reference docs mirror ($DEST_SHARED), only if it points back into this repo.
+  if [ -L "$DEST_SHARED" ] && [ "$(readlink "$DEST_SHARED")" = "$SRC/_shared" ]; then
+    say "  - remove _shared"; run "rm -f \"$DEST_SHARED\""; removed=$((removed+1))
+  fi
 fi
 
 say ""

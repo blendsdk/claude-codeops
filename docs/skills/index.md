@@ -1,6 +1,6 @@
 # Skills
 
-CodeOps ships **10 skills**. Each is a multi-step protocol Claude runs on request — they auto-trigger
+CodeOps ships **11 skills**. Each is a multi-step protocol Claude runs on request — they auto-trigger
 from natural language and can also be invoked explicitly as `/codeops:<name>`.
 
 | Skill | What it does |
@@ -15,8 +15,9 @@ from natural language and can also be invoked explicitly as `/codeops:<name>`.
 | [roadmap](/skills/roadmap) | Track a whole feature-set across its lifecycle |
 | [upgrade_plan](/skills/upgrade_plan) | Bring an outdated plan/requirements set to current standards |
 | [setup_routing](/skills/setup_routing) | Wire per-project model & effort routing (Opus/Sonnet by task tag) into `CLAUDE.md` + `.claude/agents/` |
+| [setup_codeops](/skills/setup_codeops) | Scaffold or auto-migrate a repo into the nested `codeops/` layout (one confirmation, `git mv`) |
 
-See also the [Commands page](/skills/commands) for the 14 slash commands.
+See also the [Commands page](/skills/commands) for the 15 slash commands.
 
 ## How they compose
 

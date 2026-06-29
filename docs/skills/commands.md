@@ -1,6 +1,6 @@
 # Commands
 
-CodeOps ships **14 slash commands**. Under the plugin they are namespaced as `/codeops:<name>`; with
+CodeOps ships **15 slash commands**. Under the plugin they are namespaced as `/codeops:<name>`; with
 the dev installer they get short names (`/<name>`).
 
 ## Core commands
@@ -27,6 +27,7 @@ parent skills auto-trigger from natural language.
 | `/make_roadmap`, `/update_roadmap`, `/review_roadmap`, `/archive_roadmap` | [`roadmap`](/skills/roadmap) |
 | `/upgrade_requirements` | [`upgrade_plan`](/skills/upgrade_plan) |
 | `/setup_routing` | [`setup_routing`](/skills/setup_routing) |
+| `/setup_codeops` | [`setup_codeops`](/skills/setup_codeops) |
 
 ## Example
 

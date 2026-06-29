@@ -26,10 +26,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_SKILLS="$SCRIPT_DIR/skills"
 SRC_COMMANDS="$SCRIPT_DIR/commands"
+SRC_SHARED="$SCRIPT_DIR/_shared"
 
 CLAUDE_DIR="${CLAUDE_HOME:-$HOME/.claude}"
 DEST_SKILLS="$CLAUDE_DIR/skills"
 DEST_COMMANDS="$CLAUDE_DIR/commands"
+# Shared reference docs live at the plugin root and are linked by skills as ../../_shared/…;
+# mirror them to $CLAUDE_DIR/_shared so those links resolve under the symlink layout too.
+DEST_SHARED="$CLAUDE_DIR/_shared"
 MANIFEST="$CLAUDE_DIR/.codeops-skills-manifest"
 
 MODE="symlink"
@@ -105,6 +109,14 @@ for f in "$SRC_COMMANDS"/*.md; do
   install_one "$f" "$DEST_COMMANDS/$(basename "$f")"
 done
 
+# Shared reference docs ($SRC_SHARED) are linked by skills as ../../_shared/…; mirror the dir so
+# those links resolve under the symlink layout. (Inert to the plugin loader — just files.)
+if [ -d "$SRC_SHARED" ]; then
+  say ""
+  say "Shared docs -> $DEST_SHARED"
+  install_one "$SRC_SHARED" "$DEST_SHARED"
+fi
+
 say ""
 say "Done."
 [ "$DRY_RUN" -eq 1 ] && { say "(dry-run — nothing changed)"; exit 0; }
@@ -114,9 +126,11 @@ say "Verify inside Claude Code:"
 say "  • Start (or restart) Claude Code, then ask:  What skills are available?"
 say "  • Open the menu with  /  and look for: make_plan, exec_plan, make_requirements,"
 say "    retro_requirements, grill_me, preflight, techdocs, roadmap, upgrade_plan,"
+say "    setup_routing, setup_codeops,"
 say "    gitcm, gitcmp, analyze_project, migrate_clinerules — plus alias commands add_requirement,"
 say "    review_requirements, make_techdocs, review_techdocs, make_roadmap,"
-say "    update_roadmap, review_roadmap, archive_roadmap, upgrade_requirements"
+say "    update_roadmap, review_roadmap, archive_roadmap, upgrade_requirements,"
+say "    setup_routing, setup_codeops"
 say "  • Run  /doctor  to see if any skill descriptions are being truncated."
 say ""
 say "Note: creating brand-new top-level skills/commands dirs may require a Claude Code restart"

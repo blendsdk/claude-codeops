@@ -18,12 +18,23 @@ arguments: feature
 
 # exec_plan — Execute an Implementation Plan
 
-> **CodeOps Skills Version**: 2.0.0
+> **CodeOps Skills Version**: 3.0.0
 
 Execute the implementation plan at `plans/$ARGUMENTS/99-execution-plan.md`. The first
 argument is the feature name; an optional flag selects the commit mode.
 
 This skill covers **execution only**. To create a plan, use the make_plan skill.
+
+## Resolve the plan path first (layout-aware)
+
+Determine the layout via **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**:
+
+- **Flat layout** (no marker): the plan is at `plans/$ARGUMENTS/99-execution-plan.md` — as flat layout always has.
+- **Nested layout** (marker present): the plan is under a feature —
+  `codeops/features/<f>/plans/<plan>/99-execution-plan.md`. If the target feature/plan is ambiguous,
+  **ask the user** (never guess). A non-trivial **task** mini-plan lives at the same nested path and
+  executes identically (see "Lightweight tasks" above). Everywhere below that says
+  `plans/$ARGUMENTS/` means this resolved plan path.
 
 ## Commit modes
 
@@ -35,6 +46,19 @@ This skill covers **execution only**. To create a plan, use the make_plan skill.
 
 Full prompt wording, end-of-plan reminders, and commit-message format live in
 [commit-modes.md](commit-modes.md) — read it before the first commit decision.
+
+## Lightweight tasks (nested layout)
+
+A **non-trivial task** (`T-NN`) has a single mini-plan at
+`codeops/features/<f>/plans/<task-slug>/99-execution-plan.md`. Execute it **exactly like a feature
+plan** — same per-task loop, same real-time update mandate, same commit modes — it is just a
+smaller `99-execution-plan.md` (objective + checklist + verify, no `00–07` set). Specification-first
+ordering still applies *when the task warrants tests* (e.g. a bugfix's regression test).
+
+A **trivial task** has **no plan document** to run: do the work directly, then record it as a
+`T-NN` roadmap row + the commit (no execution-plan loop). The task model and routing rule live in
+**[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**. (Flat-layout repos have no
+task lane — treat such work as a small plan, as in flat layout.)
 
 ## Execution protocol (summary)
 
@@ -51,7 +75,7 @@ summary template. The essentials:
    [execution-protocol.md](execution-protocol.md). Generally suggest the make_plan skill.
 
 **Version check:** look for `> **CodeOps Version**: X.Y.Z` (or `CodeOps Skills Version`) in
-`00-index.md` / `99-execution-plan.md`. If it is older than **2.0.0** or missing, suggest the
+`00-index.md` / `99-execution-plan.md`. If it is older than **3.0.0** or missing, suggest the
 upgrade_plan skill, then ask whether to proceed anyway. Suggestion only — the user may proceed.
 
 ### Step 2 — Execute tasks (per-task loop)
@@ -96,10 +120,13 @@ source of truth and tells the skill where to pick up.
 
 ## Roadmap sync
 
-If `plans/00-roadmap.md` exists, keep it in sync via the roadmap skill (update-first, before
-verify/commit/next): set the RD row to `Executing` (🔄) on start, `Done` (✅) on completion, and
-`Blocked` (⛔) with a nested `↳ DEF-n` sub-row when a blocking dependency is discovered. If no
-roadmap exists, these hooks are inert.
+If a roadmap exists (`plans/00-roadmap.md` flat, or the feature's
+`codeops/features/<f>/00-roadmap.md` nested), keep it in sync via the roadmap skill (update-first,
+before verify/commit/next): set the RD/task row to `Executing` (🔄) on start, `Done` (✅) on
+completion, and `Blocked` (⛔) with a nested `↳ DEF-n` sub-row when a blocking dependency is
+discovered. **Nested layout:** after each per-feature transition, **cascade** to the portfolio
+`codeops/00-roadmap.md` (re-roll that feature's row) before proceeding — per the roadmap skill's
+cascade mandate. If no roadmap exists, these hooks are inert.
 
 ## Error handling
 

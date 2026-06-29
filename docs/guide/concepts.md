@@ -12,6 +12,23 @@ A few ideas explain how CodeOps behaves. Understanding them makes the skills pre
 
 See the [Skills overview](/skills/) and the [Commands page](/skills/commands).
 
+## Repo layout: flat vs. nested
+
+CodeOps supports two on-disk layouts, and every layout-aware skill detects which one a repo uses:
+
+- **Flat layout** (the default): requirements live in `requirements/`, plans in `plans/<feature>/`,
+  and a single roadmap at `plans/00-roadmap.md`. This is unchanged from earlier versions and keeps
+  working forever — no marker, no migration required.
+- **Nested layout**: each feature owns its work under `codeops/features/<feature>/`
+  (`requirements/`, `plans/`, and a per-feature `00-roadmap.md`), with a **portfolio roadmap** at
+  `codeops/00-roadmap.md` rolling up one row per feature. It also adds a lightweight **task lane**
+  (`T-NN`) for ad-hoc work that isn't a full feature.
+
+A repo opts into the nested layout via a single marker file, `codeops/.codeops.yml`. The
+[`setup_codeops`](/skills/setup_codeops) skill is the sole writer of that marker: it scaffolds a
+fresh skeleton or auto-migrates an existing flat repo (preview → one confirmation → `git mv`,
+history preserved). Repos without the marker stay flat, so the feature is fully non-breaking.
+
 ## Progressive disclosure
 
 Only each skill's **name + description** load into context up front. The full body loads **when the

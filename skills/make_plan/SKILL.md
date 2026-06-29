@@ -10,7 +10,7 @@ when_to_use: >-
 
 Create a detailed, multi-document implementation plan for a software feature or task. This skill covers plan **creation** only. To **execute** a finished plan, use the **exec_plan skill**.
 
-> **CodeOps Skills Version**: 2.0.0
+> **CodeOps Skills Version**: 3.0.0
 
 ## What you produce
 
@@ -29,6 +29,43 @@ plans/<feature-name>/
 
 The full templates for every document live in **[templates.md](templates.md)** — read it before writing any plan document in Phase 2.
 
+## Resolve paths first (layout-aware)
+
+Determine the layout via **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)** before creating the plan folder:
+
+- **Flat layout** (no marker): the plan folder is `plans/<feature-name>/`; `00-index.md` declares `> **Implements**: RD-NN` — exactly as flat layout always has.
+- **Nested layout** (marker present): the plan folder is `codeops/features/<f>/plans/<plan>/`. **Ask/confirm the target feature** first (create the feature folder lazily if new — never guess). `00-index.md` declares a **feature-qualified** `> **Implements**: <feature>/RD-NN`, and any `> **Source**` link points at the feature's own `requirements/` dir. Everywhere below that says `plans/<feature-name>/` means this nested plan path.
+
+## Lightweight tasks (mini-plan path — nested layout)
+
+Not every change is a feature. Ad-hoc work (a bugfix, chore, small change) is a **task** (`T-NN`), and a *non-trivial* task gets a **single mini-plan**, not the full multi-document set. When the work is a task (see the routing rule in **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**):
+
+- Write **only** `codeops/features/<f>/plans/<task-slug>/99-execution-plan.md` — an execution doc with an **Objective**, a short **task checklist**, and a **Verify** line. **No** `00–07` docs, **no** RD, **no** Zero-Ambiguity Gate.
+- Stamp it `> **Type**: Task (lightweight) · **Feature**: <f> · **CodeOps Skills Version**: 3.0.0` and a `> **Progress**:` line.
+- Specification-first ordering still applies *when the task warrants tests* (e.g. a bugfix gets a regression test first); a trivial doc/config tweak may not.
+- A **trivial** task needs no plan at all — it is just a roadmap row + the commit (point the user to the roadmap skill, then do the work).
+
+Mini-plan shape:
+
+```markdown
+# Task T-05: Debounce the search input
+
+> **Type**: Task (lightweight) · **Feature**: search · **CodeOps Skills Version**: 3.0.0
+> **Progress**: 0/3 tasks (0%)
+
+## Objective
+Debounce the search box to 300ms to cut redundant queries.
+
+## Tasks
+- [ ] T-05.1 Write a spec test: rapid keystrokes ⇒ one query after 300ms
+- [ ] T-05.2 Implement the debounce; verify the test passes
+- [ ] T-05.3 Full verify
+
+**Verify**: [project verify command]
+```
+
+Everything below is the **full feature** pipeline; skip it for tasks.
+
 ## Project configuration
 
 These rules are universal. For build/test/verify commands, package manager, structure, language conventions, and commit scope, read **the project's CLAUDE.md (or detected project conventions)**. If there is no CLAUDE.md, detect settings from manifest files (`package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `Makefile`, `docker-compose.yml`, `pom.xml`, `build.gradle`, `CMakeLists.txt`, `*.sln`, `*.csproj`). Use only facts you can read from those files — never invent settings.
@@ -41,7 +78,7 @@ These rules are universal. For build/test/verify commands, package manager, stru
 
 ## Optional input: requirements documents
 
-When a `requirements/` directory exists with `RD-XX-*.md` files (produced by the make_requirements skill), ask the user whether to base this plan on a specific RD. If they pick one, read it as primary input and shorten the Phase 1.1 interview (the RD answers most questions) — but still do Phase 1.2 current-state analysis and still run the Phase 1C gate. If they decline, run standard Phase 1. When a plan is based on an RD, `01-requirements.md` must include `> **Source**: [RD-XX](../../requirements/RD-XX-feature-name.md)` and `00-index.md` must declare `> **Implements**: RD-NN` (used by the roadmap skill).
+When a `requirements/` directory exists with `RD-XX-*.md` files (produced by the make_requirements skill), ask the user whether to base this plan on a specific RD. If they pick one, read it as primary input and shorten the Phase 1.1 interview (the RD answers most questions) — but still do Phase 1.2 current-state analysis and still run the Phase 1C gate. If they decline, run standard Phase 1. When a plan is based on an RD, `01-requirements.md` must include `> **Source**: [RD-XX](../../requirements/RD-XX-feature-name.md)` (in nested layout the relative link resolves within the same feature, e.g. `../../requirements/RD-XX-*.md` under `codeops/features/<f>/`) and `00-index.md` must declare `> **Implements**: RD-NN` — **feature-qualified** (`> **Implements**: <feature>/RD-NN`) in nested layout (used by the roadmap skill).
 
 ---
 
@@ -83,8 +120,8 @@ Gate opens ONLY when: every row Status = `✅ Resolved` with the user's explicit
 
 ## Phase 2 — Create Plan Documents
 
-1. Create the folder `plans/<feature-name>/`.
-2. Write each document using the templates in **[templates.md](templates.md)**. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 2.0.0`.
+1. Create the plan folder (`plans/<feature-name>/` flat, or `codeops/features/<f>/plans/<plan>/` nested — resolve via the convention doc).
+2. Write each document using the templates in **[templates.md](templates.md)**. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.0.0`.
 3. Every design decision, scope decision, and error-handling strategy must carry an `AR #` back-reference to the register (only exceptions: universally obvious facts and zero-semantic-impact formatting).
 4. `07-testing-strategy.md` must contain concrete **Specification Test Cases (ST-*)** with input→expected-output pairs, each traced to a requirement / spec doc / AR entry. Expectations come from the SPEC, never from imagined implementation behavior.
 5. `99-execution-plan.md` must structure every feature phase with the mandatory three-session ordering (Spec Tests → Implementation → Impl Tests & Hardening) and include the **Master Progress Checklist**. The full ordering rules are in [templates.md](templates.md).

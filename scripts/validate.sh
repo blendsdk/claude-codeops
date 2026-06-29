@@ -360,6 +360,110 @@ for f in "skills/preflight/report-format.md" "skills/grill_me/SKILL.md"; do
   fi
 done
 
+# =============================================================================
+# CodeOps v2 nested-layout checks (ST-13…ST-17)
+#
+# These continue validate.sh's real ST sequence (ST-12 = Grounded Options is the
+# last pre-v2 check). They are SPECIFICATION tests for the v2 layout work — written
+# from the spec (plans/codeops-v2-layout/03-01, 03-06, 07-testing-strategy.md), BEFORE
+# the implementation, so they fail (red) on the unmodified repo and pass (green) once
+# each phase lands. Mapping to SPEC cases: ST-13→SPEC-4, ST-14→SPEC-25, ST-15→SPEC-26,
+# ST-16→SPEC-1 (schema parse), ST-17→SPEC-32.
+# =============================================================================
+
+# Shared layout-convention doc and the skills that must link it (03-01, 03-05 / AR #7, #22).
+# Lives at the PLUGIN ROOT (not under skills/) so the plugin loader never sees a SKILL.md-less
+# dir under skills/ — the documented-safe location (supersedes AR #7's skills/_shared/, see AR #30).
+SHARED_DOC="_shared/layout-convention.md"
+AFFECTED_SKILLS=(roadmap make_requirements make_plan exec_plan preflight upgrade_plan retro_requirements)
+# A sample marker exercises the schema/detection rule without a full nested fixture (03-01).
+SAMPLE_MARKER="scripts/fixtures/sample.codeops.yml"
+
+# -----------------------------------------------------------------------------
+# ST-13 — shared convention doc present; _shared/ holds no SKILL.md (SPEC-4)
+# -----------------------------------------------------------------------------
+section "ST-13: shared layout-convention doc present; skills/ holds only real skills"
+if [[ -s "$SHARED_DOC" ]]; then
+  pass "$SHARED_DOC exists and is non-empty (at the plugin root, not under skills/)"
+else
+  fail "$SHARED_DOC is missing or empty"
+fi
+# The plugin loader treats each skills/<dir> as a skill (must have a SKILL.md). The shared docs
+# deliberately live OUTSIDE skills/ (AR #30) so the loader never meets a SKILL.md-less subdir.
+# Assert that invariant directly: every subdirectory of skills/ contains a SKILL.md.
+non_skill_dirs=""
+for d in skills/*/; do
+  [[ -d "$d" ]] || continue
+  [[ -f "${d}SKILL.md" ]] || non_skill_dirs+=" $d"
+done
+if [[ -z "$non_skill_dirs" ]]; then
+  pass "every skills/<dir> contains a SKILL.md (no non-skill dirs under skills/)"
+else
+  fail "skills/ contains subdir(s) without a SKILL.md:$non_skill_dirs"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-14 — every affected skill links the convention doc (SPEC-25)
+# -----------------------------------------------------------------------------
+section "ST-14: affected skills reference the layout-convention doc"
+for s in "${AFFECTED_SKILLS[@]}"; do
+  skillfile="skills/$s/SKILL.md"
+  if [[ -f "$skillfile" ]] && grep -qF "layout-convention.md" "$skillfile"; then
+    pass "$skillfile links the convention doc"
+  else
+    fail "$skillfile does not link _shared/layout-convention.md"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-15 — version stamps bumped to 3.0.0; no 2.0.0 left in the shipped surface (SPEC-26)
+# -----------------------------------------------------------------------------
+section "ST-15: no stale 2.0.0 version stamps; current stamp is 3.0.0"
+# 15a — no 2.0.0 anywhere in the distributed skills/ + commands/ surface (fixtures under
+# scripts/ are test data and intentionally excluded).
+stale_stamps="$(grep -rln '2\.0\.0' skills/ commands/ 2>/dev/null || true)"
+if [[ -z "$stale_stamps" ]]; then
+  pass "no 2.0.0 stamps in skills/ or commands/"
+else
+  fail "stale 2.0.0 stamp(s) found in:"$'\n'"$stale_stamps"
+fi
+# 15b — guard against deleting (rather than bumping) the stamps: 3.0.0 must be present.
+if grep -rqF '3.0.0' skills/; then
+  pass "current 3.0.0 stamp present in skills/"
+else
+  fail "no 3.0.0 stamp found in skills/ (stamps must be bumped, not removed)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-16 — sample marker parses and carries codeopsLayout: nested (SPEC-1 schema)
+# -----------------------------------------------------------------------------
+section "ST-16: sample .codeops.yml marker is well-formed"
+# The flat schema (03-01) is detected by a simple key match; this mirrors the grep fallback
+# the skills use, so the test asserts the real detection mechanism, not a heavier YAML parse.
+if [[ -f "$SAMPLE_MARKER" ]]; then
+  if grep -Eq '^codeopsLayout:[[:space:]]*nested[[:space:]]*$' "$SAMPLE_MARKER"; then
+    pass "$SAMPLE_MARKER declares codeopsLayout: nested"
+  else
+    fail "$SAMPLE_MARKER does not declare 'codeopsLayout: nested'"
+  fi
+else
+  fail "$SAMPLE_MARKER is missing"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-17 — setup_codeops skill + command present (SPEC-32)
+# -----------------------------------------------------------------------------
+# Existing ST-9 (description length) and ST-11 (frontmatter) cover these files automatically
+# once they exist, since both glob skills/*/SKILL.md and commands/*.md.
+section "ST-17: setup_codeops skill + command present"
+for f in "skills/setup_codeops/SKILL.md" "commands/setup_codeops.md"; do
+  if [[ -s "$f" ]]; then
+    pass "$f exists and is non-empty"
+  else
+    fail "$f is missing or empty"
+  fi
+done
+
 # -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------

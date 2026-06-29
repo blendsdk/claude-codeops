@@ -20,8 +20,8 @@ CONFIG="docs/.vitepress/config.ts"
 GITIGNORE=".gitignore"
 BASE_PATH="/claude-codeops/"
 
-# The 9 skills that MUST each have a docs page (ST-4).
-SKILLS=(make_plan exec_plan make_requirements retro_requirements grill_me preflight techdocs roadmap upgrade_plan setup_routing)
+# The 11 skills that MUST each have a docs page (ST-4).
+SKILLS=(make_plan exec_plan make_requirements retro_requirements grill_me preflight techdocs roadmap upgrade_plan setup_routing setup_codeops)
 # Required pages per section (ST-4b).
 GUIDE_PAGES=(introduction install verify update concepts)
 TUTORIAL_PAGES=(index first-plan full-pipeline reverse-engineer)

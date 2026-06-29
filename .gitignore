@@ -1,5 +1,7 @@
-# Internal planning docs (not part of the distributed plugin)
-plans/
+# Internal planning docs (not part of the distributed plugin).
+# Anchored to the repo root so it ignores only the top-level planning dir — NOT nested
+# `plans/` trees that are legitimate content (e.g. the flat-repo migration test fixture).
+/plans/
 
 # local install/uninstall bookkeeping
 .codeops-skills-manifest
