@@ -16,17 +16,25 @@ Stage all changes and create one well-formed commit. Do **not** push.
 
 ## Steps
 
+0. **Clean-tree guard.** If `git status --short` prints nothing, report "nothing to commit"
+   and stop — do not run verify or stage.
 1. **Verify first.** Run the project's verify command (build + test) as defined in the
    project's `CLAUDE.md` (or detected conventions). **Only continue if it passes.** If it
    fails, stop and report — do not commit broken code. If the project has no verify command,
    say so and continue.
-2. **Stage everything:** `git add .`
+2. **Stage deliberately.** Glance at the untracked files in the status first — anything that
+   looks like secrets, scratch files, or build output gets flagged to the user before staging.
+   Then `git add .` — noting it is CWD-relative: in a monorepo subdirectory it stages only the
+   subtree; run it from the intended root.
 3. **Write the commit message to a file, never inline.** Compose a Conventional Commit
    message and write it to `.git/COMMIT_EDITMSG_codeops` (or a temp file) with the Write tool,
    then commit with `git commit -F <file>`. **Never use `git commit -m`** — inline messages
    break on quotes, parentheses, `$`, backticks, and multi-line bodies.
-4. **Clean up** the temp message file after a successful commit.
-5. **Report** the resulting commit (`git log -1 --stat`).
+4. **Pre-commit hooks.** If a hook modifies files during the commit, re-stage the modified
+   files and retry ONCE; if the hook fails, show its output and ask — never pass
+   `--no-verify` without the user's explicit approval.
+5. **Clean up** the temp message file after a successful commit.
+6. **Report** the resulting commit (`git log -1 --stat`).
 
 If the user passed `$ARGUMENTS`, use it as a hint for the scope or emphasis.
 

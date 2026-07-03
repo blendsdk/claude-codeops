@@ -4,11 +4,9 @@ disable-model-invocation: true
 argument-hint: "[--continue]"
 ---
 
-Run the **techdocs** skill in **make_techdocs** mode.
+Pure dispatch — no behavior lives here.
 
-Use the Skill tool to invoke `techdocs`, treating this request as:
-`make_techdocs $ARGUMENTS`
+Use the Skill tool to invoke `techdocs` (`codeops:techdocs` under the plugin) in its
+**make_techdocs** mode, treating this request as: `make_techdocs $ARGUMENTS`.
 
-Follow that skill's `make_techdocs` protocol: gather architecture from requirements/plans/code,
-build the `docs/` VitePress set (system overview, data model, API design, infrastructure,
-security, ADRs, guides, reference), and set the `techdocs: true` opt-in marker.
+The skill owns the entire protocol and all layout/path resolution.

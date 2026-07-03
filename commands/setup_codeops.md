@@ -4,14 +4,9 @@ disable-model-invocation: true
 argument-hint: "[--dry-run | --yes]"
 ---
 
-Run the **setup_codeops** skill.
+Pure dispatch — no behavior lives here.
 
-Use the Skill tool to invoke `setup_codeops`, treating this request as:
-`setup_codeops $ARGUMENTS`
+Use the Skill tool to invoke `setup_codeops` (`codeops:setup_codeops` under the plugin),
+passing the arguments through: `$ARGUMENTS`.
 
-Follow that skill's protocol: detect the current repo's state and dispatch — a layout marker
-already present → no-op status report; a flat layout (`requirements/` / `plans/`) → migration
-(run `scripts/codeops-migrate.sh --dry-run`, render the preview, take **one** confirmation, then
-apply with `git mv`); neither → a minimal fresh scaffold. Respect `--dry-run` (preview only) and
-`--yes` (apply without the prompt). Per-repo only; migration refuses a dirty tree and is
-idempotent. `setup_codeops` is the sole writer of `codeops/.codeops.yml`.
+The skill owns the entire protocol and all layout/path resolution.

@@ -65,4 +65,5 @@ These apply to all code I write unless this project's `CLAUDE.md` overrides a sp
 > Project-specific commands, structure, and conventions live in this project's `CLAUDE.md`
 > (generate/refresh it with `/analyze_project`). Multi-step CodeOps workflows are available as
 > skills: `make_plan`, `exec_plan`, `make_requirements`, `retro_requirements`, `grill_me`,
-> `preflight`, `techdocs`, `roadmap`, `upgrade_plan`; and as commands: `/gitcm`, `/gitcmp`.
+> `preflight`, `techdocs`, `roadmap`, `upgrade_plan`, `setup_codeops`, `setup_routing`; and as
+> commands: `/gitcm`, `/gitcmp`, `/analyze_project`, `/migrate_clinerules` (plus thin aliases).

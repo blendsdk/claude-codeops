@@ -27,7 +27,7 @@
 - **Clean:** `rm -rf node_modules docs/.vitepress/dist docs/.vitepress/cache`
 
 ## Project structure
-- `.claude-plugin/` — `marketplace.json` (`source: "."`) + `plugin.json` (no version → rolling updates)
+- `.claude-plugin/` — `marketplace.json` (`source: "."`) + `plugin.json` (version tracks the release)
 - `skills/<name>/SKILL.md` — the 11 skills (frontmatter `name` + `description`, then body). Every
   `skills/<dir>` is a real skill with a `SKILL.md` (the plugin loader requires it).
 - `_shared/` — shared reference docs linked by skills (e.g. `layout-convention.md`), at the **plugin
@@ -49,7 +49,7 @@ The plugin loader reads only `skills/`, `commands/`, `hooks/`, and `.claude-plug
 ## Conventions
 - **Skill/command descriptions** must stay ≤ 1024 chars (Claude Code display budget; enforced by
   `validate.sh`) and preserve every trigger phrase.
-- **`plugin.json` carries no `version` key** — rolling updates; the git commit is the version.
+- **`plugin.json`'s `version` tracks the release** (kept equal to every `CodeOps Skills Version` stamp by `validate.sh` ST-4/ST-24); installs still follow the marketplace commit.
 - **`marketplace.json` `plugins[0].source` must be `"."`** and contain no `//` comment keys.
 - **User-facing docs are hand-authored** (the `techdocs` skill is for architecture/ADR docs only).
   Keep `docs/` content consistent with `README.md` / `TUTORIAL.md`; do not contradict them.

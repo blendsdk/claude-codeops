@@ -21,7 +21,7 @@ Technical documentation must be:
 
 ### Diagrams (Mermaid)
 
-Use Mermaid syntax — VitePress renders it natively:
+Use Mermaid syntax — rendered via `vitepress-plugin-mermaid`, which the setup step installs (vanilla VitePress does not render Mermaid):
 
 - **Architecture diagrams**: `graph TB` or `graph LR`
 - **Entity relationships**: `erDiagram`

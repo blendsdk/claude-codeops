@@ -1,11 +1,58 @@
-# CHANGES — CodeOps MCP → Claude Code Skills
+# CHANGES — CodeOps for Claude Code
+
+## Changelog
+
+### 3.2.0 — v3 hardening (2026-07-03)
+
+Implements all findings of the 2026-07-03 deep analysis (plan: `codeops-v3-hardening`). Highlights:
+
+- **Correctness:** `codeops-migrate.sh` apply path is failure-checked (no marker after a failed
+  step, non-zero exit, archive loose files relocated); exec_plan completion marks are two-stage
+  (`[~]` implemented → `[x]` verified) with crash-safe resume; retro_requirements is truly
+  layout-aware; roadmap stages are re-inferable (preflight-report artifacts, never-regress,
+  `Blocked (was: <stage>)`).
+- **Gate consolidation:** the Zero-Ambiguity Gate and spec-first ordering are single-sourced in
+  `_shared/`; one named-deferral status (`⏸ Deferred — decision · owner · revisit-trigger`) is
+  accepted across grill_me → gates → preflight; "accept all recommendations" is formally an
+  explicit decision; recommendation-hardening is bounded (one batch challenger per preflight
+  scan, ≤2 spawns/run, conditional disclosure).
+- **Delegation:** executor subagents ship in the plugin's `agents/`; exec_plan has a real
+  Delegated Execution protocol (handoff packet, blocker path, inline fallback); setup_routing
+  writes the policy block only (per-project agents opt-in).
+- **Mechanization:** new `scripts/codeops-roadmap-sync.sh` recomputes roadmap counters/cascade
+  (`--check` powers review_roadmap); the flat layout gained the mini-plan task lane; grill_me and
+  preflight continuity notes are save-as-you-go with staleness checks.
+- **Distribution:** `plugin.json` carries `"version"` (kept in sync by validate.sh); docs counts
+  are filesystem-derived-guarded; combined description+when_to_use budget enforced; standards
+  injection slimmed with a full reference file; PreToolUse marker guard; Mermaid actually renders
+  in generated techdocs (vitepress-plugin-mermaid); gitcm/gitcmp edge-case guards; legacy MCP
+  revivals (coverage targets, task-size numerics, non-code validation, security-test layout).
+
+### 3.1.0 — recommendation hardening (2026-07-01, PR #4)
+
+- New `_shared/recommendation-hardening.md`: forced reframing, definition-of-done rubric,
+  confidence disclosure, tiered independent challenger; wired into the standards' Grounded
+  Options directive and the gate-running skills (validate.sh ST-18…ST-24).
+
+### 3.0.0 — per-repo nested layout (2026-06-29, PR #3)
+
+- Nested `codeops/` layout (portfolio + per-feature roadmaps, per-feature RD ids, task lane) with
+  a permanent flat fallback, selected by the `codeops/.codeops.yml` marker.
+- New `setup_codeops` skill + command; deterministic migration engine `scripts/codeops-migrate.sh`
+  with the `migration-check.sh` spec suite; `_shared/layout-convention.md` as the single layout
+  source; 11 skills + 15 commands.
+
+---
+
+## Port record — CodeOps MCP → Claude Code Skills (v2.0.0 era, frozen)
 
 This records the migration of the `codeops-mcp` server (built for Cline, served via MCP) into
 native Claude Code **skills**, **slash commands**, and **CLAUDE.md** content. The original repo
 is preserved untouched in `../codeops-mcp-src/` for reference.
 
-Version stamp adopted for the ported artifacts: **CodeOps Skills v2.0.0** (replaces the old
-`codeops-mcp` package version that plans/requirements used to stamp).
+Version stamp adopted for the ported artifacts at the time: **CodeOps Skills v2.0.0** (replaces
+the old `codeops-mcp` package version that plans/requirements used to stamp). Current stamps
+track the release version above.
 
 ---
 
@@ -213,6 +260,6 @@ These are new to `claude-codeops` — they had no `codeops-mcp` predecessor.
   Reuses the `analyze_project` non-destructive merge discipline, tightened with explicit sentinels
   for idempotency. Operates only on the current project — never on global user files. Hard
   confirmation gate before any write.
-- Count bumped to **10 skills + 14 slash commands** across README, project `CLAUDE.md`, and the docs
+- Count bumped at the time to ten skills + fourteen slash commands (eleven + fifteen as of 3.0.0) across README, project `CLAUDE.md`, and the docs
   site; new skill page `docs/skills/setup_routing.md` added to the sidebar and the `docs-check.sh`
   spec suite.

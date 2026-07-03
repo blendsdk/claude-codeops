@@ -41,8 +41,9 @@ Inside Claude Code:
 
 ## Updating
 
-This plugin uses **rolling updates** — it carries no version number, so the git commit is the
-version. To pick up the latest:
+This plugin uses **rolling updates** — installs follow the marketplace's latest commit; the
+`version` field in `plugin.json` names the release you're running (visible in `/plugin list`)
+without gating updates. To pick up the latest:
 
 ```text
 /plugin update codeops@codeops-marketplace
@@ -99,7 +100,7 @@ mechanism); see [Always-on standards](#always-on-standards) for the manual-merge
 codeops-skills/                # repo root == plugin root
 ├── .claude-plugin/
 │   ├── marketplace.json       # marketplace manifest (source: ".")
-│   └── plugin.json            # plugin manifest (no version → rolling updates)
+│   └── plugin.json            # plugin manifest (version tracks the release)
 ├── skills/                    # 11 skills → /codeops:<name>
 │   ├── make_plan/             #   create a multi-document implementation plan
 │   ├── exec_plan/             #   execute a plan task-by-task (commit modes)
