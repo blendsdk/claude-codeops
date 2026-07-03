@@ -260,6 +260,67 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# ST-H1 — apply-path failure handling (plans/codeops-v3-hardening/07-testing-strategy.md).
+# A tracked regular FILE named `codeops` makes every apply step impossible. The engine must
+# refuse/abort with a non-zero exit, must NOT print the success line, must NOT write the marker,
+# and must leave the tree restorable. Spec: 03-01-migration-engine.md (AR #18).
+# -----------------------------------------------------------------------------
+section "ST-H1: apply failure → non-zero exit, no marker, no false 'applied'"
+repo_blocked="$(make_repo)"
+printf 'not a directory\n' >"$repo_blocked/codeops"
+git -C "$repo_blocked" -c user.email=test@example.com -c user.name=test add -A
+git -C "$repo_blocked" -c user.email=test@example.com -c user.name=test commit -q -m "blocking file"
+run_engine "$repo_blocked" --yes
+if [[ "$RC" -ne 0 ]]; then
+  pass "apply exits non-zero when it cannot proceed (rc=$RC)"
+else
+  fail "apply exited 0 despite a blocking 'codeops' file (must be non-zero)"
+fi
+if ! grep -qiE 'applied\.' <<<"$OUT"; then
+  pass "no false 'applied.' success line"
+else
+  fail "printed 'applied.' although the migration could not succeed"
+fi
+if grep -qiE 'FAILED|refus|cannot|not a directory' <<<"$OUT"; then
+  pass "failure output names the problem"
+else
+  fail "failure output does not explain what went wrong"
+fi
+if [[ ! -f "$repo_blocked/codeops/.codeops.yml" ]] \
+   && ! git -C "$repo_blocked" ls-files --error-unmatch "codeops/.codeops.yml" >/dev/null 2>&1; then
+  pass "no layout marker written on failure"
+else
+  fail "layout marker exists after a failed apply (bricks retry via the idempotency guard)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-H2 — loose FILE under plans/_archive/ must be warned in dry-run and relocated on apply,
+# never silently orphaned in a residual plans/ tree. Spec: 03-01-migration-engine.md (AR #18).
+# -----------------------------------------------------------------------------
+section "ST-H2: loose file under plans/_archive/ (warned + relocated)"
+repo_archloose="$(make_repo)"
+printf '# archive readme\n' >"$repo_archloose/plans/_archive/README.md"
+git -C "$repo_archloose" -c user.email=test@example.com -c user.name=test add -A
+git -C "$repo_archloose" -c user.email=test@example.com -c user.name=test commit -q -m "archive loose file"
+run_engine "$repo_archloose" --dry-run
+if grep -qiE 'WARN.*plans/_archive/README\.md' <<<"$OUT"; then
+  pass "dry-run warns about plans/_archive/README.md"
+else
+  fail "dry-run does not warn about the loose archive file"
+fi
+run_engine "$repo_archloose" --yes
+if [[ "$RC" -eq 0 && -f "$repo_archloose/codeops/_archive/README.md" ]]; then
+  pass "apply relocated the loose archive file to codeops/_archive/"
+else
+  fail "apply did not relocate plans/_archive/README.md (rc=$RC)"
+fi
+if [[ ! -e "$repo_archloose/plans" ]]; then
+  pass "no residual plans/ tree after apply"
+else
+  fail "residual plans/ tree left behind after apply (silent half-migration)"
+fi
+
+# -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
 section "Summary"
