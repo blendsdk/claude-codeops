@@ -2,7 +2,7 @@
 
 > Shared reference for the **Grounded Options & Recommendations** directive
 > (`standards/coding-standards.md` → Working style). Linked by the recommendation-producing skills.
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 This protocol makes recommendations trustworthy on the **first** pass. It is the standing answer to
 the question *"are these your best possible recommendations?"* — asked and answered **before** you
@@ -67,17 +67,26 @@ vibe:
 - [ ] **Strongest counter-argument named** — the best case *against* your chosen pick, stated in one
   line.
 
-## Layer 3 — Confidence & trust disclosure
+## Layer 3 — Confidence & trust disclosure (conditional)
 
-Close every consequential recommendation with two lines, so residual uncertainty is **visible** and
-the operator knows exactly where to push:
+The disclosure exists to surface **residual uncertainty** — so it appears only when there is some:
 
 ```text
 Confidence: High | Med | Low — <the specific thing that would change this>
 Hardening: <what the deeper pass changed, or "no change">
 ```
 
-For a **high-stakes** recommendation (see below), also state the challenger's verdict:
+The disclosure is REQUIRED when any of these hold:
+- confidence is **Med or Low**;
+- the hardening pass **changed something** (an option added/dropped, the pick revised);
+- the recommendation is **high-stakes** (see below).
+
+Otherwise — High confidence, hardening changed nothing, not high-stakes — **omit the disclosure**:
+a boilerplate "Hardening: no change" at High confidence carries no information and trains the
+operator to skip the lines that matter. (The layers 1–2 work still runs; only the two-line
+disclosure is conditional.)
+
+For a **high-stakes** recommendation, also state the challenger's verdict:
 `Challenger: converged` or `Challenger: diverged — <how>`.
 
 This disclosure is **presentation-layer only**. It may appear in a saved artifact (e.g. a preflight
@@ -91,6 +100,17 @@ context inherits the same blind spots. Run it **tiered by stakes**:
 
 - **Always (every consequential recommendation):** Layers 1–3, in-context.
 - **High-stakes only:** additionally spawn **one independent challenger** subagent.
+
+### Challenger budget (hard caps)
+
+- **One challenger per preflight scan, not per finding.** A preflight run with multiple
+  CRITICAL/MAJOR findings spawns a SINGLE challenger that receives the whole finding batch
+  (each finding's statement + surviving options) **plus the scan's recon summary / Codebase
+  Context section**, so it challenges from evidence rather than from a cold start. It returns a
+  per-finding verdict list.
+- **At most 2 challenger spawns per skill run**, total — e.g. one for the finding batch and one
+  for a late-discovered decision. Beyond the cap, proceed with Layers 1–3 and disclose
+  `Challenger: budget exhausted` (cap confidence at Med for those items).
 
 ### The challenger mechanism
 
@@ -114,21 +134,27 @@ context inherits the same blind spots. Run it **tiered by stakes**:
 
 ## High-stakes definition (the escalation trigger)
 
-A recommendation is **high-stakes** — and therefore gets the challenger — when it is either:
+A recommendation is **high-stakes** — and therefore gets the challenger — when any of these hold:
 
-- a **preflight** finding at **CRITICAL/MAJOR** severity; or
-- a **make_plan** (Phase 1C) or **make_requirements** (Phase 2B) gate decision tagged
-  **complex/sensitive** (the project routing tags).
+- it is a **preflight** finding at **CRITICAL/MAJOR** severity (challenged as a batch — one
+  challenger per preflight scan, see the budget above); or
+- it is a **make_plan** (Phase 1C) or **make_requirements** (Phase 2B) gate decision tagged
+  **complex/sensitive** (the project routing tags); or
+- the **user explicitly requests a challenger** for a decision, in any skill.
 
 Everything else — minor/observation findings, trivial/standard-tagged decisions, ad-hoc choices —
 gets Layers 1–3 only. When a gate decision carries no routing tag, treat it as `standard` (the
-documented default) → no challenger.
+documented default) → no challenger. Skills without their own trigger (grill_me, exec_plan, the
+wrappers) escalate ONLY via this definition — they carry no private one.
 
 ## Anti-patterns
 
 - ❌ Changing your recommendation reflexively because you were questioned (drift, not convergence).
 - ❌ Presenting >2 options without filtering, or padding with strawmen to manufacture a choice.
-- ❌ Skipping the confidence/`Hardening:` disclosure on a consequential recommendation.
+- ❌ Skipping the confidence/`Hardening:` disclosure where Layer 3 requires it (Med/Low
+  confidence, a changed pick, or high stakes) — or padding every answer with a contentless
+  "Hardening: no change" where it doesn't.
 - ❌ Spawning a challenger for a trivial or easily-reversible choice (ceremony without stakes).
+- ❌ Spawning per-finding challengers when the batch rule applies, or exceeding the 2-spawn cap.
 - ❌ Giving the challenger your chosen pick (destroys its independence).
 - ❌ Deriving "best" from how much effort you spent rather than from the definition-of-done rubric.

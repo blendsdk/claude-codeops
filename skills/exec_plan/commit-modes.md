@@ -23,10 +23,11 @@ The commit step is only triggered when ALL of these are true:
 
 1. ✅ The task/session is successfully complete.
 2. ✅ All verification passes.
-3. ✅ The execution plan has been updated.
+3. ✅ The execution plan shows the task at `[x]` (verified complete — the two-stage marks are in
+   [execution-protocol.md](execution-protocol.md); a `[~]` task is never committed).
 
-**Never commit** when verification is failing, a task is only partially complete, or the mode is
-`--no-commit`.
+**Never commit** when verification is failing, a task is still `[~]` (implemented but not
+verified), or the mode is `--no-commit`.
 
 ---
 
@@ -84,10 +85,13 @@ When `--auto-commit` is specified:
 
 ## Commit message format
 
-When committing (ask mode approved, or auto-commit), use this message format:
+When committing (ask mode approved, or auto-commit), use this message format. The Conventional
+Commits **type comes from the task's nature** — `feat` for new capability, `fix` for a bugfix,
+`test` for test-only tasks, `docs` for documentation, `refactor`/`chore` for restructuring and
+plumbing — never a hardcoded `feat` for everything:
 
 ```
-feat([scope]): [task description]
+[type]([scope]): [task description]
 
 - [Specific change 1]
 - [Specific change 2]

@@ -4,13 +4,14 @@ description: >-
   Creates a detailed, multi-document implementation plan for a software feature or task before any code is written. Use when the user wants to "make a plan", types "make_plan", or asks to "plan this feature", "create an implementation plan", "plan out this work", or "write a spec/plan" for something to be built. Drives a mandatory clarifying-questions interview, a hard Zero-Ambiguity Gate, and produces a `plans/<feature>/` document set ending in a task-by-task execution plan. For EXECUTING an existing plan, use the exec_plan skill instead.
 when_to_use: >-
   Trigger on "make a plan", "make_plan", "plan this feature", "create an implementation plan", "design a plan for X", "spec out X before building". Do NOT trigger for running/executing an existing plan (that is the exec_plan skill).
+argument-hint: "[feature-name or description]"
 ---
 
 # Implementation Plan Creation (`make_plan`)
 
 Create a detailed, multi-document implementation plan for a software feature or task. This skill covers plan **creation** only. To **execute** a finished plan, use the **exec_plan skill**.
 
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 ## What you produce
 
@@ -36,12 +37,12 @@ Determine the layout via **[../../_shared/layout-convention.md](../../_shared/la
 - **Flat layout** (no marker): the plan folder is `plans/<feature-name>/`; `00-index.md` declares `> **Implements**: RD-NN` — exactly as flat layout always has.
 - **Nested layout** (marker present): the plan folder is `codeops/features/<f>/plans/<plan>/`. **Ask/confirm the target feature** first (create the feature folder lazily if new — never guess). `00-index.md` declares a **feature-qualified** `> **Implements**: <feature>/RD-NN`, and any `> **Source**` link points at the feature's own `requirements/` dir. Everywhere below that says `plans/<feature-name>/` means this nested plan path.
 
-## Lightweight tasks (mini-plan path — nested layout)
+## Lightweight tasks (mini-plan path — both layouts)
 
 Not every change is a feature. Ad-hoc work (a bugfix, chore, small change) is a **task** (`T-NN`), and a *non-trivial* task gets a **single mini-plan**, not the full multi-document set. When the work is a task (see the routing rule in **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**):
 
-- Write **only** `codeops/features/<f>/plans/<task-slug>/99-execution-plan.md` — an execution doc with an **Objective**, a short **task checklist**, and a **Verify** line. **No** `00–07` docs, **no** RD, **no** Zero-Ambiguity Gate.
-- Stamp it `> **Type**: Task (lightweight) · **Feature**: <f> · **CodeOps Skills Version**: 3.1.0` and a `> **Progress**:` line.
+- Write **only** the mini-plan at the resolved task path (flat: `plans/<task-slug>/99-execution-plan.md`; nested: `codeops/features/<f>/plans/<task-slug>/99-execution-plan.md`) — an execution doc with an **Objective**, a short **task checklist**, and a **Verify** line. **No** `00–07` docs, **no** RD, **no** Zero-Ambiguity Gate.
+- Stamp it `> **Type**: Task (lightweight) · **Feature**: <f> · **CodeOps Skills Version**: 3.2.0` and a `> **Progress**:` line (in flat layout drop the `**Feature**:` part).
 - Specification-first ordering still applies *when the task warrants tests* (e.g. a bugfix gets a regression test first); a trivial doc/config tweak may not.
 - A **trivial** task needs no plan at all — it is just a roadmap row + the commit (point the user to the roadmap skill, then do the work).
 
@@ -50,7 +51,7 @@ Mini-plan shape:
 ```markdown
 # Task T-05: Debounce the search input
 
-> **Type**: Task (lightweight) · **Feature**: search · **CodeOps Skills Version**: 3.1.0
+> **Type**: Task (lightweight) · **Feature**: search · **CodeOps Skills Version**: 3.2.0
 > **Progress**: 0/3 tasks (0%)
 
 ## Objective
@@ -86,7 +87,7 @@ When a `requirements/` directory exists with `RD-XX-*.md` files (produced by the
 
 ### 1.1 Ask clarifying questions
 
-> **ZERO-AMBIGUITY RULE — active from the first question.** Applies to ALL decisions without exception: design, architecture, behavior, scope, edge cases, error messages, naming, file structure, wording, formatting. If there is more than one option for anything, the **user decides** — never you. Demand concrete, specific answers. Do not fill gaps with assumptions, infer intent, or apply "reasonable defaults" unless the user explicitly chose them. If an answer is vague, ask again with sharper options. If the user is unsure, lay out options with trade-offs and guide them — but the decision is theirs.
+> **ZERO-AMBIGUITY RULE — active from the first question.** Applies to every decision with semantic weight: design, architecture, behavior, scope, edge cases, error messages, naming, file structure. Behavior/scope/data/security decisions ALWAYS gate; cosmetic choices with zero semantic impact are exempt (per the shared gate's traceability exemptions), and low-stakes cosmetic items may be batched. If there is more than one semantically distinct option, the **user decides** — never you. Demand concrete, specific answers. Do not fill gaps with assumptions, infer intent, or apply "reasonable defaults" unless the user explicitly chose them. If an answer is vague, ask again with sharper options. If the user is unsure, lay out options with trade-offs and guide them — but the decision is theirs.
 
 Cover at minimum: **Feature scope** (what it does / does NOT do, boundaries), **Technical context** (affected code, existing patterns, constraints), **Dependencies** (prerequisites, external deps), and **Success criteria** (definition of done, required tests, required docs).
 
@@ -121,9 +122,12 @@ Gate opens ONLY when: every row Status = `✅ Resolved` with the user's explicit
 ## Phase 2 — Create Plan Documents
 
 1. Create the plan folder (`plans/<feature-name>/` flat, or `codeops/features/<f>/plans/<plan>/` nested — resolve via the convention doc).
-2. Write each document using the templates in **[templates.md](templates.md)**. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.1.0`.
+2. Write each document using the templates in **[templates.md](templates.md)**. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.2.0`.
 3. Every design decision, scope decision, and error-handling strategy must carry an `AR #` back-reference to the register (only exceptions: universally obvious facts and zero-semantic-impact formatting).
 4. `07-testing-strategy.md` must contain concrete **Specification Test Cases (ST-*)** with input→expected-output pairs, each traced to a requirement / spec doc / AR entry. Expectations come from the SPEC, never from imagined implementation behavior.
+4b. **Confirm the verify command once.** The command that fills every Verify line comes from the
+   project's CLAUDE.md or manifests — state what you detected and have the user confirm it (an AR
+   entry like any decision). If nothing is detectable, ask — **never invent a command**.
 5. `99-execution-plan.md` must structure every feature phase with the mandatory three-session ordering (Spec Tests → Implementation → Impl Tests & Hardening) and include the **Master Progress Checklist**. The full ordering rules are in [templates.md](templates.md).
 6. If you discover a NEW ambiguity while writing, STOP immediately, add it to the register, get the user's decision, then resume (surface-during-authoring rule — see [zero-ambiguity-gate.md](zero-ambiguity-gate.md)).
 

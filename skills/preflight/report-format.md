@@ -1,6 +1,6 @@
 # Preflight — Report Format, Presentation & Persistence (detail)
 
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 Covers Steps 4-8 of the protocol: compiling the report, presenting findings and collecting
 decisions, pass/fail determination, applying fixes, and roadmap sync — plus iterative re-scan
@@ -40,10 +40,14 @@ Every finding gets a numbered, structured entry.
   viable one, and name what you considered and dropped and why. Never pad to a count to manufacture
   a choice.
 - **Every finding MUST have a recommendation, with rationale** — never just "Option B is better".
-- **High-stakes findings (CRITICAL/MAJOR) get the hardening challenger** — per
-  `_shared/recommendation-hardening.md`, run one independent challenger (blind to your pick) and
-  reconcile *before* recording the recommendation; close consequential findings with the
-  `Confidence:` / `Hardening:` disclosure (presentation-only — not a required saved field).
+- **High-stakes findings (CRITICAL/MAJOR) get the hardening challenger — ONE per preflight scan,
+  not one per finding.** Per `_shared/recommendation-hardening.md` (challenger budget): spawn a
+  single challenger that receives the whole CRITICAL/MAJOR finding batch (statement + surviving
+  options per finding, without your picks) PLUS the scan's Codebase Context summary, and returns
+  per-finding verdicts to reconcile *before* recording recommendations. Hard cap: 2 challenger
+  spawns per scan. Close findings with the `Confidence:` / `Hardening:` disclosure where that
+  protocol requires it (Med/Low confidence, changed pick, or high stakes — presentation-only,
+  not a required saved field).
 - **Findings are numbered sequentially** — `PF-001`, `PF-002`, ... Numbers never reuse across iterations.
 - **Location must be specific** — "plans/my-feature/03-api-design.md, section 'Error Handling'", not
   "somewhere in the plan".
@@ -97,15 +101,22 @@ Use the severity icons from SKILL.md (red/orange/yellow/blue circles) in the act
 ## Step 5: Present findings and collect decisions
 
 1. **Present grouped by severity** — CRITICAL first, then MAJOR, MINOR, OBSERVATION.
-2. **Walk through each finding one at a time** — problem, options, recommendation.
-3. **Wait for the user's decision** on each before proceeding.
-4. **Record the decision** in the finding: `**User Decision:** [their choice]`.
+2. **Present per the batch rules below** (they are authoritative for pacing) — each finding shown
+   with problem, options, recommendation.
+3. **Collect and record the user's decision for every finding** before the report is final:
+   `**User Decision:** [their choice]`.
 
 ### Batch presentation rules
 
 - **<= 5 findings** — present all at once, let the user respond to each.
 - **6-15 findings** — present by severity group (all criticals, then all majors, etc.).
 - **> 15 findings** — present in batches of 5-8, grouped by severity, wait for confirmation between batches.
+
+**Previous decisions are respected (hard rule).** A finding that duplicates a decision already
+recorded in the artifact's Ambiguity Register — including a named `⏸ Deferred` row — is NOT
+re-presented for decision: record it as `Accepted Risk — deferred per AR #N` (or cross-reference
+the resolving AR #) and move on. Re-litigating decisions the user already made is a protocol
+violation, not thoroughness.
 
 ### Agent behavior during resolution
 
@@ -114,7 +125,7 @@ Use the severity icons from SKILL.md (red/orange/yellow/blue circles) in the act
 | "Fix it per your recommendation" | Record `Resolved — User accepted recommendation: [Option X]`. Valid. |
 | "Go with Option A" | Record `Resolved — User chose Option A`. |
 | "This isn't actually an issue" | Record `Dismissed — User: "[reasoning]"`. Valid — only the user can dismiss. |
-| "I'll fix this later" | Ask to record as a known accepted risk (won't block the pass but noted). If yes: `Accepted Risk — User deferred: "[reason]"`. |
+| "I'll fix this later" | Ask to record as a known accepted risk (won't block the pass but noted). If yes: `Accepted Risk — User deferred: "[reason]"` — the preflight face of the shared `⏸ Deferred` status (`_shared/zero-ambiguity-gate.md`); name the decision, owner, and revisit-trigger in the reason. |
 | "You decide" | "I've given my recommendation above. Confirm you'd like Option [X]?" — user MUST explicitly confirm. |
 
 ## Step 6: Determine pass/fail

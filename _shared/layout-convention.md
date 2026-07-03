@@ -1,12 +1,12 @@
 # CodeOps Layout Convention (shared reference)
 
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 This is the **single source of truth** for where CodeOps artifacts live. It is a shared
 reference document, **not a skill** — it lives at the **plugin root** in `_shared/` (deliberately
 **outside** `skills/`), so the plugin loader, which treats each `skills/<dir>` as a skill, never
 meets a `SKILL.md`-less directory. Every layout-aware skill (`roadmap`, `make_requirements`,
-`make_plan`, `exec_plan`, `preflight`, `upgrade_plan`, `retro_requirements`) **links here** (as
+`make_plan`, `exec_plan`, `preflight`, `upgrade_plan`, `retro_requirements`, `techdocs`) **links here** (as
 `../../_shared/layout-convention.md`) for path resolution and ID rules instead of hardcoding
 paths. Change the layout in one place: here.
 
@@ -49,7 +49,7 @@ fi
 | Feature roadmap | `plans/00-roadmap.md` | `codeops/features/<f>/00-roadmap.md` |
 | Portfolio roadmap | *(n/a)* | `codeops/00-roadmap.md` |
 | Ambiguity register | `requirements/00-ambiguity-register.md` or `plans/<plan>/00-ambiguity-register.md` | the same file, under the feature |
-| Task mini-plan | *(n/a)* | `codeops/features/<f>/plans/<task-slug>/99-execution-plan.md` |
+| Task mini-plan | `plans/<task-slug>/99-execution-plan.md` | `codeops/features/<f>/plans/<task-slug>/99-execution-plan.md` |
 | Archive | `plans/_archive/<set>/` | `codeops/_archive/<f>/` |
 
 In nested layout, a feature's inner directories are created **lazily** — only when that
@@ -128,10 +128,10 @@ conventions:
 ## Lightweight tasks (the task lane)
 
 Ad-hoc work — a bugfix, chore, or small change — is **not a feature**. It is a lightweight
-**task** with a per-feature `T-NN` id, and its ceremony scales with size. This is the single
-source for the task model; the skills (`roadmap`, `make_requirements`, `make_plan`, `exec_plan`)
-reference it. **Nested layout only** — a flat-layout repo has no task lane (treat such work as a
-small plan, as flat layout always has).
+**task**, and its ceremony scales with size. This is the single source for the task model; the
+skills (`roadmap`, `make_requirements`, `make_plan`, `exec_plan`) reference it. The lane exists
+in **both layouts** (flat gained it in 3.2.0 — AR #6): nested tasks carry a per-feature `T-NN`
+id; flat tasks are simply a mini-plan folder (a `T-NN` roadmap row too when a roadmap exists).
 
 **Routing — feature or task?**
 
@@ -146,9 +146,11 @@ If it is genuinely unclear, ask — never silently default to the heavy pipeline
 
 **Where a task lives**
 
-- *Belongs to a feature* (e.g. a bug in billing) → a `T-NN` row in
+- *Flat layout* → a mini-plan at `plans/<task-slug>/99-execution-plan.md` (plus a roadmap row if
+  `plans/00-roadmap.md` exists; a trivial task with a roadmap is just the row + commit).
+- *Nested, belongs to a feature* (e.g. a bug in billing) → a `T-NN` row in
   `codeops/features/billing/00-roadmap.md`.
-- *Standalone / cross-cutting* → a `T-NN` row in `codeops/features/_maintenance/00-roadmap.md`.
+- *Nested, standalone / cross-cutting* → a `T-NN` row in `codeops/features/_maintenance/00-roadmap.md`.
   `_maintenance/` is a **normal feature folder** (same `00-roadmap.md` + `plans/`, rolls up into
   the portfolio), created **lazily** on the first standalone task. It simply tends to hold tasks
   rather than RDs.
@@ -156,9 +158,10 @@ If it is genuinely unclear, ask — never silently default to the heavy pipeline
 **Ceremony by size**
 
 - **Trivial** → just a roadmap row + the commit. No plan document.
-- **Non-trivial** → a single mini-plan at
-  `codeops/features/<f>/plans/<task-slug>/99-execution-plan.md` — execution doc only: objective, a
-  short task checklist, and a verify line. **No RD, no 00–07 doc set, no Zero-Ambiguity Gate.**
+- **Non-trivial** → a single mini-plan at the resolved task path (flat:
+  `plans/<task-slug>/99-execution-plan.md`; nested:
+  `codeops/features/<f>/plans/<task-slug>/99-execution-plan.md`) — execution doc only: objective,
+  a short task checklist, and a verify line. **No RD, no 00–07 doc set, no Zero-Ambiguity Gate.**
 
 **Task lifecycle** — a compact subset of the stage machine: `⬜ Backlog → 🔄 Executing → ✅ Done`
 (plus `⛔ Blocked` / `⏸️ Deferred` overlays). Tasks never use the RD/Plan-Preflight stages.

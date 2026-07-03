@@ -19,18 +19,25 @@ argument-hint: "[--scope <path>] [--continue]"
 
 # Reverse Requirements Engineering
 
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 Analyze an existing codebase — any language, any framework — and produce a
 structured **reconstruction brief** that can be fed to the make_requirements
 skill to generate formal requirement documents capable of rebuilding the entire
 application from scratch.
 
-> **Resolve output paths layout-aware.** The reconstruction brief and any requirements it seeds
-> live at a flat path (`requirements/_retro/…`) or, in a nested-layout repo, under the target
-> feature (`codeops/features/<f>/requirements/…`) — resolve via
-> **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**. In a nested repo, ask
-> which feature the reconstruction targets (create it lazily); never guess.
+> **Resolve output paths layout-aware — ONCE, here.** Everything this skill writes lives in
+> **the resolved `_retro/` dir**:
+>
+> - **Flat layout** (no marker): `requirements/_retro/`
+> - **Nested layout** (marker present): `codeops/features/<f>/requirements/_retro/` — ask which
+>   feature the reconstruction targets (create it lazily); never guess.
+>
+> Detection per **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**.
+> Every mention of the `_retro/` dir in this skill and its reference docs (`phases.md`,
+> `triage-gate.md`) means THIS resolved path — including `_progress.md`, the triage register,
+> and the reconstruction brief. `--continue` reads `_progress.md` from the same resolved
+> location.
 
 This skill is the **inverse** of the make_requirements skill and **upstream** of
 the full forward pipeline:
@@ -38,7 +45,7 @@ the full forward pipeline:
 ```
 Existing Codebase
    → retro_requirements              (THIS skill — reverse-engineer the code)
-   → requirements/_retro/09-reconstruction-brief.md
+   → <resolved _retro dir>/09-reconstruction-brief.md
    → the make_requirements skill     (enrich, validate, formalize into RDs)
    → the make_plan skill             (implementation pipeline → rebuild)
 ```
@@ -101,8 +108,8 @@ Full per-phase instructions and the output-document templates live in
 | **8B. 🚨 Triage Gate** | **HARD GATE** — resolve every non-Confirmed behavior with the user before synthesis | `08b-triage-register.md` |
 | **9. Synthesis** | Combine all outputs into THE handoff file for the make_requirements skill | `09-reconstruction-brief.md` |
 
-All output is written to `requirements/_retro/`. Session state lives in
-`requirements/_retro/_progress.md`. The **`09-reconstruction-brief.md`** is the
+All output is written to the resolved `_retro/` dir. Session state lives in
+`<resolved _retro dir>/_progress.md`. The **`09-reconstruction-brief.md`** is the
 crown jewel — written specifically as make_requirements input; all other files
 are intermediate analysis that feed it.
 
@@ -136,7 +143,7 @@ features.
 **The flow (full protocol, register format, and example in `triage-gate.md`):**
 
 1. After Phases 4–8, compile the **Triage Register** at
-   `requirements/_retro/08b-triage-register.md` — a formal inventory of ALL
+   `<resolved _retro dir>/08b-triage-register.md` — a formal inventory of ALL
    items that are NOT ✅ Confirmed (every 🔴 Suspicious and ⚠️ Inferred item),
    saved to disk before presenting to the user.
 2. Present each 🔴 **Suspicious** item with *what the code does* and *why it's
@@ -174,17 +181,17 @@ For large codebases or monorepos, analyze a specific module
 Analyzing a full codebase will span multiple turns or sessions. Work
 incrementally and survive interruptions:
 
-1. **Persist after each phase** — save the phase output to `requirements/_retro/`
+1. **Persist after each phase** — save the phase output to the resolved `_retro/` dir
    before moving on; never hold analysis only in conversation memory.
 2. **Read selectively** — don't read every file. Read entry points, then follow
    imports into key modules. Summarize as you go; extract requirements, don't
    copy code.
-3. **Track progress** — maintain `requirements/_retro/_progress.md` (phase status
+3. **Track progress** — maintain `<resolved _retro dir>/_progress.md` (phase status
    + module coverage; template in `phases.md`).
 
 **Save progress and resume natively:** if the session gets long or the user wants
 to pause, save the current phase output (even if incomplete) plus the next-step
-state to `requirements/_retro/_progress.md`, note which module/file was
+state to `<resolved _retro dir>/_progress.md`, note which module/file was
 interrupted, and report what's done and what remains. The user resumes later with
 `retro_requirements --continue`: read `_progress.md` and completed phase outputs,
 summarize where you left off, then continue from the next incomplete phase.

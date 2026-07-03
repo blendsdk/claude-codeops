@@ -70,6 +70,9 @@ should fill in.
 - **Build:** `<command>`
 - **Test:** `<command>`
 - **Verify (run before every commit):** `<build && test>`
+  <!-- For infra/DevOps-heavy projects, extend Verify with the matching non-code validations
+       (docker compose config, shellcheck, terraform validate, kubectl --dry-run, …) — the
+       table lives in the plugin's standards/coding-standards-full.md. -->
 - **Clean:** `<command>`
 
 ## Project structure

@@ -9,7 +9,8 @@ Run this before finalizing the plan documents. The **Specification-First Testing
 - [ ] All dependencies mapped
 
 ## ✅ Granularity
-- [ ] Tasks are 2-4 hours max each
+- [ ] Each task is one reviewable change: 1-3 files, ~50-150 lines, immediately testable
+- [ ] Anything touching >=6 files, 200+ lines, or 3+ concerns is SPLIT into multiple tasks
 - [ ] Each task has clear deliverables
 - [ ] Each task is independently testable
 
@@ -70,4 +71,4 @@ Run this before finalizing the plan documents. The **Specification-First Testing
 - [ ] Tables are properly formatted
 - [ ] Task numbers follow the convention (Phase.Session.Task)
 - [ ] Checkboxes included for tracking
-- [ ] `00-index.md` and `99-execution-plan.md` are stamped with `> **CodeOps Skills Version**: 3.1.0`
+- [ ] `00-index.md` and `99-execution-plan.md` are stamped with `> **CodeOps Skills Version**: 3.2.0`

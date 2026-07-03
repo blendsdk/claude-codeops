@@ -3,11 +3,9 @@ description: Run a health check on existing technical architecture docs (stalene
 disable-model-invocation: true
 ---
 
-Run the **techdocs** skill in **review_techdocs** mode.
+Pure dispatch — no behavior lives here.
 
-Use the Skill tool to invoke `techdocs`, treating this request as:
-`review_techdocs $ARGUMENTS`
+Use the Skill tool to invoke `techdocs` (`codeops:techdocs` under the plugin) in its
+**review_techdocs** mode, treating this request as: `review_techdocs $ARGUMENTS`.
 
-Follow that skill's `review_techdocs` protocol: run the 7-dimension health check (staleness,
-completeness, accuracy, ADR coverage, link health, diagram accuracy, getting-started) and produce
-a diagnostic report.
+The skill owns the entire protocol and all layout/path resolution.

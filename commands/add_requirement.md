@@ -4,11 +4,9 @@ disable-model-invocation: true
 argument-hint: "[what to add]"
 ---
 
-Run the **make_requirements** skill in **add_requirement** mode.
+Pure dispatch — no behavior lives here.
 
-Use the Skill tool to invoke `make_requirements`, treating this request as:
-`add_requirement $ARGUMENTS`
+Use the Skill tool to invoke `make_requirements` (`codeops:make_requirements` under the plugin) in its
+**add_requirement** mode, treating this request as: `add_requirement $ARGUMENTS`.
 
-Follow that skill's `add_requirement` protocol: read the current `requirements/` set, run a
-focused discovery for the new capability, pass the Zero-Ambiguity Gate for the new RD, write the
-new `RD-XX-*.md`, then update the README index and dependency graph.
+The skill owns the entire protocol and all layout/path resolution.

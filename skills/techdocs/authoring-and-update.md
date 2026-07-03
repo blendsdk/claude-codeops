@@ -1,6 +1,6 @@
 # techdocs — Authoring, Update Protocol & Health Check (Phases 5–6 + review_techdocs)
 
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 Read this before authoring any document, before any auto-update, and when running
 `review_techdocs`.
@@ -21,7 +21,7 @@ Technical documentation must be:
 
 ### Diagrams (Mermaid)
 
-Use Mermaid syntax — VitePress renders it natively:
+Use Mermaid syntax — rendered via `vitepress-plugin-mermaid`, which the setup step installs (vanilla VitePress does not render Mermaid):
 
 - **Architecture diagrams**: `graph TB` or `graph LR`
 - **Entity relationships**: `erDiagram`

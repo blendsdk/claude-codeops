@@ -48,10 +48,32 @@ new session, so the standards are always present with **zero setup**.
 
 See the summarized standards in the [Reference](/reference/standards).
 
+Since 3.2.0 the injected text is a compact core (~50 lines); the complete standards live in the
+plugin's `standards/coding-standards-full.md`, which Claude reads on demand. Don't duplicate the
+standards in your own `~/.claude/CLAUDE.md` — you'd pay the tokens twice every session. A second
+hook warns (never blocks) when anything other than `setup_codeops` edits the
+`codeops/.codeops.yml` layout marker.
+
+### Optional: execution-progress reminder hook
+
+`exec_plan`'s real-time update mandate can be backed by a hook if you want mechanical insurance.
+This is deliberately NOT shipped default-on (it fires on every Stop in every project). Opt in by
+adding to your project's `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [{ "hooks": [{ "type": "command",
+      "command": "sh -c 'ls plans/*/99-execution-plan.md codeops/features/*/plans/*/99-execution-plan.md 2>/dev/null | head -1 | grep -q . && echo \"Reminder: if a task was just completed, confirm 99-execution-plan.md reflects it (two-stage marks).\" || true'" }] }]
+  }
+}
+```
+
 ## Rolling updates
 
-The plugin carries **no version number** — the latest git commit *is* the version. Every push is
-immediately installable via `/plugin update`. There is no release/publish ceremony.
+Installs follow the marketplace's latest commit — every push is immediately installable via
+`/plugin update`, with no release/publish ceremony. The `version` field in `plugin.json` (and the
+`CodeOps Skills Version` stamps) name the release you're running; they inform, they don't gate.
 
 ## The Zero-Ambiguity Gate
 
@@ -60,6 +82,13 @@ enforce a hard **Zero-Ambiguity Gate**: before any plan or requirement document 
 gap, assumption, and open question is hunted across a fixed set of categories, compiled into an
 **Ambiguity Register**, and resolved by **you** — never guessed by the model. The gate opens only
 when every item is explicitly resolved and you have confirmed the complete register.
+
+
+Since 3.2.0 the gate is **single-sourced** in `_shared/zero-ambiguity-gate.md` (the skills carry
+thin preambles), and two long-standing frictions are resolved: a decision may be **explicitly
+deferred** in a named form (`⏸ Deferred — decision · owner · revisit-trigger`) that every gate
+and preflight accepts — only *silent* deferral stays forbidden — and **"accept all your
+recommendations" formally counts** as an explicit per-item decision.
 
 ## Recommendation hardening
 
@@ -78,12 +107,28 @@ model's pick) and reconciled, because a self-critique in the same context inheri
 spots. The protocol is the always-on directive plus `_shared/recommendation-hardening.md`; it reaches
 every installation automatically via [rolling updates](#rolling-updates) and the always-on standards.
 
+Since 3.2.0 the ceremony is **bounded**: preflight spawns ONE challenger per scan (fed the whole
+CRITICAL/MAJOR batch plus the recon context), challenger spawns cap at two per skill run, and the
+`Confidence:`/`Hardening:` disclosure appears only where it carries information (Med/Low
+confidence, a changed pick, or high stakes).
+
 ## Specification-first testing
 
 CodeOps separates **specification tests** (derived from requirements/acceptance criteria — immutable
 oracles) from **implementation tests** (edge cases and internals). The enforced order is:
 **write spec tests → confirm they fail (red) → implement → make them pass (green) → add impl tests →
 verify**. [`exec_plan`](/skills/exec_plan) drives this ordering task-by-task.
+
+### Two-stage completion marks & delegation (3.2.0)
+
+`exec_plan` records progress in two stages — `[~]` implemented (crash-safe), promoted to `[x]`
+only when verification passes — so a resumed session always re-verifies half-done work instead of
+trusting it. Routing-tagged tasks can be **delegated** to the executor subagents that now ship
+with the plugin (`agents/plan-task-executor{,-opus}`) via a defined handoff packet; executors
+report blockers instead of guessing and can never rewrite a failing spec test. Roadmap counters
+and portfolio cascades are recomputed by `scripts/codeops-roadmap-sync.sh` (review_roadmap uses
+its `--check` mode), and the lightweight **task lane** (mini-plans for bugfixes/chores) now
+exists in the flat layout too.
 
 ## The pipeline
 

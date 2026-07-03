@@ -4,14 +4,9 @@ disable-model-invocation: true
 argument-hint: "[short description of the project]"
 ---
 
-Run the **setup_routing** skill.
+Pure dispatch — no behavior lives here.
 
-Use the Skill tool to invoke `setup_routing`, treating this request as:
-`setup_routing $ARGUMENTS`
+Use the Skill tool to invoke `setup_routing` (`codeops:setup_routing` under the plugin),
+passing the arguments through: `$ARGUMENTS`.
 
-Follow that skill's protocol: independently analyze the current repository, classify it into a
-sensitivity profile (Opus-dominant, Mixed core/scaffold, Sonnet-default, or the Balanced
-fallback), present the proposed tag-driven routing policy and the executor subagents to create,
-**wait for explicit confirmation**, then write the sentinel-delimited routing block into the
-project's `CLAUDE.md` and the pinned-model executors into `.claude/agents/`. Non-destructive and
-idempotent; never touches global user files.
+The skill owns the entire protocol and all layout/path resolution.

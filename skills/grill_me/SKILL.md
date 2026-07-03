@@ -25,7 +25,7 @@ When the user types `grill_me` (with or without additional context), enter
 designed to eliminate every ambiguity before any plan, requirement, or
 implementation work begins.
 
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 ## Core Directive
 
@@ -99,8 +99,12 @@ For each branch, follow this drilling pattern:
 - Include trade-offs for each option
 - If the user's domain has industry-standard approaches, mention them
 - If you have a recommendation, state it and explain why
+- **Prefer structured multiple-choice prompts** (the AskUserQuestion tool) where the session
+  provides them — an enumerated option set with descriptions is exactly this shape, and one
+  structured prompt beats a free-text round-trip. Fall back to numbered text options where the
+  tool is unavailable.
 
-> **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides. Apply the recommendation-hardening protocol (`_shared/recommendation-hardening.md`) to consequential recommendations; escalate to an independent challenger only when the decision is genuinely high-stakes.
+> **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides. Apply the recommendation-hardening protocol (`_shared/recommendation-hardening.md`) to consequential recommendations; challenger escalation follows ONLY that protocol's high-stakes definition — grill_me has no private trigger, and the user may always request a challenger explicitly.
 
 #### 2c. Drill Into the Choice
 
@@ -177,7 +181,9 @@ Before concluding, present the full picture and explicitly ask:
 
 ### Out of Scope (Explicitly Deferred)
 
-- [Thing] — [reason for deferral]
+<!-- Shared deferral format (_shared/zero-ambiguity-gate.md) — downstream gates accept these
+     rows as-is; all three parts are mandatory. -->
+- ⏸ Deferred — [the decision, named precisely] · owner: [who decides] · revisit: [the trigger]
 
 ### Open Risks
 
@@ -199,15 +205,20 @@ protocol.
 | User Says | Your Response |
 |---|---|
 | "Probably TTL" | "Let's make this concrete. What TTL value? 30 seconds? 5 minutes? 1 hour? What's the staleness tolerance?" |
-| "We'll figure that out later" | "We can defer this, but let me name the decision explicitly so it's tracked: [decision]. Is it safe to defer, or does it block other decisions?" |
+| "We'll figure that out later" | "We can defer this, but let me name it so it's tracked: [decision]. Who owns it, and what triggers the revisit?" — record it in the shared deferral format (`⏸ Deferred — <decision> · owner · revisit-trigger`, per `_shared/zero-ambiguity-gate.md`), which the downstream gates accept as-is. Then: "Is it safe to defer, or does it block other decisions?" |
 | "Something like X" | "Let me sharpen that. Do you mean [specific interpretation A] or [specific interpretation B]?" |
 | "I'm not sure" | "That's fine. Let me lay out the options and trade-offs so we can decide together." |
 
-### Rule 2: One Decision at a Time
+### Rule 2: One Decision at a Time (with a leaf-batching exception)
 
-Never ask 5 questions in a batch. Walk through **one decision**, resolve it
+Never ask 5 unrelated questions in a batch. Walk through **one decision**, resolve it
 fully (including sub-branches and assumptions), then move to the next. The user
 should never feel overwhelmed.
+
+**Exception — independent leaves:** once a branch's parent decision is resolved, its remaining
+sub-decisions that are genuinely independent of each other (e.g. three TTL values, a set of
+display labels) MAY be presented together — 3–5 at most, each with its own options. Batch only
+leaves; never batch decisions that constrain each other.
 
 ### Rule 3: Dependencies First
 
@@ -281,22 +292,34 @@ When `grill_me` is used without a follow-up skill:
 
 ## Session Management
 
-### Progress Persistence
+### Progress Persistence (save-as-you-go)
 
-If a grill-me session is getting long and you want to preserve progress (for
-example, before the conversation ends or context gets tight):
+Notes are checkpointed **as the interview progresses, not on interruption** — a crash must lose
+at most the branch in flight:
 
-1. Save all progress to a `_grill_me_notes.md` file (in the project root or a relevant directory)
-2. Include: design tree, resolved decisions, confirmed assumptions, remaining branches
-3. Note which branch/step to resume from
+1. **Location (fixed, layout-aware):** `<resolved plans dir>/_draft/grill-notes-<topic-slug>.md`
+   (flat: `plans/_draft/…`; nested: `codeops/features/<f>/plans/_draft/…` — resolve per
+   `_shared/layout-convention.md`; if no plans dir exists yet, create `_draft/` lazily).
+2. **Checkpoint cadence:** write/update the file after the design tree is mapped and after EACH
+   branch resolves — never only when the session "feels long".
+3. **Schema (minimal):** topic + date + git ref (or mtime) of any artifact under discussion;
+   the design tree; resolved decisions; confirmed assumptions; named deferrals (shared format);
+   remaining branches; which branch/step to resume from.
 
 ### Resuming
 
 When the user types `grill_me --continue`:
 
-1. Read `_grill_me_notes.md`
-2. Summarize where you left off
-3. Continue from the next unresolved branch
+1. Read the notes file from the resolved location.
+2. **Staleness check:** if a referenced artifact changed since the recorded ref/mtime, say so
+   and re-open the branches it affects.
+3. Summarize where you left off and continue from the next unresolved branch.
+
+### On completion
+
+Fold the notes into the Shared Understanding summary and **delete the notes file** — a stale
+notes file must never be picked up by a later `--continue` on a different topic (the schema's
+topic line is the second guard: a mismatch is treated as stale and reported).
 
 ## Technical Decisions
 

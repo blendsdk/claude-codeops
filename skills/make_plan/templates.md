@@ -1,6 +1,6 @@
 # Plan Document Templates
 
-Read this when writing the Phase 2 documents. Create files in `plans/<feature-name>/`. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.1.0`.
+Read this when writing the Phase 2 documents. Create files in `plans/<feature-name>/`. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.2.0`. Every `[Date]` / `[YYYY-MM-DD HH:MM]` placeholder is filled from `date '+%Y-%m-%d %H:%M'` — never an invented timestamp.
 
 Folder layout:
 
@@ -26,7 +26,7 @@ plans/<feature-name>/
 > **Status**: Planning Complete
 > **Created**: [Date]
 > **Implements**: RD-NN   (only if based on a requirements document; omit otherwise)
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 ## Overview
 
@@ -226,9 +226,17 @@ If the plan is based on a requirements document, add at the top: `> **Source**: 
 ## Testing Overview
 
 ### Coverage Goals
-- Unit tests: [X]% coverage
-- Integration tests: Key workflows covered
-- E2E tests: Complete feature verification
+
+| Code type | Target |
+| --------- | ------ |
+| Core business logic | 90% |
+| Supporting modules / services | 80% |
+| UI / glue / configuration | 60% |
+
+- Test names state behavior: `should [expected behavior] when [condition]`.
+- Integration tests: key workflows covered. E2E tests: complete feature verification.
+- Adjust targets per project in `01-requirements.md` (an AR-referenced decision) — never
+  silently.
 
 ## 🚨 Specification Test Cases (MANDATORY — NON-NEGOTIABLE)
 
@@ -316,7 +324,7 @@ Every execution plan MUST follow this template, MUST include the **Master Progre
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: [YYYY-MM-DD HH:MM]
 > **Progress**: 0/X tasks (0%)
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 ## Overview
 
@@ -328,18 +336,19 @@ Every execution plan MUST follow this template, MUST include the **Master Progre
 
 ## Implementation Phases
 
-| Phase | Title          | Sessions | Est. Time |
-| ----- | -------------- | -------- | --------- |
-| 1     | [Phase 1 Name] | 1        | XX min    |
-| 2     | [Phase 2 Name] | 1-2      | XX min    |
+| Phase | Title          | Tasks |
+| ----- | -------------- | ----- |
+| 1     | [Phase 1 Name] | X     |
+| 2     | [Phase 2 Name] | X     |
 
-**Total: X sessions, ~X-X hours**
+**Total: X tasks across Y phases** (no fabricated hour estimates — scope is bounded by the
+task-size criteria in [quality-checklist.md](quality-checklist.md))
 
 ---
 
 ## Phase 1: [Phase Name]
 
-### Session 1.1: [Session Objective]
+### Step 1.1: [Step Objective]
 
 **Reference**: [Link to technical doc]
 **Objective**: [What this session achieves]
@@ -415,50 +424,13 @@ Phase 2
 
 ## Specification-First Task Ordering (NON-NEGOTIABLE)
 
-Every feature implementation phase in `99-execution-plan.md` MUST follow this three-session ordering. This prevents tautological testing — tests mirroring the implementation instead of independently verifying it against the specification.
-
-```
-Phase N: [Feature Name]
-
-  Session N.1: Specification Tests (BEFORE implementation)
-    N.1.1  Write specification tests from 07-testing-strategy.md ST-cases
-           → File: [feature].spec.test.[ext]
-           → Source: 07-testing-strategy.md ST-1 through ST-X
-           → MUST NOT read implementation logic when writing these tests
-    N.1.2  Run spec tests — verify they FAIL (red phase)
-           → Document any that pass pre-implementation with justification
-
-  Session N.2: Implementation
-    N.2.1  Implement [feature/component] per technical specification
-           → Reference: 03-XX-[component].md
-    N.2.2  Run spec tests — verify they PASS (green phase)
-           → If any spec test fails: STOP, fix implementation (NOT the test)
-
-  Session N.3: Implementation Tests & Hardening
-    N.3.1  Write implementation tests (edge cases, internals, error paths)
-           → File: [feature].impl.test.[ext]
-    N.3.2  Full verification (project's verify command)
-```
-
-**Why each step matters:** spec tests BEFORE implementation prevent deriving expectations from code just written; red-phase proves the spec tests are meaningful; green-phase proves the implementation satisfies the spec; impl tests AFTER implementation may legitimately be derived from the code (edge cases, internals) — but spec tests must not be.
-
-**🚫 PROHIBITED:** writing implementation code before spec tests exist; skipping the spec test phase; combining spec tests and implementation in one task; writing them simultaneously; generating a plan where implementation tasks precede spec test tasks for the same feature.
-
-**✅ REQUIRED in every generated `99-execution-plan.md`:** the three-session ordering per feature phase; explicit `[feature].spec.test.[ext]` and `[feature].impl.test.[ext]` file references; references to the ST-cases from `07-testing-strategy.md` in spec test tasks; a distinct red-phase verification task.
-
-**Small features:** you may compress into a single session, but the ordering is still mandatory:
-
-```
-Session N.1: [Feature Name]
-  N.1.1  Write specification tests (from ST-cases)
-  N.1.2  Verify spec tests fail (red phase)
-  N.1.3  Implement feature
-  N.1.4  Verify spec tests pass (green phase)
-  N.1.5  Write implementation tests
-  N.1.6  Full verification
-```
-
-The order `spec tests → red phase → implement → green phase → impl tests → verify` is NEVER negotiable, regardless of feature size.
+Every feature implementation phase in `99-execution-plan.md` MUST follow the three-step
+specification-first ordering — `spec tests → red phase → implement → green phase → impl tests →
+verify` — defined ONCE in **[../../_shared/spec-first-ordering.md](../../_shared/spec-first-ordering.md)**.
+Read it before authoring the execution plan; it carries the full step structure, the compressed
+small-feature form, the prohibited/required lists, and the immutable-oracle rule. Generated plans
+must reference `07-testing-strategy.md` ST-cases in spec-test tasks and include a distinct
+red-phase verification task.
 
 ---
 

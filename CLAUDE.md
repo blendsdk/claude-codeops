@@ -27,17 +27,21 @@
 - **Clean:** `rm -rf node_modules docs/.vitepress/dist docs/.vitepress/cache`
 
 ## Project structure
-- `.claude-plugin/` — `marketplace.json` (`source: "."`) + `plugin.json` (no version → rolling updates)
+- `.claude-plugin/` — `marketplace.json` (`source: "."`) + `plugin.json` (version tracks the release)
 - `skills/<name>/SKILL.md` — the 11 skills (frontmatter `name` + `description`, then body). Every
   `skills/<dir>` is a real skill with a `SKILL.md` (the plugin loader requires it).
-- `_shared/` — shared reference docs linked by skills (e.g. `layout-convention.md`), at the **plugin
+- `_shared/` — shared reference docs linked by skills (`layout-convention.md`, `zero-ambiguity-gate.md`,
+  `spec-first-ordering.md`, `recommendation-hardening.md`), at the **plugin
   root** (NOT under `skills/`, so the loader never sees a `SKILL.md`-less skill dir). Skills link it
   as `../../_shared/…`.
 - `commands/*.md` — the 15 slash commands (frontmatter `description`)
-- `hooks/hooks.json` — SessionStart hook that injects the standards every session
-- `standards/coding-standards.md` — always-on standards (single source)
-- `scripts/` — `validate.sh` (plugin guard), `docs-check.sh` (docs spec suite), `migration-check.sh`
-  (migration-engine spec suite), `codeops-migrate.sh` (the flat→nested migration engine), `fixtures/`
+- `agents/` — plugin-shipped executor subagents (`plan-task-executor`, `plan-task-executor-opus`)
+- `hooks/hooks.json` — SessionStart standards hook + PreToolUse `.codeops.yml` marker guard
+- `standards/coding-standards.md` — always-on injected core (≤50 lines, enforced); full text in
+  `standards/coding-standards-full.md`
+- `scripts/` — `validate.sh` (plugin guard incl. count/stamp drift guards), `docs-check.sh`,
+  `migration-check.sh`, `codeops-migrate.sh` (flat→nested engine), `codeops-roadmap-sync.sh`
+  (roadmap counter/cascade engine), `fixtures/`
 - `docs/` — VitePress user-facing documentation site (`.vitepress/config.ts`, guide/skills/tutorials/reference)
 - `.github/workflows/docs.yml` — builds + deploys the docs site to GitHub Pages
 - `plans/` — internal CodeOps planning docs (git-ignored at the repo root via `/plans/`, not distributed)
@@ -49,7 +53,7 @@ The plugin loader reads only `skills/`, `commands/`, `hooks/`, and `.claude-plug
 ## Conventions
 - **Skill/command descriptions** must stay ≤ 1024 chars (Claude Code display budget; enforced by
   `validate.sh`) and preserve every trigger phrase.
-- **`plugin.json` carries no `version` key** — rolling updates; the git commit is the version.
+- **`plugin.json`'s `version` tracks the release** (kept equal to every `CodeOps Skills Version` stamp by `validate.sh` ST-4/ST-24); installs still follow the marketplace commit.
 - **`marketplace.json` `plugins[0].source` must be `"."`** and contain no `//` comment keys.
 - **User-facing docs are hand-authored** (the `techdocs` skill is for architecture/ADR docs only).
   Keep `docs/` content consistent with `README.md` / `TUTORIAL.md`; do not contradict them.

@@ -21,7 +21,7 @@ arguments: artifact
 
 # preflight — Multi-Dimensional, Codebase-Grounded Quality Audit
 
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 Run a rigorous quality audit of the artifact named in `$ARGUMENTS`, **grounded in the actual
 codebase**. Find every issue, ambiguity, contradiction, gap, and risk; verify every claim and
@@ -78,8 +78,9 @@ net** — fresh eyes that catch what those gates missed and what evolved since.
    informed by Step 2. Depth adapts by artifact type. Full detail in [dimensions.md](dimensions.md).
 4. **Compile the Preflight Report** — every finding gets a numbered `PF-NNN` entry with severity.
    Templates and report header in [report-format.md](report-format.md).
-5. **Present findings & collect decisions** — grouped by severity, one finding at a time, recording
-   the user's decision on each. Batch rules in [report-format.md](report-format.md).
+5. **Present findings & collect decisions** — grouped by severity, paced by the batch rules in
+   [report-format.md](report-format.md) (they are authoritative), recording the user's decision
+   on every finding.
 6. **Determine pass/fail** — Clean / Passed / Passed With Notes / Blocked (see [Pass tiers](#pass-tiers)).
 7. **Apply fixes (only if requested)** — preflight is a review protocol, not a modification one.
    Never apply fixes without explicit instruction.
@@ -143,6 +144,14 @@ Save the report as a permanent file alongside the artifact:
 The report is separate from the Ambiguity Register (decisions made during creation) — see
 [report-format.md](report-format.md) for the relationship and cross-referencing.
 
+## Parallelizing the scan (optional)
+
+The scan MAY fan out to subagents when the session supports them — recon reads to read-only
+explore agents, and the document-only dimension group (1, 3, 7, 9, 10, 12) as one parallel
+batch while the lead context runs the code-grounded dimensions (2, 4, 5, 6, 11, 13). The lead
+context always merges, dedupes, and renumbers the findings (`PF-NNN` stays a single sequence)
+and owns every user interaction. Sequential scanning remains the default and is always correct.
+
 ## Iterative re-scanning
 
 Run preflight as many times as needed. Iteration 2+ verifies prior fixes, checks for regressions,
@@ -150,14 +159,25 @@ and re-scans all 13 dimensions. **Findings numbered continuously** — if iterat
 iteration 2 starts at PF-013; numbers never reuse. Loop until a clean pass, the user stops, or only
 🔵 observations remain. Full re-scan header and numbering rules in [report-format.md](report-format.md).
 
-## Session resume
+## Session resume (save-as-you-go)
 
-If a session is interrupted (or context is filling up), save progress to a `_preflight_notes.md`
-file in the artifact directory — record completed dimensions, findings so far, pending dimensions,
-user decisions collected, and codebase reconnaissance notes (key files examined, references
-mapped). When the user runs `preflight --continue`, read that file, summarize where you left off,
-and resume from the next unscanned dimension. **Do NOT repeat reconnaissance** — reuse the notes;
-re-read specific files only when a finding needs deeper inspection.
+Continuity notes are written **as you go, not on interruption** — a hard crash must lose at most
+one dimension of work:
+
+- **Checkpoint cadence:** update `_preflight-notes.md` (in the artifact directory, next to where
+  the report will be saved) after the recon step completes and after EACH dimension finishes —
+  never only when a session "feels long".
+- **Schema (minimal):** the artifact path + its git ref (or mtime) at scan start; completed
+  dimensions; findings so far (numbers + one-liners); pending dimensions; user decisions
+  collected; recon notes (key files examined, references mapped).
+- **On `preflight --continue`:** read the notes, then run the **staleness check** — if the
+  artifact changed since the recorded ref/mtime, say so and re-scan the affected dimensions
+  rather than trusting stale findings. Summarize where you left off and resume from the next
+  unscanned dimension. **Do NOT repeat reconnaissance** — reuse the notes; re-read specific
+  files only when a finding needs deeper inspection.
+- **On completion:** delete `_preflight-notes.md` — a stale notes file must never be picked up
+  by a later scan of a different artifact (the schema's artifact reference is the second guard:
+  a mismatch is treated as stale and reported).
 
 ## Same-agent bias awareness — 🚨 NON-NEGOTIABLE
 

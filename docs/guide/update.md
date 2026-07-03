@@ -2,7 +2,7 @@
 
 ## Updating
 
-CodeOps uses **rolling updates** — it carries no version number, so the git commit is the version.
+CodeOps uses **rolling updates** — installs follow the marketplace's latest commit; `plugin.json`'s `version` names the release you're running without gating updates.
 To pick up the latest:
 
 ```text

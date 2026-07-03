@@ -12,11 +12,12 @@ description: >-
   domain consultant: absorbs the seed idea, expands it with comparable-system
   features, challenges it with edge cases, then decomposes it into numbered RDs
   behind a hard Zero-Ambiguity Gate.
+argument-hint: "[idea or brain dump]"
 ---
 
 # Requirements Gathering & Documentation
 
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 Transform a rough project idea into a structured, complete set of formal
 **requirement documents (RDs)**. This skill is upstream of, and independent
@@ -54,13 +55,13 @@ Determine the layout via **[../../_shared/layout-convention.md](../../_shared/la
 ## Route first: is this a feature or a task?
 
 Requirements (RDs) are for **features** — new cohesive capabilities. Ad-hoc work (a bugfix,
-chore, or small change) is **not** a feature: in a nested-layout repo it is a lightweight **task**
-(`T-NN`), tracked with a roadmap row (trivial) or a single mini-plan (non-trivial) — **no RD, no
-discovery, no Zero-Ambiguity Gate**. If the user's request is really a small fix, route them to
-the task lane (a roadmap row + `make_plan` for a non-trivial mini-plan) instead of drafting an RD.
-If it is genuinely unclear, ask — never default to the heavy pipeline silently. The task model and
-routing rule live in **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**.
-(Flat-layout repos have no task lane — proceed as flat layout always has.)
+chore, or small change) is **not** a feature: it is a lightweight **task**, tracked with a
+roadmap row (trivial) or a single mini-plan (non-trivial) — **no RD, no discovery, no
+Zero-Ambiguity Gate**. The lane exists in **both layouts** (flat gained it in 3.2.0). If the
+user's request is really a small fix, route them to the task lane (a roadmap row + `make_plan`
+for a non-trivial mini-plan) instead of drafting an RD. If it is genuinely unclear, ask — never
+default to the heavy pipeline silently. The task model and routing rule live in
+**[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**.
 
 ## Step 0: Detect the Mode
 
@@ -117,10 +118,13 @@ discovery interview → comparable analysis → user journeys → edge cases →
 
 ## The Zero-Ambiguity Rule (active from question one)
 
-This rule applies to **ALL decisions without exception** — feature specs,
+This rule applies to **every decision with semantic weight** — feature specs,
 behavioral definitions, scope boundaries, edge-case handling, technical choices,
-data models, naming, document organization, wording, AND formatting. If you must
-choose between two or more options for ANYTHING, **the user decides**.
+data models, naming, document organization. Behavior/scope/data/security
+decisions ALWAYS gate; cosmetic choices with zero semantic impact are exempt
+(per the shared gate's traceability exemptions), and low-stakes cosmetic items
+may be batched. If you must choose between two or more semantically distinct
+options, **the user decides**.
 
 Every question MUST yield a concrete, specific, unambiguous answer. Do NOT accept
 vague responses, fill gaps with your own assumptions, infer intent, or proceed

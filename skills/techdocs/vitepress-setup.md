@@ -1,6 +1,6 @@
 # techdocs — VitePress Setup (Phase 3)
 
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 Scaffold VitePress for the `docs/` set: install it, generate the config, add npm scripts, and
 ignore build output. Read this when first scaffolding the docs site, and whenever new pages are
@@ -12,14 +12,23 @@ Install VitePress as a dev dependency using the project's package manager:
 
 ```bash
 # npm
-npm install -D vitepress
+npm install -D vitepress vitepress-plugin-mermaid mermaid
 
 # yarn
-yarn add -D vitepress
+yarn add -D vitepress vitepress-plugin-mermaid mermaid
 
 # pnpm
-pnpm add -D vitepress
+pnpm add -D vitepress vitepress-plugin-mermaid mermaid
 ```
+
+> `vitepress-plugin-mermaid` is required for the architecture diagrams — vanilla VitePress does
+> NOT render ```` ```mermaid ```` blocks. The config below must wrap `defineConfig` with
+> `withMermaid` accordingly:
+>
+> ```typescript
+> import { withMermaid } from 'vitepress-plugin-mermaid'
+> export default withMermaid(defineConfig({ /* … */ }))
+> ```
 
 ## 2. Generate `.vitepress/config.ts`
 

@@ -28,6 +28,11 @@ PLUGIN=".claude-plugin/plugin.json"
 STANDARDS="standards/coding-standards.md"
 HOOKS="hooks/hooks.json"
 DESC_LIMIT=1024
+# Combined description + when_to_use listing budget (ST-34 / v3-hardening AR #22).
+DESC_COMBINED_LIMIT=1536
+# The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
+# "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
+CODEOPS_VERSION="3.2.0"
 
 FAILURES=0
 
@@ -119,15 +124,16 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# ST-4 — plugin.json has NO version key (rolling updates)
+# ST-4 — plugin.json carries the release version (v3-hardening AR #5; supersedes the
+# pre-3.2.0 "no version key" rule; kept in sync by ST-24's stamp-equality check).
 # -----------------------------------------------------------------------------
-section "ST-4: plugin.json has no \"version\" key"
+section "ST-4: plugin.json version == $CODEOPS_VERSION"
 if is_valid_json "$PLUGIN"; then
-  has_version="$(json_get "$PLUGIN" '"yes" if "version" in data else None')"
-  if [[ -z "$has_version" ]]; then
-    pass "no version key (rolling updates)"
+  plugin_version="$(json_get "$PLUGIN" 'data.get("version")')"
+  if [[ "$plugin_version" == "$CODEOPS_VERSION" ]]; then
+    pass "plugin.json version == $CODEOPS_VERSION"
   else
-    fail "version key present — must be removed for rolling updates"
+    fail "plugin.json version is \"${plugin_version:-<missing>}\", expected \"$CODEOPS_VERSION\" (AR #5)"
   fi
 else
   fail "cannot check version — $PLUGIN not valid JSON"
@@ -230,6 +236,65 @@ PY
   )
 else
   fail "python3 unavailable — cannot measure description lengths reliably"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-34 — combined description + when_to_use <= DESC_COMBINED_LIMIT per skill
+# (v3-hardening AR #22 — Claude Code truncates the combined skill listing).
+# -----------------------------------------------------------------------------
+section "ST-34: description + when_to_use <= $DESC_COMBINED_LIMIT chars per skill"
+if [[ "$HAVE_PY3" -eq 1 ]]; then
+  while IFS=$'\t' read -r combined skillfile; do
+    [[ -z "$combined" ]] && continue
+    if [[ "$combined" -le "$DESC_COMBINED_LIMIT" ]]; then
+      pass "$skillfile description+when_to_use = $combined chars"
+    else
+      fail "$skillfile description+when_to_use = $combined chars (> $DESC_COMBINED_LIMIT)"
+    fi
+  done < <(
+    python3 - <<'PY'
+import glob
+
+def frontmatter(text):
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return []
+    out = []
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        out.append(line)
+    return out
+
+def scalar(fm, key):
+    for i, line in enumerate(fm):
+        stripped = line.strip()
+        if stripped.startswith(key + ":"):
+            rest = stripped[len(key) + 1:].strip()
+            if rest and rest[0] in "|>":
+                base_indent = len(line) - len(line.lstrip())
+                parts = []
+                for cont in fm[i + 1:]:
+                    if not cont.strip():
+                        parts.append("")
+                        continue
+                    indent = len(cont) - len(cont.lstrip())
+                    if indent <= base_indent:
+                        break
+                    parts.append(cont.strip())
+                return " ".join(p for p in parts if p)
+            return rest.strip().strip('"').strip("'")
+    return ""
+
+for path in sorted(glob.glob("skills/*/SKILL.md")):
+    with open(path) as fh:
+        fm = frontmatter(fh.read())
+    combined = len(scalar(fm, "description")) + len(scalar(fm, "when_to_use"))
+    print(f"{combined}\t{path}")
+PY
+  )
+else
+  fail "python3 unavailable — cannot measure combined listing lengths"
 fi
 
 # -----------------------------------------------------------------------------
@@ -375,7 +440,8 @@ done
 # Lives at the PLUGIN ROOT (not under skills/) so the plugin loader never sees a SKILL.md-less
 # dir under skills/ — the documented-safe location (supersedes AR #7's skills/_shared/, see AR #30).
 SHARED_DOC="_shared/layout-convention.md"
-AFFECTED_SKILLS=(roadmap make_requirements make_plan exec_plan preflight upgrade_plan retro_requirements)
+# techdocs added per v3-hardening AR #41 — it is layout-aware and must link the convention doc.
+AFFECTED_SKILLS=(roadmap make_requirements make_plan exec_plan preflight upgrade_plan retro_requirements techdocs)
 # A sample marker exercises the schema/detection rule without a full nested fixture (03-01).
 SAMPLE_MARKER="scripts/fixtures/sample.codeops.yml"
 
@@ -431,11 +497,12 @@ if [[ -z "$stale_stamps" ]]; then
 else
   fail "stale 2.0.0 stamp(s) found in:"$'\n'"$stale_stamps"
 fi
-# 15b — guard against deleting (rather than bumping) the stamps: the current 3.1.0 must be present.
-if grep -rqF '3.1.0' skills/; then
-  pass "current 3.1.0 stamp present in skills/"
+# 15b — guard against deleting (rather than bumping) the stamps: some X.Y.Z stamp must remain.
+# Version-agnostic on purpose — ST-24 owns the VALUE; this only guards against removal.
+if grep -rqE 'CodeOps (Skills )?Version[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' skills/; then
+  pass "version stamps present in skills/ (value checked by ST-24)"
 else
-  fail "no 3.1.0 stamp found in skills/ (stamps must be bumped, not removed)"
+  fail "no version stamps found in skills/ (stamps must be bumped, not removed)"
 fi
 
 # -----------------------------------------------------------------------------
@@ -490,7 +557,8 @@ HARDENING_TIER_B=(
   "skills/setup_codeops/SKILL.md"
   "commands/analyze_project.md"
 )
-EXPECTED_VERSION="3.1.0"
+# (Release version is the top-level CODEOPS_VERSION constant — single edit point per release.)
+EXPECTED_VERSION="$CODEOPS_VERSION"
 
 # -----------------------------------------------------------------------------
 # ST-18 — shared hardening protocol doc present and non-empty (FR-6 / AR-2)
@@ -574,17 +642,391 @@ for f in "${HARDENING_TIER_B[@]}"; do
 done
 
 # -----------------------------------------------------------------------------
-# ST-24 — all CodeOps Skills Version stamps are 3.1.0 and agree (FR-9 / AR-14)
+# ST-24 — every CodeOps Skills Version stamp equals $CODEOPS_VERSION and they all agree.
+# Scope extended per v3-hardening AR #20: scripts/ and agents/ are part of the shipped
+# surface (the 3.0.0 stamp drift shipped inside scripts/codeops-migrate.sh because the old
+# scope could not see it), and plugin.json's "version" must match too (AR #5).
+# Fixtures under scripts/fixtures/ are test data and stay excluded.
 # -----------------------------------------------------------------------------
-section "ST-24: version stamps are $EXPECTED_VERSION and consistent"
-stamp_lines="$(grep -rhoE 'CodeOps (Skills )?Version[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' skills/ commands/ standards/ _shared/ 2>/dev/null || true)"
-uniq_versions="$(printf '%s\n' "$stamp_lines" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u | tr '\n' ' ' | sed 's/ *$//')"
+section "ST-24: version stamps are $EXPECTED_VERSION and consistent (incl. scripts/, agents/, plugin.json)"
+stamp_lines="$(grep -rhoE 'CodeOps (Skills )?Version[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' \
+  skills/ commands/ standards/ _shared/ agents/ 2>/dev/null || true)"
+script_stamps="$(grep -rhoE 'CodeOps (Skills )?Version[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' scripts/ \
+  --exclude-dir=fixtures 2>/dev/null || true)"
+uniq_versions="$(printf '%s\n%s\n' "$stamp_lines" "$script_stamps" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u | tr '\n' ' ' | sed 's/ *$//')"
 if [[ -z "$uniq_versions" ]]; then
   fail "no CodeOps Skills Version stamps found in the shipped surface"
 elif [[ "$uniq_versions" == "$EXPECTED_VERSION" ]]; then
   pass "all version stamps == $EXPECTED_VERSION"
 else
   fail "version stamps disagree or are not $EXPECTED_VERSION (found: $uniq_versions)"
+fi
+if is_valid_json "$PLUGIN"; then
+  pv="$(json_get "$PLUGIN" 'data.get("version")')"
+  if [[ "$pv" == "$EXPECTED_VERSION" ]]; then
+    pass "plugin.json version agrees with the stamps ($EXPECTED_VERSION)"
+  else
+    fail "plugin.json version (\"${pv:-<missing>}\") does not match the stamps ($EXPECTED_VERSION)"
+  fi
+fi
+
+# =============================================================================
+# CodeOps v3-hardening checks (ST-25…ST-33, ST-35…ST-40; ST-34 lives beside ST-9)
+#
+# SPECIFICATION tests for the v3-hardening work, written from the spec
+# (plans/codeops-v3-hardening/07-testing-strategy.md ST-H3…H18), BEFORE the
+# implementation — red on the unmodified repo, green as Phases 2–8 land.
+# Sentinel strings are quoted in comments so prose rewording can't silently
+# break a check without the author seeing which contract it guards.
+# =============================================================================
+
+ZAG_SHARED="_shared/zero-ambiguity-gate.md"
+SPEC_FIRST_SHARED="_shared/spec-first-ordering.md"
+STANDARDS_FULL="standards/coding-standards-full.md"
+ROADMAP_SYNC="scripts/codeops-roadmap-sync.sh"
+
+# -----------------------------------------------------------------------------
+# ST-25 — exec_plan uses two-stage completion marks (ST-H3 / AR #2).
+# Sentinels: positive "[~]" + "two-stage"; negative: the old mark-before-verify claim.
+# -----------------------------------------------------------------------------
+section "ST-25: exec_plan two-stage completion marks"
+EXEC_PROTO="skills/exec_plan/execution-protocol.md"
+if [[ -f "$EXEC_PROTO" ]] && grep -qF '[~]' "$EXEC_PROTO" && grep -qiF 'two-stage' "$EXEC_PROTO"; then
+  pass "$EXEC_PROTO carries the two-stage [~] semantics"
+else
+  fail "$EXEC_PROTO missing two-stage [~] completion semantics"
+fi
+for f in "$EXEC_PROTO" "skills/exec_plan/SKILL.md"; do
+  # Old contradictory instruction — the emphasized "**BEFORE** verification" / "happens BEFORE
+  # verification" claim about the [x] mark. Under two-stage marks only [~] may precede verify,
+  # and the rewritten prose must not use this exact emphasized phrase.
+  if [[ -f "$f" ]] && grep -qiE '\*\*BEFORE\*\* verification|happens BEFORE verification' "$f"; then
+    fail "$f still says the [x] update happens BEFORE verification (contradiction, AR #2)"
+  else
+    pass "$f no longer marks [x] before verification"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-26 — executor agents ship in the plugin with the immutable-oracle rule (ST-H4 / AR #4, #14).
+# Sentinel: "*.spec.test." + "blocker" in each agent prompt.
+# -----------------------------------------------------------------------------
+section "ST-26: plugin agents/ executors with spec-test blocker rule"
+for f in "agents/plan-task-executor.md" "agents/plan-task-executor-opus.md"; do
+  if [[ -s "$f" ]] && grep -qF '.spec.test.' "$f" && grep -qiF 'blocker' "$f"; then
+    pass "$f present with the spec-test blocker rule"
+  else
+    fail "$f missing, empty, or lacks the spec-test blocker rule"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-27 — shared Zero-Ambiguity Gate doc (ST-H5 / AR #9, #11, #12).
+# Sentinels: category-table row, deferred status, bulk-acceptance ruling.
+# -----------------------------------------------------------------------------
+section "ST-27: shared zero-ambiguity-gate doc present with merged content"
+if [[ -s "$ZAG_SHARED" ]]; then
+  pass "$ZAG_SHARED exists and is non-empty"
+  for sentinel in '| **Feature gaps** |' '⏸ Deferred' 'accepted recommendation'; do
+    if grep -qiF "$sentinel" "$ZAG_SHARED"; then
+      pass "gate doc carries sentinel: \"$sentinel\""
+    else
+      fail "gate doc missing sentinel: \"$sentinel\""
+    fi
+  done
+else
+  fail "$ZAG_SHARED is missing or empty"
+fi
+if [[ -s "$SPEC_FIRST_SHARED" ]] && grep -qF 'Specification Tests' "$SPEC_FIRST_SHARED"; then
+  pass "$SPEC_FIRST_SHARED exists with the ordering content"
+else
+  fail "$SPEC_FIRST_SHARED is missing or lacks the ordering content"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-28 — callers are slim preambles; canonical content appears ONLY in _shared/ (ST-H6 / AR #9, #10).
+# The category-table row sentinel and the full-ordering session header must not exist under skills/.
+# -----------------------------------------------------------------------------
+section "ST-28: gate + spec-first single-sourced (no duplicated canon under skills/)"
+ZAG_CALLERS=(
+  "skills/make_plan/zero-ambiguity-gate.md"
+  "skills/make_requirements/zero-ambiguity-gate.md"
+  "skills/upgrade_plan/content-quality-gate.md"
+)
+for f in "${ZAG_CALLERS[@]}"; do
+  if [[ -f "$f" ]] && grep -qF '_shared/zero-ambiguity-gate.md' "$f"; then
+    pass "$f links the shared gate doc"
+  else
+    fail "$f does not link _shared/zero-ambiguity-gate.md"
+  fi
+done
+# Category table may exist ONLY in the shared doc.
+dup_tables="$(grep -rlF '| **Feature gaps** |' skills/ 2>/dev/null || true)"
+if [[ -z "$dup_tables" ]]; then
+  pass "12-category table appears only under _shared/"
+else
+  fail "duplicated 12-category table found in:"$'\n'"$dup_tables"
+fi
+# Full spec-first ordering (the "Session N.1: Specification Tests" block) only in _shared/.
+dup_orderings="$(grep -rlF 'Session N.1: Specification Tests' skills/ 2>/dev/null || true)"
+if [[ -z "$dup_orderings" ]]; then
+  pass "full spec-first ordering block appears only under _shared/"
+else
+  fail "duplicated spec-first ordering block found in:"$'\n'"$dup_orderings"
+fi
+for f in "skills/make_plan/templates.md" "$EXEC_PROTO"; do
+  if [[ -f "$f" ]] && grep -qF "spec-first-ordering.md" "$f"; then
+    pass "$f links the shared spec-first doc"
+  else
+    fail "$f does not link _shared/spec-first-ordering.md"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-29 — hardening ceremony bounded (ST-H7 / AR #3, #40).
+# Sentinels: "per preflight scan", "at most 2 challenger", conditional disclosure;
+# grill_me must no longer carry its own undefined "genuinely high-stakes" trigger.
+# -----------------------------------------------------------------------------
+section "ST-29: recommendation-hardening bounds"
+HARDENING_DOC="_shared/recommendation-hardening.md"
+for sentinel in 'per preflight scan' 'at most 2 challenger'; do
+  if [[ -f "$HARDENING_DOC" ]] && grep -qiF "$sentinel" "$HARDENING_DOC"; then
+    pass "hardening doc carries: \"$sentinel\""
+  else
+    fail "hardening doc missing bound sentinel: \"$sentinel\""
+  fi
+done
+if grep -qiE 'omit.*(Hardening|disclosure)|disclosure.*only when' "$HARDENING_DOC" 2>/dev/null; then
+  pass "hardening doc makes the disclosure conditional"
+else
+  fail "hardening doc does not make the Confidence/Hardening disclosure conditional"
+fi
+if grep -qiF 'genuinely high-stakes' "skills/grill_me/SKILL.md" 2>/dev/null; then
+  fail "grill_me still carries its own undefined high-stakes trigger (AR #40)"
+else
+  pass "grill_me's standalone high-stakes trigger removed"
+fi
+if grep -qiF 'per preflight scan' "skills/preflight/report-format.md" 2>/dev/null || \
+   grep -qiF 'per scan' "skills/preflight/report-format.md" 2>/dev/null; then
+  pass "preflight report-format uses the per-scan batch challenger"
+else
+  fail "preflight report-format still mandates per-finding challengers (AR #3)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-30 — roadmap sync script (ST-H8 / AR #7): exists, --check clean on the fixture,
+# and detects seeded Progress drift in a temp copy.
+# -----------------------------------------------------------------------------
+section "ST-30: codeops-roadmap-sync.sh --check (clean + seeded drift)"
+if [[ -x "$ROADMAP_SYNC" ]]; then
+  pass "$ROADMAP_SYNC present and executable"
+  sync_tmp="$(mktemp -d)"
+  cp -R "scripts/fixtures/flat-repo/." "$sync_tmp/"
+  if (cd "$sync_tmp" && "$REPO_ROOT/$ROADMAP_SYNC" --check >/dev/null 2>&1); then
+    pass "--check exits 0 on the clean fixture"
+  else
+    fail "--check reports drift on the clean fixture (fixture and script must agree)"
+  fi
+  # Seed drift: corrupt a Progress cell in the fixture roadmap copy.
+  if sed -i -E 's/[0-9]+ ?\/ ?[0-9]+ \([0-9]+%\)/999 \/ 999 (0%)/' "$sync_tmp/plans/00-roadmap.md" 2>/dev/null; then
+    if (cd "$sync_tmp" && "$REPO_ROOT/$ROADMAP_SYNC" --check >/dev/null 2>&1); then
+      fail "--check did not detect seeded Progress drift"
+    else
+      pass "--check detects seeded Progress drift (non-zero exit)"
+    fi
+  else
+    fail "could not seed drift into the temp fixture copy"
+  fi
+  rm -rf "$sync_tmp"
+else
+  fail "$ROADMAP_SYNC missing or not executable"
+  fail "--check clean/seeded assertions skipped (script missing)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-31 — layout retrofit complete (ST-H9 / AR #6, #44): retro sub-docs carry no
+# unqualified flat _retro literal; convention doc has the flat mini-plan lane.
+# -----------------------------------------------------------------------------
+section "ST-31: retro nested paths + flat mini-plan lane"
+for f in "skills/retro_requirements/phases.md" "skills/retro_requirements/triage-gate.md"; do
+  if [[ -f "$f" ]] && grep -qF 'requirements/_retro/' "$f"; then
+    fail "$f still hardcodes the flat requirements/_retro/ path (AR #44)"
+  else
+    pass "$f no longer hardcodes the flat _retro path"
+  fi
+done
+if grep -qF 'plans/<task-slug>/' "_shared/layout-convention.md" 2>/dev/null && \
+   ! grep -qiF 'flat-layout repo has no task lane' "_shared/layout-convention.md" 2>/dev/null; then
+  pass "layout convention extends the mini-plan task lane to flat layout"
+else
+  fail "layout convention still excludes flat layout from the task lane (AR #6)"
+fi
+# AR #41 — the convention doc's layout-aware skill list must include techdocs.
+if grep -qF 'techdocs' "_shared/layout-convention.md" 2>/dev/null; then
+  pass "layout convention lists techdocs among the layout-aware skills"
+else
+  fail "layout convention omits techdocs from the layout-aware skill list (AR #41)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-32 — count-drift guard (ST-H10 / AR #22): filesystem-derived skill/command counts
+# must match every "N skills" / "N (slash )commands" claim in the prose surface.
+# Includes a self-test on a seeded temp copy so the guard itself is proven live.
+# -----------------------------------------------------------------------------
+section "ST-32: prose skill/command counts match the filesystem"
+SKILL_COUNT="$(ls -d skills/*/SKILL.md 2>/dev/null | wc -l | tr -d ' ')"
+CMD_COUNT="$(ls commands/*.md 2>/dev/null | wc -l | tr -d ' ')"
+# check_count_claims <file> — print each mismatched claim; silent when all claims match.
+check_count_claims() {
+  local f="$1" n
+  while read -r n; do
+    [[ -z "$n" ]] && continue
+    [[ "$n" == "$SKILL_COUNT" ]] || printf '%s: claims %s skills (actual %s)\n' "$f" "$n" "$SKILL_COUNT"
+  done < <(grep -ohE '[0-9]+ skills' "$f" 2>/dev/null | grep -oE '^[0-9]+' || true)
+  while read -r n; do
+    [[ -z "$n" ]] && continue
+    [[ "$n" == "$CMD_COUNT" ]] || printf '%s: claims %s commands (actual %s)\n' "$f" "$n" "$CMD_COUNT"
+  done < <(grep -ohE '[0-9]+ (slash )?commands' "$f" 2>/dev/null | grep -oE '^[0-9]+' || true)
+}
+COUNT_PROSE_FILES=(README.md docs/index.md docs/guide/introduction.md docs/reference/repo-map.md CHANGES.md)
+for f in "${COUNT_PROSE_FILES[@]}"; do
+  if [[ ! -f "$f" ]]; then
+    fail "$f missing (count guard target)"
+    continue
+  fi
+  mismatches="$(check_count_claims "$f")"
+  if [[ -z "$mismatches" ]]; then
+    pass "$f count claims match the filesystem ($SKILL_COUNT skills / $CMD_COUNT commands)"
+  else
+    fail "count drift:"$'\n'"$mismatches"
+  fi
+done
+# Self-test: the guard must actually detect a seeded wrong claim.
+selftest_tmp="$(mktemp)"
+printf 'This plugin ships 999 skills and 999 slash commands.\n' >"$selftest_tmp"
+if [[ -n "$(check_count_claims "$selftest_tmp")" ]]; then
+  pass "guard self-test: seeded wrong counts are detected"
+else
+  fail "guard self-test FAILED: seeded wrong counts were not detected"
+fi
+rm -f "$selftest_tmp"
+
+# -----------------------------------------------------------------------------
+# ST-35 — standards diet + hooks (ST-H13 / AR #26, #27): slim injected core with a
+# pointer to the full standards; PreToolUse marker guard registered.
+# -----------------------------------------------------------------------------
+section "ST-35: standards core + full split; PreToolUse marker guard"
+if [[ -s "$STANDARDS_FULL" ]]; then
+  pass "$STANDARDS_FULL exists and is non-empty"
+else
+  fail "$STANDARDS_FULL is missing or empty (AR #27)"
+fi
+core_lines="$(wc -l <"$STANDARDS" 2>/dev/null | tr -d ' ')"
+if [[ -n "$core_lines" && "$core_lines" -le 50 ]]; then
+  pass "injected standards core is slim ($core_lines lines <= 50)"
+else
+  fail "injected standards core is ${core_lines:-?} lines (> 50 — AR #27 diet)"
+fi
+if grep -qF 'coding-standards-full.md' "$STANDARDS" 2>/dev/null; then
+  pass "core standards point at the full reference"
+else
+  fail "core standards do not reference coding-standards-full.md"
+fi
+if is_valid_json "$HOOKS" && grep -qF 'PreToolUse' "$HOOKS" && grep -qF '.codeops.yml' "$HOOKS"; then
+  pass "hooks.json registers the PreToolUse marker guard"
+else
+  fail "hooks.json lacks the PreToolUse codeops/.codeops.yml marker guard (AR #26)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-36 — plan-template ceremony retired + coverage targets landed (ST-H14 / AR #28, #42).
+# -----------------------------------------------------------------------------
+section "ST-36: templates without session/hour ceremony; numeric criteria + coverage targets"
+TPL="skills/make_plan/templates.md"
+if [[ -f "$TPL" ]] && grep -qE '\|\s*Sessions\s*\|' "$TPL"; then
+  fail "$TPL still carries the Sessions column (AR #28)"
+else
+  pass "$TPL phase table no longer has a Sessions column"
+fi
+if grep -qF '90%' "$TPL" 2>/dev/null; then
+  pass "$TPL coverage targets present (90/80/60 table fills the placeholder)"
+else
+  fail "$TPL coverage-target table missing (AR #42)"
+fi
+QC="skills/make_plan/quality-checklist.md"
+if grep -qE '50.150 lines|1.3 files' "$QC" 2>/dev/null; then
+  pass "$QC carries the numeric task-size criteria"
+else
+  fail "$QC lacks the numeric task-size criteria (AR #28/#42)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-37 — roadmap stage machine is re-inferable (ST-H15 / AR #19).
+# -----------------------------------------------------------------------------
+section "ST-37: roadmap stage rules (artifacts, never-regress, Blocked (was:))"
+RMAP="skills/roadmap/SKILL.md"
+for sentinel in 'never regress' 'Blocked (was:' '00-preflight-report.md'; do
+  if [[ -f "$RMAP" ]] && grep -qiF "$sentinel" "$RMAP"; then
+    pass "roadmap skill carries: \"$sentinel\""
+  else
+    fail "roadmap skill missing stage-rule sentinel: \"$sentinel\""
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-38 — gitcm/gitcmp edge-case guards (ST-H16 / AR #24).
+# -----------------------------------------------------------------------------
+section "ST-38: gitcm/gitcmp guards"
+if grep -qiF 'nothing to commit' "commands/gitcm.md" 2>/dev/null; then
+  pass "gitcm has the clean-tree Step-0 guard"
+else
+  fail "gitcm lacks the clean-tree guard (AR #24)"
+fi
+if grep -qF 'push -u origin HEAD' "commands/gitcmp.md" 2>/dev/null; then
+  pass "gitcmp handles the no-upstream first push"
+else
+  fail "gitcmp lacks the no-upstream path (AR #24)"
+fi
+for f in commands/gitcm.md commands/gitcmp.md; do
+  if grep -qiE 'pre-commit' "$f" 2>/dev/null; then
+    pass "$f addresses pre-commit hooks"
+  else
+    fail "$f does not address pre-commit hooks (AR #24)"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-39 — alias wrappers are namespaced pure dispatch (ST-H17 / AR #25).
+# The 13 thin aliases must reference the plugin-qualified skill name.
+# -----------------------------------------------------------------------------
+section "ST-39: alias wrappers reference plugin-qualified skill names"
+ALIAS_WRAPPERS=(
+  add_requirement review_requirements upgrade_requirements
+  make_roadmap update_roadmap review_roadmap archive_roadmap
+  make_techdocs review_techdocs setup_codeops setup_routing
+)
+for w in "${ALIAS_WRAPPERS[@]}"; do
+  f="commands/$w.md"
+  if [[ -f "$f" ]] && grep -qF 'codeops:' "$f"; then
+    pass "$f references the codeops: namespaced skill"
+  else
+    fail "$f does not reference the plugin-qualified (codeops:) skill name"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-40 — Mermaid rendering claim fixed (ST-H18 / AR #23).
+# -----------------------------------------------------------------------------
+section "ST-40: techdocs Mermaid setup"
+if grep -qF 'vitepress-plugin-mermaid' "skills/techdocs/vitepress-setup.md" 2>/dev/null; then
+  pass "vitepress-setup installs vitepress-plugin-mermaid"
+else
+  fail "vitepress-setup does not install vitepress-plugin-mermaid (AR #23)"
+fi
+if grep -qiF 'renders it natively' "skills/techdocs/authoring-and-update.md" 2>/dev/null; then
+  fail "authoring-and-update still claims native Mermaid rendering (false)"
+else
+  pass "native-Mermaid claim removed"
 fi
 
 # -----------------------------------------------------------------------------

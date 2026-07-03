@@ -4,11 +4,9 @@ disable-model-invocation: true
 argument-hint: "[optional focus]"
 ---
 
-Run the **make_requirements** skill in **review_requirements** mode.
+Pure dispatch — no behavior lives here.
 
-Use the Skill tool to invoke `make_requirements`, treating this request as:
-`review_requirements $ARGUMENTS`
+Use the Skill tool to invoke `make_requirements` (`codeops:make_requirements` under the plugin) in its
+**review_requirements** mode, treating this request as: `review_requirements $ARGUMENTS`.
 
-Follow that skill's `review_requirements` protocol: audit the existing `requirements/` set for
-completeness, internal consistency, coverage, dependency correctness, scope creep, and orphaned
-RDs, then report findings (do not silently rewrite the RDs).
+The skill owns the entire protocol and all layout/path resolution.

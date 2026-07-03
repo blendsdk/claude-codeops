@@ -3,11 +3,9 @@ description: Upgrade an outdated requirements set to current CodeOps standards. 
 disable-model-invocation: true
 ---
 
-Run the **upgrade_plan** skill targeting **requirements**.
+Pure dispatch — no behavior lives here.
 
-Use the Skill tool to invoke `upgrade_plan`, treating this request as:
-`upgrade_requirements $ARGUMENTS`
+Use the Skill tool to invoke `upgrade_plan` (`codeops:upgrade_plan` under the plugin) in its
+**upgrade_requirements** mode, treating this request as: `upgrade_requirements $ARGUMENTS`.
 
-Follow that skill's protocol against the `requirements/` set: detect version, assess gaps, present
-the upgrade report before changing anything, pass the non-negotiable Content Quality Gate, apply
-upgrades preserving all user-authored content verbatim, then verify. Does not auto-advance the roadmap.
+The skill owns the entire protocol and all layout/path resolution.

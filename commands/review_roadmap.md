@@ -3,11 +3,9 @@ description: Read-only health check of the roadmap for drift, broken links, and 
 disable-model-invocation: true
 ---
 
-Run the **roadmap** skill's **review_roadmap** action.
+Pure dispatch — no behavior lives here.
 
-Use the Skill tool to invoke `roadmap`, treating this request as:
-`review_roadmap $ARGUMENTS`
+Use the Skill tool to invoke `roadmap` (`codeops:roadmap` under the plugin) in its
+**review_roadmap** mode, treating this request as: `review_roadmap $ARGUMENTS`.
 
-Follow that skill's `review_roadmap` checks: verify every RD/plan link resolves, every stage
-matches on-disk reality, every Blocked row has a live DEF-n (flag any whose blocker is already
-Done), and the progress counter matches the Done count. Report only — make no changes.
+The skill owns the entire protocol and all layout/path resolution.

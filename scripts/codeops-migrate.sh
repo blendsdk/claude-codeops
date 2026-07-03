@@ -97,6 +97,14 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+# A non-directory named `codeops` makes every apply step impossible — refuse up front with a
+# clear message instead of failing step-by-step (AR #18).
+if [[ -e codeops && ! -d codeops ]]; then
+  printf 'ERROR: `codeops` exists but is not a directory — the nested layout cannot be created.\n' >&2
+  printf '       Move or remove it, then re-run.\n' >&2
+  exit 1
+fi
+
 # -----------------------------------------------------------------------------
 # Derive the feature slug (roadmap header → else repo dir name), then sanitize.
 # -----------------------------------------------------------------------------
@@ -135,6 +143,12 @@ if [[ -d plans/_archive ]]; then
     aname="$(basename "$a")"
     moves+=("plans/_archive/$aname/|codeops/_archive/$aname/")
   done
+  # Loose FILES directly under plans/_archive/ move too — leaving them behind would strand a
+  # residual plans/ tree after the marker is written (AR #18).
+  for af in plans/_archive/*; do
+    [[ -f "$af" ]] || continue
+    moves+=("$af|codeops/_archive/$(basename "$af")")
+  done
 fi
 
 # -----------------------------------------------------------------------------
@@ -160,6 +174,14 @@ for f in plans/*; do
   [[ "$(basename "$f")" == "00-roadmap.md" ]] && continue
   warnings+=("loose-file-not-migrated: $f is directly under plans/ and is left in place (move it by hand)")
 done
+# (a3) loose files directly under plans/_archive/ ARE migrated (into codeops/_archive/), but get
+#      surfaced so the user knows an unusual artifact was found and relocated.
+if [[ -d plans/_archive ]]; then
+  for af in plans/_archive/*; do
+    [[ -f "$af" ]] || continue
+    warnings+=("archive-loose-file: $af is a loose file under plans/_archive/ — it will be moved to codeops/_archive/$(basename "$af")")
+  done
+fi
 # (b) relative links in plan docs that point OUT of the planning tree (into source, etc.).
 #     A structure-preserving move keeps intra-codeops links valid; only out-of-tree links can
 #     break, so we surface them as warnings rather than silently rewriting them (AR #16).
@@ -220,28 +242,52 @@ fi
 
 # -----------------------------------------------------------------------------
 # Apply: git mv each mapping, then write the marker + seeded portfolio LAST.
+#
+# Every step is failure-checked (AR #18): the FIRST failed step aborts the apply with a
+# non-zero exit, the marker is NEVER written after a failure (so the idempotency guard can
+# never brick a retry on a half-migrated tree), and the report names the failing step.
+# `set -e` is deliberately not relied on — explicit checks avoid its conditional/subshell
+# pitfalls and give a named failure.
 # -----------------------------------------------------------------------------
-mkdir -p "codeops/features/$slug/plans"
-[[ -d plans/_archive ]] && mkdir -p codeops/_archive
+fail_apply() {
+  printf '\ncodeops-migrate: FAILED at step: %s\n' "$1" >&2
+  printf '  The migration did NOT complete and NO layout marker was written.\n' >&2
+  printf '  Inspect with "git status"; undo any partial moves with "git reset --hard",\n' >&2
+  printf '  fix the cause, then re-run.\n' >&2
+  exit 1
+}
+step() {
+  local desc="$1"; shift
+  "$@" || fail_apply "$desc"
+}
 
-[[ -d requirements ]] && git mv requirements "codeops/features/$slug/requirements"
+step "mkdir codeops/features/$slug/plans" mkdir -p "codeops/features/$slug/plans"
+[[ -d plans/_archive ]] && step "mkdir codeops/_archive" mkdir -p codeops/_archive
+
+[[ -d requirements ]] && step "git mv requirements" git mv requirements "codeops/features/$slug/requirements"
 for d in plans/*/; do
   name="$(basename "$d")"
   [[ "$name" == "_archive" ]] && continue
-  git mv "plans/$name" "codeops/features/$slug/plans/$name"
+  step "git mv plans/$name" git mv "plans/$name" "codeops/features/$slug/plans/$name"
 done
-[[ -f plans/00-roadmap.md ]] && git mv plans/00-roadmap.md "codeops/features/$slug/00-roadmap.md"
+[[ -f plans/00-roadmap.md ]] && step "git mv plans/00-roadmap.md" git mv plans/00-roadmap.md "codeops/features/$slug/00-roadmap.md"
 if [[ -d plans/_archive ]]; then
   for a in plans/_archive/*/; do
+    [[ -d "$a" ]] || continue
     aname="$(basename "$a")"
-    git mv "plans/_archive/$aname" "codeops/_archive/$aname"
+    step "git mv plans/_archive/$aname" git mv "plans/_archive/$aname" "codeops/_archive/$aname"
+  done
+  for af in plans/_archive/*; do
+    [[ -f "$af" ]] || continue
+    step "git mv $af" git mv "$af" "codeops/_archive/$(basename "$af")"
   done
 fi
 # Remove the now-empty flat directories left behind by the moves.
 find plans requirements -type d -empty -delete 2>/dev/null || true
 
-# Marker — written LAST so an interrupted run never leaves a false "already migrated" flag.
-cat > codeops/.codeops.yml <<'YML'
+# Marker — written LAST, and only after every move step succeeded, so neither an interrupted
+# nor a FAILED run can leave a false "already migrated" flag.
+cat > codeops/.codeops.yml <<'YML' || fail_apply "write codeops/.codeops.yml"
 # CodeOps layout marker. Presence of this file opts the repo into the nested layout.
 # Sole writer: the setup_codeops skill (via codeops-migrate.sh). Schema: _shared/layout-convention.md
 codeopsLayout: nested
@@ -256,13 +302,13 @@ YML
 # Seeded portfolio roadmap — one row for the migrated feature. The roadmap skill refines the
 # stage/progress on the next /update_roadmap; this is a valid starting point.
 today="$(date '+%Y-%m-%d')"
-cat > codeops/00-roadmap.md <<PORTFOLIO
+cat > codeops/00-roadmap.md <<PORTFOLIO || fail_apply "write codeops/00-roadmap.md"
 # Portfolio Roadmap: $(basename "$ROOT")
 
 > **Status**: Active
 > **Last Updated**: $today
 > **Features**: 0 / 1 done
-> **CodeOps Skills Version**: 3.0.0
+> **CodeOps Skills Version**: 3.2.0
 
 ## Legend
 

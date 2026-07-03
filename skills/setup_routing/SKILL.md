@@ -1,7 +1,7 @@
 ---
 name: setup_routing
 description: >-
-  Configures per-project model and effort routing so Opus + high/xhigh thinking is spent only where it changes output quality and high-volume mechanical work runs on Sonnet. Use when the user says "setup_routing", "/setup_routing", "set up model routing", "configure model routing", "route tasks by model", or "make this project use Opus/Sonnet per task". Independently analyzes the repo, classifies it into a sensitivity profile (Opus-dominant, Mixed core/scaffold, Sonnet-default, or a Balanced fallback), proposes a tag-driven routing policy, waits for explicit confirmation, then writes a sentinel-delimited routing block into the project CLAUDE.md and the pinned-model executor subagents in .claude/agents/ that the policy references.
+  Configures per-project model and effort routing so Opus + high/xhigh thinking is spent only where it changes output quality and high-volume mechanical work runs on Sonnet. Use when the user says "setup_routing", "/setup_routing", "set up model routing", "configure model routing", "route tasks by model", or "make this project use Opus/Sonnet per task". Independently analyzes the repo, classifies it into a sensitivity profile (Opus-dominant, Mixed core/scaffold, Sonnet-default, or a Balanced fallback), proposes a tag-driven routing policy, waits for explicit confirmation, then writes a sentinel-delimited routing block into the project CLAUDE.md. The pinned-model executor subagents the policy references ship with the plugin (agents/); customized per-project copies in .claude/agents/ are an opt-in override.
 when_to_use: >-
   Trigger on "setup_routing", "/setup_routing", "set up / configure model routing", "route tasks by model / cost", or any request to make a project spend Opus only where it matters and Sonnet elsewhere. Operates on the CURRENT project's CLAUDE.md and .claude/agents/ — never on global user files. Re-runnable and non-destructive.
 argument-hint: "[short description of the project]"
@@ -9,7 +9,7 @@ argument-hint: "[short description of the project]"
 
 # Model & Effort Routing Setup (`setup_routing`)
 
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 Configure **per-project model and effort routing** for the project the user is currently in, so
 that expensive reasoning (Opus, high/xhigh thinking) is spent only where it changes output
@@ -29,13 +29,17 @@ Routing has **two layers**, and they must stay coordinated:
    `CLAUDE_CODE_SUBAGENT_MODEL` env var, which sits above subagent frontmatter and forces every
    subagent onto one model (a deliberate global cost-cap escape hatch — surface it in Phase 5).
 
-> The policy is only trustworthy because the pinned executors exist to back it. **Never generate
-> routing prose that references an executor subagent that does not exist.** Phase 4 writes the
-> executors and the policy together, executors first.
+> The policy is only trustworthy because the pinned executors exist to back it. Since v3.2.0 the
+> two executors (`plan-task-executor`, `plan-task-executor-opus`) **ship with the plugin** in its
+> `agents/` directory — every install has them, so the policy block is valid on its own. **Never
+> generate routing prose that references an executor that exists neither in the plugin nor in the
+> project.** Per-project copies under `.claude/agents/` are an **opt-in override** for users who
+> want customized executor prompts (a project agent of the same name shadows the plugin one).
 
 > The policy layer is a *behavioral instruction to the orchestrator*, not a hard guarantee. The
-> `exec_plan` skill executes tasks inline today; the routing block asks it to delegate by tag.
-> This is the one thing the user must validate in the real world (see Phase 5).
+> `exec_plan` skill's "Delegated Execution" protocol (execution-protocol.md) defines the handoff
+> packet, the parent/subagent division of labor, and a missing-executor guard (inline fallback
+> with notice). Watching one real delegated task run is still the recommended validation (Phase 5).
 
 ## Project configuration
 
@@ -50,9 +54,10 @@ rewrites the user's own sections. It reuses the non-destructive merge discipline
   user's description only as a hint. State the evidence behind the classification.
 - **Hard confirmation gate.** Never write anything until the user explicitly approves (Phase 3).
 - **Non-destructive & idempotent.** Re-running must be safe: update the sentinel block in place,
-  never duplicate it; create executors only if absent; never overwrite a user's existing file.
-- **Operate on the current project only.** Touch the project's `CLAUDE.md` and `.claude/agents/`.
-  **Never edit `~/.claude/CLAUDE.md` or any global user file.**
+  never duplicate it; write executor overrides only when the user opts in AND the file is absent;
+  never overwrite a user's existing file.
+- **Operate on the current project only.** Touch the project's `CLAUDE.md` (and `.claude/agents/`
+  only for opted-in overrides). **Never edit `~/.claude/CLAUDE.md` or any global user file.**
 - **Concise generated output.** The routing block is injected into every session; keep it tight.
 - **Grounded options & recommendations.** When you present the profile, the proposal, or any
   adjustment choice, follow the always-on Grounded Options directive in the coding standards:
@@ -127,10 +132,11 @@ any existing `CLAUDE.md`. Combine the evidence with the user's one-line descript
 
 ### Phase 2 — Classify & propose
 Pick a profile and **state the evidence** ("I see `parser/`, `ir/`, and `codegen.rs` — classifying
-as Opus-dominant"). Then present, in full and exactly as they will be written:
+as Opus-dominant"). Then present, in full and exactly as it will be written:
 - the chosen profile and its default tag + escalation rule;
 - the complete routing block (from [templates.md](templates.md), filled in);
-- the list of executor subagents to create, with their target paths under `.claude/agents/`.
+- a note that the referenced executors ship with the plugin, plus the OPTIONAL override: offer to
+  copy them into `.claude/agents/` for per-project prompt customization.
 
 ### Phase 3 — Confirmation gate (HARD STOP)
 Ask the user to **confirm**, **adjust** (override the profile or individual tag mappings), or
@@ -138,15 +144,18 @@ Ask the user to **confirm**, **adjust** (override the profile or individual tag 
 
 ### Phase 4 — Write
 Apply the writes from [templates.md](templates.md):
-1. **Executors first.** For each executor, create it under `.claude/agents/` only if absent. On a
-   name collision, **report and skip**, or offer a suffixed name — never overwrite a user's file.
-2. **Routing block.** Apply the sentinel merge to the project `CLAUDE.md` (replace between markers /
-   append / refuse-on-corruption — see templates.md).
+1. **Routing block (the default — usually the only write).** Apply the sentinel merge to the
+   project `CLAUDE.md` (replace between markers / append / refuse-on-corruption — see
+   templates.md). The executors it references ship with the plugin; nothing else to write.
+2. **Executor overrides (ONLY if the user opted in at Phase 3).** Copy the plugin's executor
+   files into `.claude/agents/` for customization — each only if absent; on a name collision,
+   **report and skip**, or offer a suffixed name — never overwrite a user's file.
 Never touch content outside the managed block or pre-existing executor files.
 
 ### Phase 5 — Verify & report
 Summarize exactly what was written and where. Tell the user how to confirm:
-- run `/agents` to see the executors;
+- run `/agents` to see the executors (plugin-shipped, plus any project overrides — a project
+  agent of the same name shadows the plugin one);
 - inspect the `<!-- CODEOPS-ROUTING -->` block in `CLAUDE.md`;
 - (recommended) run one `exec_plan` task and confirm the Sonnet executor is actually selected.
 
@@ -161,8 +170,8 @@ have set `CLAUDE_CODE_SUBAGENT_MODEL`, which overrides every subagent's pinned m
 
 ## Related skills
 
-- **exec_plan skill** — consumes the routing block: delegates each tagged task to the executor the
-  policy names. Today it executes inline, so delegation is behavioral — the soft-spot to validate.
+- **exec_plan skill** — consumes the routing block via its "Delegated Execution" protocol
+  (handoff packet, parent-owns-plan-file, blocker path, missing-executor inline fallback).
 - **make_plan skill** — the routing block asks it to tag each generated task `trivial`/`standard`/
   `complex`/`sensitive` within this project.
 - **preflight skill** — always Opus under every profile (and semantic-correctness-focused under B).

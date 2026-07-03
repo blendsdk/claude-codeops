@@ -16,12 +16,15 @@ Run the full `/gitcm` flow, then sync with the remote and push.
 
 ## Steps
 
-1. **Do everything `/gitcm` does:** verify (build + test) → `git add .` → write a Conventional
-   Commit message to a file → `git commit -F <file>` → clean up the temp file. **Never use
-   `git commit -m`.** If verify fails, stop and report — do not commit.
-2. **Rebase on the remote:** `git pull --rebase`.
-3. **If the rebase is clean,** push: `git push`. Then report the pushed commit.
-4. **If the rebase reports conflicts,** follow the Conflict Protocol below — do **not** push.
+1. **Do everything `/gitcm` does:** clean-tree guard ("nothing to commit" → stop) → verify
+   (build + test) → deliberate staging → file-based Conventional Commit → pre-commit-hook
+   handling → clean up. **Never use `git commit -m`.** If verify fails, stop and report.
+2. **Upstream check.** If the branch has no upstream (`git rev-parse --abbrev-ref @{u}` fails —
+   a first push of a new branch), skip the rebase and, after confirming with the user, push
+   with `git push -u origin HEAD`. Then report and stop here.
+3. **Rebase on the remote:** `git pull --rebase`.
+4. **If the rebase is clean,** push: `git push`. Then report the pushed commit.
+5. **If the rebase reports conflicts,** follow the Conflict Protocol below — do **not** push.
 
 If the user passed `$ARGUMENTS`, use it as a hint for the scope or emphasis. See `/gitcm` for
 the full commit-message format and scope guidance.
@@ -47,6 +50,7 @@ without explicit user instruction.
 | Authentication error | SSH key / token | Report — cannot fix programmatically |
 | Remote rejection | Branch protection | Report — may need a PR workflow |
 | Non-fast-forward | Remote has new commits | `git pull --rebase`, resolve, retry push once |
+| No upstream configured | First push of a new branch | Confirm, then `git push -u origin HEAD` |
 | Network error | Connectivity | Wait briefly, retry **once**, then report |
 
 In all cases the local commit is safe. Report the error clearly and suggest the most likely
