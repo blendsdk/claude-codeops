@@ -6,10 +6,15 @@ the two executor subagents, the sentinel routing block, and the merge rules. Fil
 
 ---
 
-## 1. Executor subagents (`.claude/agents/` in the TARGET project)
+## 1. Executor subagents (plugin-shipped; per-project override is opt-in)
 
-Create each only if it does not already exist. Never overwrite a user's file of the same name —
-report the collision and skip, or offer a suffixed name.
+Since v3.2.0 both executors ship with the plugin in its `agents/` directory
+(`agents/plan-task-executor.md`, `agents/plan-task-executor-opus.md`) — the routing block works
+on every install with NO per-project agent writes. Write copies into the TARGET project's
+`.claude/agents/` ONLY when the user opted in at Phase 3 (customized prompts; a project agent of
+the same name shadows the plugin one). For an override: start from the plugin file's current
+content, create each only if it does not already exist, and never overwrite a user's file of the
+same name — report the collision and skip, or offer a suffixed name.
 
 > **`model:` field syntax.** These templates use the `sonnet` / `opus` shorthand (also valid:
 > `haiku`, `fable`, `inherit`, or a full model id). Confirm the shorthand is valid for the user's
@@ -31,43 +36,13 @@ report the collision and skip, or offer a suffixed name.
 > that model. That is a deliberate global cost-cap escape hatch, not a bug — mention it in the
 > Phase 5 summary so the user knows their pins are honored unless they have set it.
 
-### `.claude/agents/plan-task-executor.md` (Sonnet)
+### Override sources
 
-```markdown
----
-name: plan-task-executor
-description: Executes a single scoped, lower-sensitivity task from a CodeOps exec_plan. Implements code, writes/updates tests, runs the project verify command, reports pass/fail. Use for trivial and standard tasks.
-tools: Read, Write, Edit, Bash, Grep, Glob
-model: sonnet
-effort: medium
----
-
-You execute exactly ONE task handed to you from a CodeOps execution plan.
-- Follow the project's CLAUDE.md for build/test/verify commands and conventions.
-- Implement only the assigned task; do not expand scope.
-- Write/update tests as the plan specifies, then run the verify command.
-- Report in 3-4 lines: what changed, test status, any blocker.
-Keep your context lean — you are given everything you need.
-```
-
-### `.claude/agents/plan-task-executor-opus.md` (Opus)
-
-```markdown
----
-name: plan-task-executor-opus
-description: Executes a single high-sensitivity or complex task from a CodeOps exec_plan — semantic analysis, codegen, query lowering, concurrency, security, or performance-critical work. Use for complex and sensitive tasks.
-tools: Read, Write, Edit, Bash, Grep, Glob
-model: opus
-effort: high
----
-
-You execute exactly ONE high-sensitivity task from a CodeOps execution plan.
-- Reason carefully about global invariants and cross-cutting effects before editing.
-- Follow the project's CLAUDE.md for build/test/verify commands and conventions.
-- Implement only the assigned task; do not expand scope.
-- Write/update tests, run the verify command, and explicitly note any invariant or
-  edge case you considered. Report what changed, test status, and residual risk.
-```
+The override starting-point content is NOT duplicated here (it would drift): read the plugin's
+`agents/plan-task-executor.md` (Sonnet, effort medium) and `agents/plan-task-executor-opus.md`
+(Opus, effort high) and copy their current content verbatim, then customize. Both carry the
+handoff-packet contract, the spec-test blocker rule, and the never-guess/never-edit-the-plan
+rules — keep those in any customization.
 
 ---
 

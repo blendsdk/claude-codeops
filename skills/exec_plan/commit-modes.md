@@ -85,10 +85,13 @@ When `--auto-commit` is specified:
 
 ## Commit message format
 
-When committing (ask mode approved, or auto-commit), use this message format:
+When committing (ask mode approved, or auto-commit), use this message format. The Conventional
+Commits **type comes from the task's nature** — `feat` for new capability, `fix` for a bugfix,
+`test` for test-only tasks, `docs` for documentation, `refactor`/`chore` for restructuring and
+plumbing — never a hardcoded `feat` for everything:
 
 ```
-feat([scope]): [task description]
+[type]([scope]): [task description]
 
 - [Specific change 1]
 - [Specific change 2]

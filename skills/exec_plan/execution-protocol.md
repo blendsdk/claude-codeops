@@ -28,6 +28,7 @@ If the execution plan can't be loaded cleanly, **STOP** and handle as follows:
 | `plans/[feature-name]/` exists but `99-execution-plan.md` is missing | STOP — plan is incomplete; suggest recreating it with the make_plan skill |
 | `99-execution-plan.md` exists but has no tasks | STOP — plan is empty; suggest recreating it with the make_plan skill |
 | All tasks already marked `[x]` | Report "All tasks are already complete." Suggest re-analyzing the project via the `/analyze_project` command |
+| No verify command resolvable — the plan's Verify lines are empty/generic AND neither the project's CLAUDE.md nor its manifests name one | STOP — ask the user to name the verify command, write it into the plan's Verify lines, then proceed. **Never invent a command** (a plausible-looking `npm test` that was never configured verifies nothing) |
 
 ### Version Check (auto-suggest)
 
@@ -87,6 +88,38 @@ covered by the plan documents or `00-ambiguity-register.md`:
 
 This applies to ALL ambiguities — architectural, behavioral, naming, formatting, UX, error
 handling. Never fill gaps by guessing.
+
+---
+
+## Delegated Execution (routing-tagged tasks → executor subagents)
+
+When the project's CLAUDE.md carries a routing policy (see the setup_routing skill) that maps
+task tags to executor subagents (`plan-task-executor` / `plan-task-executor-opus`, shipped in the
+plugin's `agents/` directory), delegate tagged tasks as follows.
+
+**The handoff packet.** The parent composes it; the subagent receives nothing else and must not
+need anything else:
+
+- the verbatim task line from `99-execution-plan.md`, plus its phase's Deliverables and Verify lines;
+- the relevant excerpt of the governing `03-XX` spec document (the excerpt, not a filename);
+- the applicable ST-cases from `07-testing-strategy.md`;
+- the AR decisions that bear on this task (quoted rows, not the whole register);
+- the target file paths and the project's verify command.
+
+**Division of labor.** The PARENT — never the subagent — updates `99-execution-plan.md`
+(two-stage marks), the Progress header, and the roadmap. The subagent implements and reports.
+Mark `[~]` when the subagent reports implementation done; verify (or trust the subagent's verify
+run and spot-check it); promote to `[x]` on pass.
+
+**Blocker path.** On ambiguity, missing packet context, or a failing SPEC test, the subagent
+stops and returns a blocker report. The parent then runs the zero-ambiguity loop above with the
+user (STOP → options → decision → AR `(runtime)` entry) and re-delegates with the enriched
+packet. A subagent never asks the user directly and never guesses.
+
+**Missing-executor guard.** If the routing policy names executors that are not present in the
+agent registry (e.g. the plugin's `agents/` isn't loaded, or the project overrode them and the
+override is gone), execute the task inline and tell the user delegation was skipped and why.
+Delegation is an optimization — the protocol's guarantees hold either way.
 
 ---
 
@@ -194,9 +227,16 @@ Run `/exec_plan [feature-name]` again in a new session.
 
 ### If implementation deviates from the plan
 
-1. Note the deviation in the execution plan.
-2. Update task descriptions if needed.
-3. Continue with the corrected approach.
+A deviation is by definition territory the plan doesn't cover — route it by materiality:
+
+- **Material deviation** (different approach, different files, different behavior than the plan
+  specifies): run the Zero-Ambiguity loop above — STOP, present the deviation with options,
+  wait for the user's decision, record it in `00-ambiguity-register.md` tagged `(runtime)`,
+  update the task description, then continue.
+- **Mechanical correction** (typo'd path, renamed symbol, an import the plan forgot): note it in
+  the execution plan and continue — no user round-trip needed.
+
+When unsure which it is, treat it as material.
 
 ### If a session is interrupted mid-task
 
