@@ -15,7 +15,7 @@ argument-hint: "[make | update | review | archive]"
 
 # roadmap — Live Feature-Set Roadmap Keeper
 
-> **CodeOps Skills Version**: 3.1.0
+> **CodeOps Skills Version**: 3.2.0
 
 ## Resolve paths first (layout-aware)
 
