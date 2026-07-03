@@ -47,18 +47,19 @@ Determine the layout via **[../../_shared/layout-convention.md](../../_shared/la
 Full prompt wording, end-of-plan reminders, and commit-message format live in
 [commit-modes.md](commit-modes.md) — read it before the first commit decision.
 
-## Lightweight tasks (nested layout)
+## Lightweight tasks (both layouts)
 
-A **non-trivial task** (`T-NN`) has a single mini-plan at
-`codeops/features/<f>/plans/<task-slug>/99-execution-plan.md`. Execute it **exactly like a feature
+A **non-trivial task** has a single mini-plan at the resolved task path (flat:
+`plans/<task-slug>/99-execution-plan.md`; nested:
+`codeops/features/<f>/plans/<task-slug>/99-execution-plan.md`). Execute it **exactly like a feature
 plan** — same per-task loop, same real-time update mandate, same commit modes — it is just a
 smaller `99-execution-plan.md` (objective + checklist + verify, no `00–07` set). Specification-first
 ordering still applies *when the task warrants tests* (e.g. a bugfix's regression test).
 
 A **trivial task** has **no plan document** to run: do the work directly, then record it as a
 `T-NN` roadmap row + the commit (no execution-plan loop). The task model and routing rule live in
-**[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**. (Flat-layout repos have no
-task lane — treat such work as a small plan, as in flat layout.)
+**[../../_shared/layout-convention.md](../../_shared/layout-convention.md)** — the lane exists in both
+layouts (flat gained it in 3.2.0).
 
 ## Execution protocol (summary)
 
@@ -69,8 +70,10 @@ summary template. The essentials:
 ### Step 1 — Load the plan
 
 1. Read `plans/$ARGUMENTS/99-execution-plan.md`.
-2. Find incomplete tasks (unchecked `[ ]` items); read supporting specs in `plans/$ARGUMENTS/`.
-3. Determine the starting point: first incomplete phase/session/task.
+2. Find incomplete tasks — both `[ ]` and implemented-but-unverified `[~]`; read supporting specs
+   in `plans/$ARGUMENTS/`.
+3. Determine the starting point: a `[~]` task is resumed first (re-verify, then promote or keep
+   fixing); otherwise the first `[ ]` task.
 4. If the plan is missing/empty/already complete, **STOP** — see the load table in
    [execution-protocol.md](execution-protocol.md). Generally suggest the make_plan skill.
 

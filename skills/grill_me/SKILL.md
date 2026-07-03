@@ -283,22 +283,34 @@ When `grill_me` is used without a follow-up skill:
 
 ## Session Management
 
-### Progress Persistence
+### Progress Persistence (save-as-you-go)
 
-If a grill-me session is getting long and you want to preserve progress (for
-example, before the conversation ends or context gets tight):
+Notes are checkpointed **as the interview progresses, not on interruption** — a crash must lose
+at most the branch in flight:
 
-1. Save all progress to a `_grill_me_notes.md` file (in the project root or a relevant directory)
-2. Include: design tree, resolved decisions, confirmed assumptions, remaining branches
-3. Note which branch/step to resume from
+1. **Location (fixed, layout-aware):** `<resolved plans dir>/_draft/grill-notes-<topic-slug>.md`
+   (flat: `plans/_draft/…`; nested: `codeops/features/<f>/plans/_draft/…` — resolve per
+   `_shared/layout-convention.md`; if no plans dir exists yet, create `_draft/` lazily).
+2. **Checkpoint cadence:** write/update the file after the design tree is mapped and after EACH
+   branch resolves — never only when the session "feels long".
+3. **Schema (minimal):** topic + date + git ref (or mtime) of any artifact under discussion;
+   the design tree; resolved decisions; confirmed assumptions; named deferrals (shared format);
+   remaining branches; which branch/step to resume from.
 
 ### Resuming
 
 When the user types `grill_me --continue`:
 
-1. Read `_grill_me_notes.md`
-2. Summarize where you left off
-3. Continue from the next unresolved branch
+1. Read the notes file from the resolved location.
+2. **Staleness check:** if a referenced artifact changed since the recorded ref/mtime, say so
+   and re-open the branches it affects.
+3. Summarize where you left off and continue from the next unresolved branch.
+
+### On completion
+
+Fold the notes into the Shared Understanding summary and **delete the notes file** — a stale
+notes file must never be picked up by a later `--continue` on a different topic (the schema's
+topic line is the second guard: a mismatch is treated as stale and reported).
 
 ## Technical Decisions
 

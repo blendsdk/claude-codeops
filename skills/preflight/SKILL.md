@@ -151,14 +151,25 @@ and re-scans all 13 dimensions. **Findings numbered continuously** — if iterat
 iteration 2 starts at PF-013; numbers never reuse. Loop until a clean pass, the user stops, or only
 🔵 observations remain. Full re-scan header and numbering rules in [report-format.md](report-format.md).
 
-## Session resume
+## Session resume (save-as-you-go)
 
-If a session is interrupted (or context is filling up), save progress to a `_preflight_notes.md`
-file in the artifact directory — record completed dimensions, findings so far, pending dimensions,
-user decisions collected, and codebase reconnaissance notes (key files examined, references
-mapped). When the user runs `preflight --continue`, read that file, summarize where you left off,
-and resume from the next unscanned dimension. **Do NOT repeat reconnaissance** — reuse the notes;
-re-read specific files only when a finding needs deeper inspection.
+Continuity notes are written **as you go, not on interruption** — a hard crash must lose at most
+one dimension of work:
+
+- **Checkpoint cadence:** update `_preflight-notes.md` (in the artifact directory, next to where
+  the report will be saved) after the recon step completes and after EACH dimension finishes —
+  never only when a session "feels long".
+- **Schema (minimal):** the artifact path + its git ref (or mtime) at scan start; completed
+  dimensions; findings so far (numbers + one-liners); pending dimensions; user decisions
+  collected; recon notes (key files examined, references mapped).
+- **On `preflight --continue`:** read the notes, then run the **staleness check** — if the
+  artifact changed since the recorded ref/mtime, say so and re-scan the affected dimensions
+  rather than trusting stale findings. Summarize where you left off and resume from the next
+  unscanned dimension. **Do NOT repeat reconnaissance** — reuse the notes; re-read specific
+  files only when a finding needs deeper inspection.
+- **On completion:** delete `_preflight-notes.md` — a stale notes file must never be picked up
+  by a later scan of a different artifact (the schema's artifact reference is the second guard:
+  a mismatch is treated as stale and reported).
 
 ## Same-agent bias awareness — 🚨 NON-NEGOTIABLE
 

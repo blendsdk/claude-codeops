@@ -36,12 +36,12 @@ Determine the layout via **[../../_shared/layout-convention.md](../../_shared/la
 - **Flat layout** (no marker): the plan folder is `plans/<feature-name>/`; `00-index.md` declares `> **Implements**: RD-NN` — exactly as flat layout always has.
 - **Nested layout** (marker present): the plan folder is `codeops/features/<f>/plans/<plan>/`. **Ask/confirm the target feature** first (create the feature folder lazily if new — never guess). `00-index.md` declares a **feature-qualified** `> **Implements**: <feature>/RD-NN`, and any `> **Source**` link points at the feature's own `requirements/` dir. Everywhere below that says `plans/<feature-name>/` means this nested plan path.
 
-## Lightweight tasks (mini-plan path — nested layout)
+## Lightweight tasks (mini-plan path — both layouts)
 
 Not every change is a feature. Ad-hoc work (a bugfix, chore, small change) is a **task** (`T-NN`), and a *non-trivial* task gets a **single mini-plan**, not the full multi-document set. When the work is a task (see the routing rule in **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**):
 
-- Write **only** `codeops/features/<f>/plans/<task-slug>/99-execution-plan.md` — an execution doc with an **Objective**, a short **task checklist**, and a **Verify** line. **No** `00–07` docs, **no** RD, **no** Zero-Ambiguity Gate.
-- Stamp it `> **Type**: Task (lightweight) · **Feature**: <f> · **CodeOps Skills Version**: 3.1.0` and a `> **Progress**:` line.
+- Write **only** the mini-plan at the resolved task path (flat: `plans/<task-slug>/99-execution-plan.md`; nested: `codeops/features/<f>/plans/<task-slug>/99-execution-plan.md`) — an execution doc with an **Objective**, a short **task checklist**, and a **Verify** line. **No** `00–07` docs, **no** RD, **no** Zero-Ambiguity Gate.
+- Stamp it `> **Type**: Task (lightweight) · **Feature**: <f> · **CodeOps Skills Version**: 3.1.0` and a `> **Progress**:` line (in flat layout drop the `**Feature**:` part).
 - Specification-first ordering still applies *when the task warrants tests* (e.g. a bugfix gets a regression test first); a trivial doc/config tweak may not.
 - A **trivial** task needs no plan at all — it is just a roadmap row + the commit (point the user to the roadmap skill, then do the work).
 

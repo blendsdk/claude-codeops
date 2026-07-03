@@ -828,7 +828,7 @@ if [[ -x "$ROADMAP_SYNC" ]]; then
     fail "--check reports drift on the clean fixture (fixture and script must agree)"
   fi
   # Seed drift: corrupt a Progress cell in the fixture roadmap copy.
-  if sed -i -E 's/[0-9]+\/[0-9]+ \([0-9]+%\)/999\/999 (0%)/' "$sync_tmp/plans/00-roadmap.md" 2>/dev/null; then
+  if sed -i -E 's/[0-9]+ ?\/ ?[0-9]+ \([0-9]+%\)/999 \/ 999 (0%)/' "$sync_tmp/plans/00-roadmap.md" 2>/dev/null; then
     if (cd "$sync_tmp" && "$REPO_ROOT/$ROADMAP_SYNC" --check >/dev/null 2>&1); then
       fail "--check did not detect seeded Progress drift"
     else
