@@ -9,7 +9,8 @@ Run this before finalizing the plan documents. The **Specification-First Testing
 - [ ] All dependencies mapped
 
 ## ✅ Granularity
-- [ ] Tasks are 2-4 hours max each
+- [ ] Each task is one reviewable change: 1-3 files, ~50-150 lines, immediately testable
+- [ ] Anything touching >=6 files, 200+ lines, or 3+ concerns is SPLIT into multiple tasks
 - [ ] Each task has clear deliverables
 - [ ] Each task is independently testable
 

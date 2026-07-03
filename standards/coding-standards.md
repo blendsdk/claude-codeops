@@ -1,66 +1,47 @@
-# Coding standards (CodeOps)
+# Coding standards (CodeOps) — core
 
 These apply to all code I write unless this project's `CLAUDE.md` overrides a specific point.
+This is the compact, always-injected core; the complete text lives in
+`standards/coding-standards-full.md` — **read it before writing substantial code or tests.**
+Do not duplicate these standards in `~/.claude/CLAUDE.md` — the plugin injects them.
 
 ## Quality & structure
-- **DRY.** Extract repeated logic, constants, and patterns; if similar code appears in more than one place, refactor it.
-- **Clarity over cleverness.** Every line should be readable by a junior developer. Prefer explicit logic over "smart" one-liners.
-- **Single responsibility** per function/class/module.
-- **No dead code.** Remove unused imports, variables, parameters, functions, unreachable code, and commented-out blocks (use version control instead). For intentionally-unused required parameters, use the language's convention (e.g. `_param`). Lean on the language's unused-detection tooling.
-- **Consistency is non-negotiable.** Follow the existing patterns, naming, and architecture of the file/codebase; don't introduce new styles without a strong reason.
-- **If in doubt, be explicit** — more readable code and clearer structure beat fewer lines.
+- **DRY**; **clarity over cleverness** (junior-readable); **single responsibility**; **no dead
+  code**; **consistency with the existing codebase is non-negotiable**; be explicit when in doubt.
+- Split files before ~500 lines; respect module boundaries (import public APIs only); imports at
+  the top; keep the dependency surface minimal.
+- Comment **why**, not what; every public/protected API gets a doc comment.
+- Statically-typed code: no unsafe casts (`as any`/`as unknown`); use type guards; enums/constants
+  for discriminators.
 
-## Documentation
-- Comment **why**, not just what — explain complex logic, edge cases, and non-obvious decisions.
-- Every **public/protected** class, method, function, and component gets a doc comment (purpose, params, return, side effects) in the language's format (JSDoc, docstrings, `///`, etc.).
-
-## Architecture & boundaries
-- **Split files before ~500 lines** or when they hold multiple concerns; aim for 200–500 lines per file. Use foundation-first layering with a single public entry point (`index`/`mod`/`__init__`).
-- **Respect module/package boundaries** — import from public APIs, never reach into another module's internals.
-- Keep imports at the top; separate type-only imports from value imports where supported; avoid deprecated import styles.
-- Separate runtime dependencies from dev/build dependencies; keep the dependency surface minimal.
-
-## Type safety (statically-typed languages)
-- Proper top-of-file imports for types — no inline `import(...)` type expressions.
-- Use type guards / narrowing; **no unsafe casts** (`as any`, `as unknown`) to bypass the type system in production code.
-- Provide all required fields when constructing typed objects; use enums/constants for discriminators, not bare string literals.
-
-## OOP (when the project uses classes)
-- Prefer `public`/`protected` over `private` (unless `private` is idiomatic for the language and the project opts in). Treat `protected` as internal and document it.
-
-## Security — non-negotiable, from the first line of code
-- **Validate and sanitize all input server-side** with allowlists; check types, ranges, lengths, formats at every entry point.
-- **Prevent injection:** parameterized queries (never string-concatenate SQL/NoSQL), escape output / use framework auto-escaping (XSS), never pass unsanitized input to shells/`eval` (command injection), canonicalize and reject `..`/absolute paths (path traversal), anti-CSRF tokens + `SameSite` cookies, rate-limit auth endpoints.
-- **Protect data:** TLS in transit; encrypt sensitive data at rest; hash passwords with `bcrypt`/`argon2`/`scrypt`; never hardcode secrets (use env vars / secret managers); never log secrets or PII; return minimal errors in production; restrictive CORS; request-size limits; audit dependencies; run containers as non-root from minimal images.
+## Security — non-negotiable, from the first line
+- Validate and sanitize ALL input server-side (allowlists). Prevent injection: parameterized
+  queries, escaped output, no unsanitized shell/`eval`, canonicalized paths (reject `..`),
+  anti-CSRF + `SameSite`, rate-limited auth.
+- Protect data: TLS in transit, encryption at rest, `bcrypt`/`argon2`/`scrypt` for passwords, no
+  hardcoded secrets, never log secrets/PII, minimal prod errors, restrictive CORS, non-root
+  containers.
 
 # Testing standards
-
-- **Run the project's verify command (build + test) before completing any task or committing.** No code is "done" while any test fails.
-- **Targeted vs. full:** iterate with targeted tests, but run the **full** verify before declaring completion.
-- **Maximum, granular coverage:** happy path, edge/boundary cases, error/invalid inputs, and integration — each test focused on one thing with a clear failure message.
-- **End-to-end tests** for complete workflows wherever feasible.
-- **Prefer real objects over mocks.** Only mock true externals (DB, HTTP, filesystem) or not-yet-built implementations.
-- **Split test files by concern** (~200–300 lines max): `[feature].[concern].test.[ext]`.
-- **Specification vs. implementation tests (non-negotiable).** Keep them in separate files:
-  - *Specification tests* (`[feature].spec.test.[ext]`) derive expectations from requirements/acceptance criteria/API contracts — **never** from reading the implementation. They are immutable oracles: if a spec test fails after implementation, the **implementation** is wrong. Don't weaken or "fix" a spec test to match broken code without explicit approval. Each carries a traceability comment to its source requirement.
-  - *Implementation tests* (`[feature].impl.test.[ext]`) cover internals, edge cases, and error paths.
-  - When planning with the CodeOps skills, this is enforced as: write spec tests → confirm they fail (red) → implement → make them pass (green) → add implementation tests → verify.
-- **Security tests are mandatory** for input validation, authz, injection, and rate limiting.
+- **Run the project's verify command before completing any task or committing**; full verify
+  before declaring done. No code is "done" while any test fails.
+- Granular coverage (happy path, edges, errors, integration); E2E where feasible; real objects
+  over mocks (mock only true externals); test files split by concern.
+- **Specification vs. implementation tests (non-negotiable):** `[feature].spec.test.[ext]`
+  derives from requirements only — an immutable oracle (a failing spec test means the
+  implementation is wrong, never the test); `[feature].impl.test.[ext]` covers internals.
+  Order: spec tests → red → implement → green → impl tests → verify.
+- Security tests are mandatory (input validation, authz, injection, rate limiting). Non-code
+  artifacts get validation too — see the full standards' validation-command table.
 
 # Working style
-- **Ask before assuming.** When a request is ambiguous, ask clarifying questions and suggest improvements rather than guessing. (For deep, structured disambiguation, the `grill_me` skill exists.)
-- **Don't overcomplicate.** Use existing infrastructure and patterns before adding new ones.
-- **Verify previous work** before building on it; confirm a task actually meets its acceptance criteria before calling it done.
-- **Grounded options & recommendations (NON-NEGOTIABLE).** Whenever you present options, choices, or recommendations — from analysis, defect/bug findings, a direction to fix a bug, requirements choices, plan-making, or plan execution:
-  1. **Filter** — present only genuinely viable options; drop weakly-grounded options that realistically won't be chosen and never pad with strawmen. Present ≥2 options only when ≥2 are genuinely viable; when one path clearly dominates, present it alone, say it is the only viable one, and name what you rejected and why.
-  2. **Second-guess** — critique and stress-test each surviving option *before* presenting it, not after.
-  3. **Ground in the code** — for any option that involves modifying existing code, verify it against the actual current code (read the real files) before presenting and cite the evidence as `file:line`; if you could not verify, say so explicitly.
-  4. **Recommend** — lead with your recommended option and a concrete, grounded reason. You recommend; the user decides — never decide for them.
-  - **Proportionality** — match the ceremony to the stakes. Trivial, easily-reversible, or obvious choices get a one-line recommendation; the full four-step treatment is for consequential or code-modifying decisions. Drowning the user in analysis wastes their time as surely as strawman options do.
-  - **Presentation** (consequential decisions) — lead with the recommendation, then each surviving option with its viability, terse pros/cons, and (for code-touching options) a `file:line` evidence cite; close with a one-line "considered and dropped: …" when you filtered options out.
-  - **Harden before presenting** (consequential decisions) — institutionalize the "are these your best?" challenge so it runs *before* you present and *converges* (never reflexive change under pressure): run the reframing prompts + the definition-of-done rubric, and close with a `Confidence:` / `Hardening:` disclosure. For **high-stakes** decisions (preflight CRITICAL/MAJOR findings, or complex/sensitive gate decisions) spawn one independent challenger and reconcile. Full protocol: `_shared/recommendation-hardening.md`.
-  - ✅ *"Recommend **A** — cache in the existing `UserRepo.find` (`repo/user.ts:42`), no new layer. **B** (new cache service) adds infra we don't need here. Dropped: client-side cache — can't share across requests."*
-    ❌ *"There are a few ways: A, B, or C — let me know which you prefer."* (no recommendation, no code grounding, options unfiltered)
+- **Ask before assuming**; don't overcomplicate; **verify previous work** before building on it.
+- **Grounded options & recommendations (NON-NEGOTIABLE):** Filter (only genuinely viable options,
+  no strawmen; ≥2 only when ≥2 are viable) → Second-guess each → Ground in the code (cite
+  `file:line`; say so if unverified) → Recommend (lead with it and a concrete reason; you
+  recommend, the user decides). Proportionality: ceremony matches stakes. Harden consequential
+  recommendations per `_shared/recommendation-hardening.md` (high-stakes decisions get one
+  independent challenger; disclose `Confidence:`/`Hardening:` where that protocol requires).
 
 > Project-specific commands, structure, and conventions live in this project's `CLAUDE.md`
 > (generate/refresh it with `/analyze_project`). Multi-step CodeOps workflows are available as

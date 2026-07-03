@@ -144,6 +144,14 @@ Save the report as a permanent file alongside the artifact:
 The report is separate from the Ambiguity Register (decisions made during creation) — see
 [report-format.md](report-format.md) for the relationship and cross-referencing.
 
+## Parallelizing the scan (optional)
+
+The scan MAY fan out to subagents when the session supports them — recon reads to read-only
+explore agents, and the document-only dimension group (1, 3, 7, 9, 10, 12) as one parallel
+batch while the lead context runs the code-grounded dimensions (2, 4, 5, 6, 11, 13). The lead
+context always merges, dedupes, and renumbers the findings (`PF-NNN` stays a single sequence)
+and owns every user interaction. Sequential scanning remains the default and is always correct.
+
 ## Iterative re-scanning
 
 Run preflight as many times as needed. Iteration 2+ verifies prior fixes, checks for regressions,

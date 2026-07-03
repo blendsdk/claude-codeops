@@ -4,6 +4,7 @@ description: >-
   Creates a detailed, multi-document implementation plan for a software feature or task before any code is written. Use when the user wants to "make a plan", types "make_plan", or asks to "plan this feature", "create an implementation plan", "plan out this work", or "write a spec/plan" for something to be built. Drives a mandatory clarifying-questions interview, a hard Zero-Ambiguity Gate, and produces a `plans/<feature>/` document set ending in a task-by-task execution plan. For EXECUTING an existing plan, use the exec_plan skill instead.
 when_to_use: >-
   Trigger on "make a plan", "make_plan", "plan this feature", "create an implementation plan", "design a plan for X", "spec out X before building". Do NOT trigger for running/executing an existing plan (that is the exec_plan skill).
+argument-hint: "[feature-name or description]"
 ---
 
 # Implementation Plan Creation (`make_plan`)

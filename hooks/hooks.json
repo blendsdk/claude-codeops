@@ -9,6 +9,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'input=$(cat); case \"$input\" in *\"codeops/.codeops.yml\"*) echo \"WARN: codeops/.codeops.yml is the layout marker, owned by the setup_codeops skill - editing it directly risks breaking layout detection (see _shared/layout-convention.md).\" >&2 ;; esac; exit 0'"
+          }
+        ]
+      }
     ]
   }
 }

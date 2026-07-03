@@ -226,9 +226,17 @@ If the plan is based on a requirements document, add at the top: `> **Source**: 
 ## Testing Overview
 
 ### Coverage Goals
-- Unit tests: [X]% coverage
-- Integration tests: Key workflows covered
-- E2E tests: Complete feature verification
+
+| Code type | Target |
+| --------- | ------ |
+| Core business logic | 90% |
+| Supporting modules / services | 80% |
+| UI / glue / configuration | 60% |
+
+- Test names state behavior: `should [expected behavior] when [condition]`.
+- Integration tests: key workflows covered. E2E tests: complete feature verification.
+- Adjust targets per project in `01-requirements.md` (an AR-referenced decision) — never
+  silently.
 
 ## 🚨 Specification Test Cases (MANDATORY — NON-NEGOTIABLE)
 
@@ -328,18 +336,19 @@ Every execution plan MUST follow this template, MUST include the **Master Progre
 
 ## Implementation Phases
 
-| Phase | Title          | Sessions | Est. Time |
-| ----- | -------------- | -------- | --------- |
-| 1     | [Phase 1 Name] | 1        | XX min    |
-| 2     | [Phase 2 Name] | 1-2      | XX min    |
+| Phase | Title          | Tasks |
+| ----- | -------------- | ----- |
+| 1     | [Phase 1 Name] | X     |
+| 2     | [Phase 2 Name] | X     |
 
-**Total: X sessions, ~X-X hours**
+**Total: X tasks across Y phases** (no fabricated hour estimates — scope is bounded by the
+task-size criteria in [quality-checklist.md](quality-checklist.md))
 
 ---
 
 ## Phase 1: [Phase Name]
 
-### Session 1.1: [Session Objective]
+### Step 1.1: [Step Objective]
 
 **Reference**: [Link to technical doc]
 **Objective**: [What this session achieves]

@@ -48,6 +48,27 @@ new session, so the standards are always present with **zero setup**.
 
 See the summarized standards in the [Reference](/reference/standards).
 
+Since 3.2.0 the injected text is a compact core (~50 lines); the complete standards live in the
+plugin's `standards/coding-standards-full.md`, which Claude reads on demand. Don't duplicate the
+standards in your own `~/.claude/CLAUDE.md` — you'd pay the tokens twice every session. A second
+hook warns (never blocks) when anything other than `setup_codeops` edits the
+`codeops/.codeops.yml` layout marker.
+
+### Optional: execution-progress reminder hook
+
+`exec_plan`'s real-time update mandate can be backed by a hook if you want mechanical insurance.
+This is deliberately NOT shipped default-on (it fires on every Stop in every project). Opt in by
+adding to your project's `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [{ "hooks": [{ "type": "command",
+      "command": "sh -c 'ls plans/*/99-execution-plan.md codeops/features/*/plans/*/99-execution-plan.md 2>/dev/null | head -1 | grep -q . && echo \"Reminder: if a task was just completed, confirm 99-execution-plan.md reflects it (two-stage marks).\" || true'" }] }]
+  }
+}
+```
+
 ## Rolling updates
 
 Installs follow the marketplace's latest commit — every push is immediately installable via

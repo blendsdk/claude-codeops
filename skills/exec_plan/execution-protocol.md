@@ -164,6 +164,14 @@ Task mark formats:
 - [x] 1.1.1 Task description ✅ (completed: YYYY-MM-DD HH:MM)
 ```
 
+### Native task-list mirror (visibility aid)
+
+Where the session provides native task tools (TaskCreate/TaskUpdate — Claude Code ≥2.1.142),
+mirror the CURRENT phase's tasks into them at session start and update statuses alongside the
+markdown marks, so the user sees live progress in the UI. The mirror is a convenience layer
+only — **`99-execution-plan.md` remains the single durable source of truth**, and its absence
+or divergence never blocks execution. Skip silently where the tools are unavailable.
+
 ### Master Progress Checklist — existence gate
 
 Before executing the first task, verify the `## 🚨 Master Progress Checklist (All Phases)` section
