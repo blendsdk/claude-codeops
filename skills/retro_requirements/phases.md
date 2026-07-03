@@ -1,7 +1,8 @@
 # Phases 0–9: Detailed Instructions & Output Templates
 
 Read the relevant section before executing each phase. All output is written to
-`requirements/_retro/`. Confidence classification (Phases 4+) is detailed in
+**the resolved `_retro/` dir** — the layout-aware path defined ONCE in SKILL.md's
+resolution block (never re-derive it here). Confidence classification (Phases 4+) is detailed in
 `confidence-classification.md`; the Phase 8B gate is in `triage-gate.md`.
 
 In every template below, replace `[Date]` with the current date and `[Name]`
@@ -510,7 +511,7 @@ unresolved items, STOP and complete Phase 8B first.
 > Date: [Date] · Source Codebase: [Path]
 >
 > Usage: feed this document to the make_requirements skill as analysis-notes
-> input — "I have analysis notes in requirements/_retro/09-reconstruction-brief.md".
+> input — "I have analysis notes in <resolved _retro dir>/09-reconstruction-brief.md".
 
 ## Project Identity
 **Name / Type / Description** (as if pitching it to someone who's never seen it)
@@ -564,7 +565,7 @@ Questions the code alone can't answer — explored during make_requirements:
 
 After completion, the next step is to feed the brief to the make_requirements
 skill: *"I have analysis notes in
-requirements/_retro/09-reconstruction-brief.md"*.
+<resolved _retro dir>/09-reconstruction-brief.md"*.
 
 ---
 

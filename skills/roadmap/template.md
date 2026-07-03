@@ -33,7 +33,7 @@ verbatim when creating either. The portfolio is a separate, higher-altitude temp
 |----|-------|----|------|-------|--------|--------------|-----------------|
 | RD-01 | [Title] | [link] | [link] | Done | ✅ | [date] | — |
 | RD-02 | [Title] | [link] | [link] | Executing | 🔄 | [date] | — |
-| RD-03 | [Title] | [link] | — | Blocked | ⛔ | [date] | waiting on DEF-1 |
+| RD-03 | [Title] | [link] | — | Blocked (was: RD Preflighted) | ⛔ | [date] | waiting on DEF-1 |
 | ↳ DEF-1 | [Discovered dependency] | — | [link] | Plan Created | 📋 | [date] | blocks RD-03 |
 | RD-04 | [Title] | — | — | Backlog | ⬜ | [date] | — |
 
@@ -58,13 +58,15 @@ verbatim when creating either. The portfolio is a separate, higher-altitude temp
 | Title | Short human label. |
 | RD | Relative link to `requirements/RD-*.md`, or `—` if not yet drafted. |
 | Plan | Relative link to the plan folder's `00-index.md`, or `—` if no plan yet. |
-| Stage | One of the 9 lifecycle states (text form). |
+| Stage | One of the 9 lifecycle states (text form). A `Blocked` row records its prior stage in-cell — `Blocked (was: <stage>)` — so unblocking never depends on memory. |
 | Status | The matching emoji for the stage (see legend). |
 | Last Updated | Date (or date + time) of the last change to this row. |
 | Notes / Blocker | Free text; for `Blocked` rows, name the `DEF-n` being waited on. |
 
-Links are relative to `plans/00-roadmap.md`: RDs are `../requirements/RD-NN-*.md`,
-plans are `<feature>/00-index.md`.
+Links are relative to the roadmap file itself. Flat layout (`plans/00-roadmap.md`): RDs are
+`../requirements/RD-NN-*.md`, plans are `<plan>/00-index.md`. Nested layout
+(`codeops/features/<f>/00-roadmap.md`): RDs are `requirements/RD-NN-*.md`, plans are
+`plans/<plan>/00-index.md`.
 
 ## Worked example
 
@@ -87,7 +89,7 @@ plans are `<feature>/00-index.md`.
 | ID | Title | RD | Plan | Stage | Status | Last Updated | Notes / Blocker |
 |----|-------|----|------|-------|--------|--------------|-----------------|
 | RD-01 | Invoicing core | [RD-01](../requirements/RD-01-invoicing.md) | [invoicing](invoicing/00-index.md) | Done | ✅ | 2026-05-10 | — |
-| RD-02 | Payment gateway | [RD-02](../requirements/RD-02-payments.md) | — | Blocked | ⛔ | 2026-05-14 | waiting on DEF-1 |
+| RD-02 | Payment gateway | [RD-02](../requirements/RD-02-payments.md) | — | Blocked (was: RD Drafted) | ⛔ | 2026-05-14 | waiting on DEF-1 |
 | ↳ DEF-1 | Secrets vault integration | — | [vault](vault/00-index.md) | Executing | 🔄 | 2026-05-14 | blocks RD-02 |
 | RD-03 | Dunning emails | [RD-03](../requirements/RD-03-dunning.md) | — | RD Preflighted | 🔎 | 2026-05-12 | — |
 | RD-04 | Usage metering | — | — | Backlog | ⬜ | 2026-05-01 | — |

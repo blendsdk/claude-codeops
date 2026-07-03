@@ -6,7 +6,7 @@ This is the **single source of truth** for where CodeOps artifacts live. It is a
 reference document, **not a skill** — it lives at the **plugin root** in `_shared/` (deliberately
 **outside** `skills/`), so the plugin loader, which treats each `skills/<dir>` as a skill, never
 meets a `SKILL.md`-less directory. Every layout-aware skill (`roadmap`, `make_requirements`,
-`make_plan`, `exec_plan`, `preflight`, `upgrade_plan`, `retro_requirements`) **links here** (as
+`make_plan`, `exec_plan`, `preflight`, `upgrade_plan`, `retro_requirements`, `techdocs`) **links here** (as
 `../../_shared/layout-convention.md`) for path resolution and ID rules instead of hardcoding
 paths. Change the layout in one place: here.
 

@@ -9,9 +9,15 @@ session summary template, and error handling.
 ## Step 1: Load the Plan
 
 1. Read `plans/[feature-name]/99-execution-plan.md`.
-2. Find incomplete tasks (unchecked `[ ]` items).
+2. Find incomplete tasks: **both** unchecked `[ ]` items **and** implemented-but-unverified `[~]`
+   items (see the two-stage marks below).
 3. Read supporting technical specs in `plans/[feature-name]/`.
-4. Determine the starting point: first incomplete phase/session/task.
+4. Determine the starting point: a `[~]` task is resumed FIRST — re-read its partial-completion
+   note, re-run verification, then promote it to `[x]` or continue fixing. Otherwise start at the
+   first `[ ]` task.
+5. **Resume spot-check:** before building on prior work, confirm the most recent `[x]` task's
+   named files actually exist (branch switches and reverts happen). If they don't, flag the drift
+   to the user before continuing.
 
 If the execution plan can't be loaded cleanly, **STOP** and handle as follows:
 
@@ -43,15 +49,23 @@ Suggestion only — the user may proceed without upgrading.
 
 ## Step 2: Execute Tasks
 
-For each task, in order:
+Task completion is **two-stage**: `[~]` = implemented (crash-safe progress mark), `[x]` = verified
+complete. For each task, in order:
 
 1. Implement the task following the technical specifications.
-2. **🚨 Immediately update `99-execution-plan.md`** — mark the task `[x]` with a timestamp (see
-   the Real-Time Update Mandate below). This happens BEFORE verification, BEFORE commit, BEFORE
-   anything else. If the agent crashes after this point, progress is preserved.
+2. **🚨 Immediately update `99-execution-plan.md`** — mark the task `[~]` with a timestamp
+   (`- [~] 1.1.1 … ⏳ (implemented: YYYY-MM-DD HH:MM)`, timestamp via `date '+%Y-%m-%d %H:%M'`)
+   and update the Progress header. Do this before running verification or anything else — if the
+   session crashes now, the implementation progress is preserved and the resume session knows the
+   task still needs verification.
 3. Run verification (your project's verify command — from the project's CLAUDE.md, or detected
    project conventions).
-4. Commit per the active commit mode (see [commit-modes.md](commit-modes.md)).
+   - **PASS** → promote the mark to `[x]` with a completion timestamp
+     (`- [x] 1.1.1 … ✅ (completed: YYYY-MM-DD HH:MM)`).
+   - **FAIL** → the mark STAYS `[~]`. Fix the implementation and re-verify; promote only on pass.
+     A task is never `[x]` with a failing verify.
+4. Commit per the active commit mode (see [commit-modes.md](commit-modes.md)) — the commit gate
+   keys off `[x]`, never `[~]`.
 5. **Techdocs check (after each phase):** if techdocs exist and the just-completed phase
    introduced architectural changes (new components, data entities, API endpoints, integrations,
    or infrastructure), perform an incremental techdocs update via the techdocs skill.
@@ -91,25 +105,29 @@ immutable-oracle rule — a failing spec test means the implementation is wrong,
 `99-execution-plan.md` is the SINGLE SOURCE OF TRUTH for progress and the user's lifeline if a
 session ends unexpectedly. Update it after completing EACH task. No exceptions.
 
-### Update-first order
+### Update-first order (two-stage)
 
 ```
-Implement task → 🚨 UPDATE EXECUTION PLAN → verify → commit → next task
+Implement task → 🚨 MARK [~] IN THE PLAN → verify → PASS: promote to [x] / FAIL: fix, stays [~] → commit → next task
 ```
 
 NOT: batch-updating later, updating only at the end, or "maybe update and maybe forget". If the
-agent crashes during verify or commit, the plan already reflects the completed work.
+agent crashes during verify or commit, the plan already reflects exactly how far the work got —
+`[~]` says "implemented, verification not yet passed"; `[x]` says "verified complete".
 
-### Update procedure (per completed task)
+### Update procedure
 
-1. Edit `99-execution-plan.md` to change `[ ]` → `[x]` with a timestamp in the **Master Progress
-   Checklist** section.
-2. Update the Progress counter in the header (e.g., `3/12 tasks (25%)`).
-3. Update the Last Updated timestamp.
+1. On implementation: change `[ ]` → `[~]` with an implemented-timestamp in the **Master Progress
+   Checklist**; on verify pass: promote `[~]` → `[x]` with a completion timestamp.
+2. Update the Progress counter in the header (e.g., `3/12 tasks (25%)`) — only `[x]` tasks count
+   as complete.
+3. Update the Last Updated timestamp (obtain timestamps via `date '+%Y-%m-%d %H:%M'` — never
+   invent them).
 
-Task completion format:
+Task mark formats:
 
 ```markdown
+- [~] 1.1.1 Task description ⏳ (implemented: YYYY-MM-DD HH:MM)
 - [x] 1.1.1 Task description ✅ (completed: YYYY-MM-DD HH:MM)
 ```
 
@@ -122,9 +140,10 @@ execute any task while the checklist is missing or incomplete.
 
 ### Hard gate
 
-Before proceeding to the next task, running verification, committing, ending a session, or
-presenting a session summary, you MUST have already: marked the task `[x]` with a timestamp,
-updated the progress counter, and updated the Last Updated stamp.
+Before running verification you MUST have already marked the task `[~]` with a timestamp. Before
+committing, proceeding to the next task, ending a session, or presenting a session summary, the
+task's final state MUST be recorded truthfully — `[x]` (with timestamp) only if its verify passed,
+otherwise still `[~]` — with the progress counter and Last Updated stamp current.
 
 ---
 
@@ -167,9 +186,11 @@ Run `/exec_plan [feature-name]` again in a new session.
 
 ### If verification fails
 
-1. Fix the failing tests/build.
-2. Verify all checks pass.
-3. Only then mark the task complete.
+1. The task's mark stays `[~]` (it was set at implementation time — never promote on a failing
+   verify).
+2. Fix the failing tests/build (for a failing SPEC test, fix the implementation — never the test).
+3. Re-run verification until all checks pass.
+4. Only then promote the mark to `[x]`.
 
 ### If implementation deviates from the plan
 
@@ -180,8 +201,8 @@ Run `/exec_plan [feature-name]` again in a new session.
 ### If a session is interrupted mid-task
 
 1. Save progress so far.
-2. Add clear notes about partial completion.
-3. Mark the task as `[~]` (partial) with an explanation.
-4. Handle the commit per the active commit mode (ask / no-commit / auto-commit).
-5. Resume later by running `/exec_plan [feature-name]` again — files are always saved to disk, so
-   no work is lost, and the execution plan tells the skill where to pick up.
+2. Ensure the task is marked `[~]` with a clear partial-completion note (what is done, what
+   remains, what to verify).
+3. Do NOT commit the half-done task (the commit gate keys off `[x]`).
+4. Resume later by running `/exec_plan [feature-name]` again — Step 1 finds the `[~]` task,
+   resumes it first, and re-verifies before promoting.

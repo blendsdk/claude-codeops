@@ -92,12 +92,25 @@ This keeps the roadmap opt-in to create, but always-fresh once it exists.
 
 **Real-time update mandate** — the roadmap is updated **immediately** on each stage
 transition, **BEFORE** verification, commit, or the next action. Update order:
-`complete the stage transition → update plans/00-roadmap.md → proceed`. On each
+`complete the stage transition → update the resolved roadmap file → proceed` (the resolved file
+per the convention doc: `plans/00-roadmap.md` flat, the feature's `00-roadmap.md` nested). On each
 transition update the row's `Stage`, `Status`, and `Last Updated`, plus the header
 `Progress` counter and `Last Updated`. Rationale — crash resilience: a session can
 crash or hit context limits at any moment; if the roadmap is stale the user loses
 their cross-session view. Keep it always reflecting reality, and never end a
 session/task with a stale roadmap.
+
+**Stage-inference artifacts & the never-regress rule** — stages must be re-inferable from disk:
+
+- `RD Drafted` ⇔ the RD file exists. `Plan Created` ⇔ a linked plan folder exists.
+  `Executing`/`Done` ⇔ the plan's `99-execution-plan.md` checklist state (`Done` = all `[x]`).
+- `RD Preflighted` ⇔ a saved preflight report (`00-preflight-report.md`) exists in the resolved
+  requirements dir with a passing tier; `Plan Preflighted` ⇔ the same file in the plan folder.
+  (The preflight skill saves these reports — they ARE the stage's disk artifact.)
+- **Stages never regress on sync.** `update` may only advance or preserve a row's stage; if disk
+  suggests a LOWER stage than recorded, keep the recorded stage and report the discrepancy
+  (review_roadmap flags it). Regressing a row requires an explicit user instruction, recorded in
+  Notes.
 
 **Portfolio cascade mandate (nested layout only)** — the real-time update extends one altitude
 up. After completing a per-feature stage transition, **immediately** update that feature's row in
@@ -123,9 +136,12 @@ under `plans/`" is **not** a valid membership rule. Link deterministically inste
 When a blocking dependency is discovered mid-preflight or mid-execution:
 
 1. Add a **nested `↳ DEF-n` sub-row** directly beneath the affected parent row, visually tied to it.
-2. Set the **parent row to `Blocked`**, naming the `DEF-n` it waits on in `Notes / Blocker`.
+2. Set the **parent row's Stage cell to `⛔ Blocked (was: <prior stage>)`** — the prior stage is
+   recorded IN the cell so recovery never depends on conversation memory — and name the `DEF-n`
+   it waits on in `Notes / Blocker`.
 3. Track the `DEF-n` sub-row through its own lifecycle stages like any other item.
-4. When `DEF-n` reaches `Done`, the parent **leaves `Blocked`** and resumes its prior stage.
+4. When `DEF-n` reaches `Done`, the parent **leaves `Blocked`** and resumes the stage recorded in
+   its `(was: …)` annotation.
 
 Deferred work is never hidden in a separate section — it stays nested under the item
 it blocks so the dependency is obvious at a glance.
@@ -163,8 +179,10 @@ columns; and the **portfolio template** for nested layout). Path per the convent
 
 Advance stages and sync the roadmap to current disk state.
 
-- Walk each row, re-infer its stage from disk (RD present, plan present, checklist
-  completion), and update `Stage`, `Status`, and `Last Updated`.
+- Walk each row, re-infer its stage from disk per the **stage-inference artifacts** above (RD
+  present, preflight reports, plan present, checklist completion) and update `Stage`, `Status`,
+  and `Last Updated` — honoring the **never-regress rule** (advance or preserve; report
+  discrepancies instead of downgrading).
 - Recompute the header `Progress` counter and `Last Updated`.
 - **Nested layout:** re-infer each feature's per-feature roadmap, then **cascade** every changed
   feature's rolled-up summary into its `codeops/00-roadmap.md` row (Stage Summary, Progress,

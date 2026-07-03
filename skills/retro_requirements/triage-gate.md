@@ -105,7 +105,7 @@ row's **Status** to ✅ Resolved.
 
 The Triage Register is a permanent artifact:
 
-- **Location:** `requirements/_retro/08b-triage-register.md`
+- **Location:** `<resolved _retro dir>/08b-triage-register.md` (resolution rule in SKILL.md)
 - **Purpose:** audit trail — every behavior classification is traceable to a user
   decision.
 - **Survives interruptions:** written to disk before the user is asked anything,

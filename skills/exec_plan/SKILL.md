@@ -83,12 +83,14 @@ upgrade_plan skill, then ask whether to proceed anyway. Suggestion only — the 
 For each task, in order:
 
 1. **Implement** the task following the technical specs in `plans/$ARGUMENTS/`.
-2. **🚨 Immediately update `99-execution-plan.md`** — mark the task `[x]` with a timestamp in the
-   Master Progress Checklist, bump the Progress counter and Last Updated stamp. This happens
-   **BEFORE** verification, commit, or anything else, so progress survives a crash.
+2. **🚨 Immediately update `99-execution-plan.md`** — completion marks are **two-stage**: mark the
+   task `[~]` with an implemented-timestamp in the Master Progress Checklist and bump the Progress
+   counter / Last Updated stamp as soon as implementation finishes (crash-safe), promote it to
+   `[x]` only after its verification passes. A task never shows `[x]` with a failing verify.
 3. **Verify** — run your project's verify command (from the project's CLAUDE.md, or detected
-   project conventions).
-4. **Commit** per the active commit mode (see [commit-modes.md](commit-modes.md)).
+   project conventions). Pass → promote `[~]` → `[x]`; fail → fix and re-verify (mark stays `[~]`).
+4. **Commit** per the active commit mode (see [commit-modes.md](commit-modes.md)) — the commit
+   gate keys off `[x]`.
 5. **Techdocs check (after each phase):** if the phase introduced architectural changes and
    techdocs exist, do an incremental update via the techdocs skill.
 6. Continue until all tasks are complete. (Claude Code auto-compacts context — no manual
