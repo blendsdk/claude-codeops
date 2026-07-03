@@ -78,8 +78,9 @@ net** — fresh eyes that catch what those gates missed and what evolved since.
    informed by Step 2. Depth adapts by artifact type. Full detail in [dimensions.md](dimensions.md).
 4. **Compile the Preflight Report** — every finding gets a numbered `PF-NNN` entry with severity.
    Templates and report header in [report-format.md](report-format.md).
-5. **Present findings & collect decisions** — grouped by severity, one finding at a time, recording
-   the user's decision on each. Batch rules in [report-format.md](report-format.md).
+5. **Present findings & collect decisions** — grouped by severity, paced by the batch rules in
+   [report-format.md](report-format.md) (they are authoritative), recording the user's decision
+   on every finding.
 6. **Determine pass/fail** — Clean / Passed / Passed With Notes / Blocked (see [Pass tiers](#pass-tiers)).
 7. **Apply fixes (only if requested)** — preflight is a review protocol, not a modification one.
    Never apply fixes without explicit instruction.

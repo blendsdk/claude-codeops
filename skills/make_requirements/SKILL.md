@@ -117,10 +117,13 @@ discovery interview → comparable analysis → user journeys → edge cases →
 
 ## The Zero-Ambiguity Rule (active from question one)
 
-This rule applies to **ALL decisions without exception** — feature specs,
+This rule applies to **every decision with semantic weight** — feature specs,
 behavioral definitions, scope boundaries, edge-case handling, technical choices,
-data models, naming, document organization, wording, AND formatting. If you must
-choose between two or more options for ANYTHING, **the user decides**.
+data models, naming, document organization. Behavior/scope/data/security
+decisions ALWAYS gate; cosmetic choices with zero semantic impact are exempt
+(per the shared gate's traceability exemptions), and low-stakes cosmetic items
+may be batched. If you must choose between two or more semantically distinct
+options, **the user decides**.
 
 Every question MUST yield a concrete, specific, unambiguous answer. Do NOT accept
 vague responses, fill gaps with your own assumptions, infer intent, or proceed

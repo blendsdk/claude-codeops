@@ -78,70 +78,11 @@ handling. Never fill gaps by guessing.
 
 ## Specification-First Task Ordering (NON-NEGOTIABLE)
 
-Every feature implementation phase follows this three-phase task structure. It prevents
-tautological testing — tests that mirror the implementation instead of independently verifying it
-against the specification.
-
-```
-Phase N: [Feature Name]
-
-  Session N.1: Specification Tests (BEFORE implementation)
-    N.1.1  Write specification tests from 07-testing-strategy.md ST-cases
-           → File: [feature].spec.test.[ext]
-           → Source: 07-testing-strategy.md ST-1 through ST-X
-           → Do NOT read implementation logic when writing these tests
-    N.1.2  Run spec tests — verify they FAIL (red phase)
-           → Document any that pass pre-implementation with justification
-
-  Session N.2: Implementation
-    N.2.1  Implement [feature/component] per technical specification
-           → File: [implementation files]
-           → Reference: 03-XX-[component].md
-    N.2.2  Run spec tests — verify they PASS (green phase)
-           → If any spec test fails: STOP, fix the implementation (NOT the test)
-
-  Session N.3: Implementation Tests & Hardening
-    N.3.1  Write implementation tests (edge cases, internals, error paths)
-           → File: [feature].impl.test.[ext]
-    N.3.2  Full verification (your project's verify command)
-```
-
-### Why this ordering
-
-| Step | What it prevents |
-|------|-----------------|
-| Spec tests BEFORE implementation | Prevents deriving test expectations from the code you just wrote |
-| Red-phase verification | Proves the spec tests are meaningful (they test something that doesn't exist yet) |
-| Spec tests PASS after implementation | Proves the implementation satisfies the specification |
-| Impl tests AFTER implementation | These CAN be derived from the code (edge cases, internals); spec tests cannot |
-
-### Enforcement
-
-**Prohibited:**
-
-- ❌ Writing implementation code before specification tests exist for that feature
-- ❌ Skipping the spec-test phase ("we'll write tests after")
-- ❌ Combining spec tests and implementation in the same task
-- ❌ Writing spec tests and implementation simultaneously
-
-**Required:** the immutable-oracle rule — if the implementation doesn't match a spec test, the
-implementation is wrong, not the test. Never modify a spec test's expectations to match code.
-
-### Small features
-
-For small features, you MAY compress into a single session — but the ordering is still mandatory:
-
-```
-Session N.1: [Feature Name]
-  N.1.1  Write specification tests (from ST-cases)
-  N.1.2  Verify spec tests fail (red phase)
-  N.1.3  Implement feature
-  N.1.4  Verify spec tests pass (green phase)
-  N.1.5  Write implementation tests
-  N.1.6  Full verification
-```
-
-`spec tests → red → implement → green → impl tests → verify` is never negotiable, at any size.
+The ordering `spec tests → red phase → implement → green phase → impl tests → verify` is defined
+ONCE in **[../../_shared/spec-first-ordering.md](../../_shared/spec-first-ordering.md)** — read it
+before executing the first implementation task. Enforce it exactly as written there: never start
+implementation before that feature's spec tests exist and have a recorded red phase, and apply the
+immutable-oracle rule — a failing spec test means the implementation is wrong, never the test.
 
 ---
 

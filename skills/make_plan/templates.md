@@ -415,50 +415,13 @@ Phase 2
 
 ## Specification-First Task Ordering (NON-NEGOTIABLE)
 
-Every feature implementation phase in `99-execution-plan.md` MUST follow this three-session ordering. This prevents tautological testing — tests mirroring the implementation instead of independently verifying it against the specification.
-
-```
-Phase N: [Feature Name]
-
-  Session N.1: Specification Tests (BEFORE implementation)
-    N.1.1  Write specification tests from 07-testing-strategy.md ST-cases
-           → File: [feature].spec.test.[ext]
-           → Source: 07-testing-strategy.md ST-1 through ST-X
-           → MUST NOT read implementation logic when writing these tests
-    N.1.2  Run spec tests — verify they FAIL (red phase)
-           → Document any that pass pre-implementation with justification
-
-  Session N.2: Implementation
-    N.2.1  Implement [feature/component] per technical specification
-           → Reference: 03-XX-[component].md
-    N.2.2  Run spec tests — verify they PASS (green phase)
-           → If any spec test fails: STOP, fix implementation (NOT the test)
-
-  Session N.3: Implementation Tests & Hardening
-    N.3.1  Write implementation tests (edge cases, internals, error paths)
-           → File: [feature].impl.test.[ext]
-    N.3.2  Full verification (project's verify command)
-```
-
-**Why each step matters:** spec tests BEFORE implementation prevent deriving expectations from code just written; red-phase proves the spec tests are meaningful; green-phase proves the implementation satisfies the spec; impl tests AFTER implementation may legitimately be derived from the code (edge cases, internals) — but spec tests must not be.
-
-**🚫 PROHIBITED:** writing implementation code before spec tests exist; skipping the spec test phase; combining spec tests and implementation in one task; writing them simultaneously; generating a plan where implementation tasks precede spec test tasks for the same feature.
-
-**✅ REQUIRED in every generated `99-execution-plan.md`:** the three-session ordering per feature phase; explicit `[feature].spec.test.[ext]` and `[feature].impl.test.[ext]` file references; references to the ST-cases from `07-testing-strategy.md` in spec test tasks; a distinct red-phase verification task.
-
-**Small features:** you may compress into a single session, but the ordering is still mandatory:
-
-```
-Session N.1: [Feature Name]
-  N.1.1  Write specification tests (from ST-cases)
-  N.1.2  Verify spec tests fail (red phase)
-  N.1.3  Implement feature
-  N.1.4  Verify spec tests pass (green phase)
-  N.1.5  Write implementation tests
-  N.1.6  Full verification
-```
-
-The order `spec tests → red phase → implement → green phase → impl tests → verify` is NEVER negotiable, regardless of feature size.
+Every feature implementation phase in `99-execution-plan.md` MUST follow the three-step
+specification-first ordering — `spec tests → red phase → implement → green phase → impl tests →
+verify` — defined ONCE in **[../../_shared/spec-first-ordering.md](../../_shared/spec-first-ordering.md)**.
+Read it before authoring the execution plan; it carries the full step structure, the compressed
+small-feature form, the prohibited/required lists, and the immutable-oracle rule. Generated plans
+must reference `07-testing-strategy.md` ST-cases in spec-test tasks and include a distinct
+red-phase verification task.
 
 ---
 

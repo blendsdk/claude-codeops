@@ -100,7 +100,7 @@ For each branch, follow this drilling pattern:
 - If the user's domain has industry-standard approaches, mention them
 - If you have a recommendation, state it and explain why
 
-> **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides. Apply the recommendation-hardening protocol (`_shared/recommendation-hardening.md`) to consequential recommendations; escalate to an independent challenger only when the decision is genuinely high-stakes.
+> **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides. Apply the recommendation-hardening protocol (`_shared/recommendation-hardening.md`) to consequential recommendations; challenger escalation follows ONLY that protocol's high-stakes definition — grill_me has no private trigger, and the user may always request a challenger explicitly.
 
 #### 2c. Drill Into the Choice
 
@@ -177,7 +177,9 @@ Before concluding, present the full picture and explicitly ask:
 
 ### Out of Scope (Explicitly Deferred)
 
-- [Thing] — [reason for deferral]
+<!-- Shared deferral format (_shared/zero-ambiguity-gate.md) — downstream gates accept these
+     rows as-is; all three parts are mandatory. -->
+- ⏸ Deferred — [the decision, named precisely] · owner: [who decides] · revisit: [the trigger]
 
 ### Open Risks
 
@@ -199,7 +201,7 @@ protocol.
 | User Says | Your Response |
 |---|---|
 | "Probably TTL" | "Let's make this concrete. What TTL value? 30 seconds? 5 minutes? 1 hour? What's the staleness tolerance?" |
-| "We'll figure that out later" | "We can defer this, but let me name the decision explicitly so it's tracked: [decision]. Is it safe to defer, or does it block other decisions?" |
+| "We'll figure that out later" | "We can defer this, but let me name it so it's tracked: [decision]. Who owns it, and what triggers the revisit?" — record it in the shared deferral format (`⏸ Deferred — <decision> · owner · revisit-trigger`, per `_shared/zero-ambiguity-gate.md`), which the downstream gates accept as-is. Then: "Is it safe to defer, or does it block other decisions?" |
 | "Something like X" | "Let me sharpen that. Do you mean [specific interpretation A] or [specific interpretation B]?" |
 | "I'm not sure" | "That's fine. Let me lay out the options and trade-offs so we can decide together." |
 
