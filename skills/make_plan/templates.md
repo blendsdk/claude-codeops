@@ -315,7 +315,10 @@ If the plan is based on a requirements document, add at the top: `> **Source**: 
 
 ## 99-execution-plan.md — Execution Plan
 
-Every execution plan MUST follow this template, MUST include the **Master Progress Checklist**, and MUST structure feature phases with the specification-first ordering (see the next section).
+Every execution plan MUST follow this template, MUST carry each phase's tasks as a single
+checkbox list (the plan's **single source of truth** for progress — a task line appears exactly
+once in the document), and MUST structure feature phases with the specification-first ordering
+(see the next section).
 
 ````markdown
 # Execution Plan: [Feature Name]
@@ -344,51 +347,40 @@ Every execution plan MUST follow this template, MUST include the **Master Progre
 **Total: X tasks across Y phases** (no fabricated hour estimates — scope is bounded by the
 task-size criteria in [quality-checklist.md](quality-checklist.md))
 
+> **⚠️ EXECUTION RULE — APPLIES TO EVERY AGENT EXECUTING THIS PLAN:**
+>
+> The task checkboxes in the phase sections below are the **single source of truth** for
+> progress. Every task line appears exactly once in this document. The executing agent MUST:
+>
+> 1. **On implementation:** mark the task `[~]` with a timestamp —
+>    `- [~] 1.1.1 Task description ⏳ (implemented: YYYY-MM-DD HH:MM)`
+> 2. **On verify pass:** promote it to `[x]` —
+>    `- [x] 1.1.1 Task description ✅ (completed: YYYY-MM-DD HH:MM)`
+> 3. **Update the Progress header** (`> **Progress**: X/Y tasks (Z%)`) and the Last Updated
+>    stamp after EVERY task — never batch updates. Only `[x]` counts as complete.
+> 4. **Resume** by scanning the phase sections top-to-bottom: the first `[~]` task is resumed
+>    first, else the first `[ ]` task.
+>
+> Timestamps come from `date '+%Y-%m-%d %H:%M'` — never invented. Failure to keep the marks
+> current means progress is invisible after crashes, context resets, or session handoffs.
+
 ---
 
 ## Phase 1: [Phase Name]
 
 ### Step 1.1: [Step Objective]
 
-**Reference**: [Link to technical doc]
-**Objective**: [What this session achieves]
+**Reference**: [Governing 03-doc §section] · [AR #s]
+**Objective**: [What this step achieves]
 
-**Tasks**:
-
-| #     | Task               | File           |
-| ----- | ------------------ | -------------- |
-| 1.1.1 | [Task description] | `path/to/file` |
-| 1.1.2 | [Task description] | `path/to/file` |
+- [ ] 1.1.1 [Task description] — `path/to/file`
+- [ ] 1.1.2 [Task description] — `path/to/file`
 
 **Deliverables**:
 - [ ] Deliverable 1
 - [ ] All verification passing
 
 **Verify**: [Project's verify command from CLAUDE.md / detected conventions]
-
----
-
-## 🚨 Master Progress Checklist (All Phases) — MANDATORY
-
-> **⚠️ EXECUTION RULE — APPLIES TO EVERY AGENT EXECUTING THIS PLAN:**
->
-> This checklist is the **single source of truth** for tracking progress across all phases.
-> The executing agent MUST:
->
-> 1. **After completing each task:** mark it `[x]` with a timestamp — e.g., `- [x] 1.1.1 Task description ✅ (completed: YYYY-MM-DD HH:MM)`
-> 2. **After completing each phase:** confirm every completed task in that phase is marked `[x]` with a timestamp
-> 3. **Update the Progress header** (`> **Progress**: X/Y tasks (Z%)`) after every update
-> 4. **This checklist MUST exist** — if missing or incomplete, reconstruct it from the phase details above before executing any task
-> 5. **Never batch updates** — update immediately after each task, not at the end of a session
->
-> Failure to maintain this checklist means progress is invisible after crashes, context resets, or session handoffs.
-
-### Phase 1: [Phase Name]
-- [ ] 1.1.1 [Task]
-- [ ] 1.1.2 [Task]
-
-### Phase 2: [Phase Name]
-- [ ] 2.1.1 [Task]
 
 ---
 
