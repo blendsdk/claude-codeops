@@ -122,13 +122,13 @@ Gate opens ONLY when: every row Status = `✅ Resolved` with the user's explicit
 ## Phase 2 — Create Plan Documents
 
 1. Create the plan folder (`plans/<feature-name>/` flat, or `codeops/features/<f>/plans/<plan>/` nested — resolve via the convention doc).
-2. Write each document using the templates in **[templates.md](templates.md)**. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.3.0`.
+2. Write each document using the templates in **[templates.md](templates.md)** — including its **Reference, don't restate** rule (one owning doc per fact; everything else cites ST-# / 03-doc § / AR-# with at most a one-line gloss). Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.3.0`.
 3. Every design decision, scope decision, and error-handling strategy must carry an `AR #` back-reference to the register (only exceptions: universally obvious facts and zero-semantic-impact formatting).
 4. `07-testing-strategy.md` must contain concrete **Specification Test Cases (ST-*)** with input→expected-output pairs, each traced to a requirement / spec doc / AR entry. Expectations come from the SPEC, never from imagined implementation behavior.
 4b. **Confirm the verify command once.** The command that fills every Verify line comes from the
    project's CLAUDE.md or manifests — state what you detected and have the user confirm it (an AR
    entry like any decision). If nothing is detectable, ask — **never invent a command**.
-5. `99-execution-plan.md` must structure every feature phase with the mandatory three-session ordering (Spec Tests → Implementation → Impl Tests & Hardening) and include the **Master Progress Checklist**. The full ordering rules are in [templates.md](templates.md).
+5. `99-execution-plan.md` must structure every feature phase with the mandatory three-session ordering (Spec Tests → Implementation → Impl Tests & Hardening), carrying each phase's tasks as a **single checkbox list** — the plan's single source of truth for progress; a task line appears exactly once in the document. The full ordering rules are in [templates.md](templates.md).
 6. If you discover a NEW ambiguity while writing, STOP immediately, add it to the register, get the user's decision, then resume (surface-during-authoring rule — see [zero-ambiguity-gate.md](zero-ambiguity-gate.md)).
 
 Adapt component documents to the project type (Web App, API, Library, CLI, UI Components, Mobile, Compiler, Microservices, Infrastructure, Database, Bug Fix, Refactoring — the typical component breakdowns are listed in [templates.md](templates.md)).
