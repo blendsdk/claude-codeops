@@ -81,9 +81,12 @@ Profile: Balanced (fallback)
 - Task tags: trivial | standard | complex | sensitive.
 - Default for untagged tasks: standard.
 - During /codeops:make_plan, tag each generated task with one of the levels above.
-- During /codeops:exec_plan, delegate each task to a subagent by tag:
-  - trivial / standard  -> plan-task-executor (Sonnet)
-  - complex / sensitive -> plan-task-executor-opus (Opus)
+- During /codeops:exec_plan, run each phase inline on the model its tags call for;
+  dispatch a phase as ONE pinned executor only when a cheaper model than the
+  session's is warranted (see exec_plan's inline-first mode). Per-task or parallel
+  dispatch only on explicit request:
+  - trivial / standard  -> Sonnet (plan-task-executor when dispatched)
+  - complex / sensitive -> Opus (plan-task-executor-opus when dispatched)
 - Authoring skill/command/standards CONTENT is sensitive (Opus) — subtle wording
   drives AI behavior; count bumps, docs nav/prose, Bash + validation plumbing, and
   JSON manifest edits are trivial/standard (Sonnet).
