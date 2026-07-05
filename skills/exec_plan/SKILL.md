@@ -61,6 +61,13 @@ A **trivial task** has **no plan document** to run: do the work directly, then r
 **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)** — the lane exists in both
 layouts (flat gained it in 3.2.0).
 
+## Execution mode — inline first
+
+Phases run **inline** on the session model by default; a phase is dispatched as ONE pinned-model
+executor only when its routing tag maps to a cheaper model AND the phase amortizes the executor
+bootstrap. Per-task or parallel dispatch happens only on the user's explicit request (it costs
+more tokens, not fewer). Full rules in [execution-protocol.md](execution-protocol.md).
+
 ## Execution protocol (summary)
 
 Read [execution-protocol.md](execution-protocol.md) for the full step-by-step protocol,
@@ -87,7 +94,8 @@ For each task, in order:
 
 1. **Implement** the task following the technical specs in `plans/$ARGUMENTS/`.
 2. **🚨 Immediately update `99-execution-plan.md`** — completion marks are **two-stage**: mark the
-   task `[~]` with an implemented-timestamp in the Master Progress Checklist and bump the Progress
+   task `[~]` with an implemented-timestamp in its phase task list (or, in a pre-3.3.0 plan, in
+   the Master Progress Checklist — see the protocol's dual-format detection) and bump the Progress
    counter / Last Updated stamp as soon as implementation finishes (crash-safe), promote it to
    `[x]` only after its verification passes. A task never shows `[x]` with a failing verify.
 3. **Verify** — run your project's verify command (from the project's CLAUDE.md, or detected
