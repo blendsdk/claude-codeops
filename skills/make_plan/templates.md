@@ -17,6 +17,26 @@ plans/<feature-name>/
 
 ---
 
+## Reference, don't restate (NON-NEGOTIABLE)
+
+Every behavioral fact, decision, or specification lives in exactly ONE owning document:
+
+| Fact type | Owning doc |
+|-----------|-----------|
+| Requirement / scope decision | the RD (when the plan implements one), else `01-requirements.md` |
+| Design / architecture / signatures / error handling | the governing `03-XX` doc |
+| Expected test behavior (input→output) | `07-testing-strategy.md` (ST-cases) |
+| Resolved ambiguity | `00-ambiguity-register.md` (AR entries) |
+
+Every other document CITES the owner — `ST-4..ST-7`, `03-01 §Parsing`, `AR-12` — with at most a
+**one-line gloss** for readability. Prohibited: copying acceptance detail into execution tasks,
+re-deriving an RD inside plan documents, and **audit/traceability tables that restate AR or ST
+content** (cite the numbers; the register/strategy doc IS the table). Execution-plan task lines
+name the action + target file + citations; the executor reads the owning doc (or is handed the
+excerpt at dispatch time — excerpting for a handoff packet is not restatement).
+
+---
+
 ## 00-index.md — Index and Overview
 
 ```markdown
@@ -66,7 +86,42 @@ plans/<feature-name>/
 
 ## 01-requirements.md — Requirements and Scope
 
-If the plan is based on a requirements document, add at the top: `> **Source**: [RD-XX](../../requirements/RD-XX-feature-name.md)`.
+Two variants — pick by whether the plan implements an RD (per "Reference, don't restate").
+
+### RD-based plans — thin delta form
+
+When the plan implements an RD, the RD is the OWNING requirements doc and `01-requirements.md`
+is a delta view only — never a restatement:
+
+```markdown
+# Requirements: [Feature Name]
+
+> **Document**: 01-requirements.md
+> **Parent**: [Index](00-index.md)
+> **Source**: [RD-XX](../../requirements/RD-XX-feature-name.md) — the OWNING requirements doc
+
+## Scope of this plan (delta view)
+
+### In this plan
+- RD-XX R1, R3–R5 [one-line gloss each]
+
+### Deferred / out of this plan
+- RD-XX R2 [why]
+
+## Plan-local decisions
+
+| Decision | Chosen | AR Ref |
+| -------- | ------ | ------ |
+| [Only decisions NOT already in the RD] | [Outcome] | AR #X |
+
+## Acceptance Criteria
+
+[Only plan-local criteria; the RD owns its own acceptance criteria]
+```
+
+### Standalone plans — full form
+
+With no RD upstream, `01-requirements.md` IS the owning requirements doc:
 
 ```markdown
 # Requirements: [Feature Name]
