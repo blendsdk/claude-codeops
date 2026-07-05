@@ -91,7 +91,9 @@ For each task, in order:
    counter / Last Updated stamp as soon as implementation finishes (crash-safe), promote it to
    `[x]` only after its verification passes. A task never shows `[x]` with a failing verify.
 3. **Verify** — run your project's verify command (from the project's CLAUDE.md, or detected
-   project conventions). Pass → promote `[~]` → `[x]`; fail → fix and re-verify (mark stays `[~]`).
+   project conventions), output captured per the protocol's **Verify-output capture rule**
+   (PASS one-liner; on failure the last 50 log lines + log path). Pass → promote `[~]` → `[x]`;
+   fail → fix and re-verify (mark stays `[~]`).
 4. **Commit** per the active commit mode (see [commit-modes.md](commit-modes.md)) — the commit
    gate keys off `[x]`.
 5. **Techdocs check (after each phase):** if the phase introduced architectural changes and

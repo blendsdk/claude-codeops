@@ -62,7 +62,7 @@ complete. For each task, in order:
    session crashes now, the implementation progress is preserved and the resume session knows the
    task still needs verification.
 3. Run verification (your project's verify command — from the project's CLAUDE.md, or detected
-   project conventions).
+   project conventions), with output captured per the **Verify-output capture rule** below.
    - **PASS** → promote the mark to `[x]` with a completion timestamp
      (`- [x] 1.1.1 … ✅ (completed: YYYY-MM-DD HH:MM)`).
    - **FAIL** → the mark STAYS `[~]`. Fix the implementation and re-verify; promote only on pass.
@@ -74,6 +74,29 @@ complete. For each task, in order:
    or infrastructure), perform an incremental techdocs update via the techdocs skill.
 6. Continue until all tasks are complete. Claude Code auto-compacts context, so there is no
    manual context-threshold handling — just keep going.
+
+### Verify-output capture (NON-NEGOTIABLE)
+
+Never let a full verify run's output into the conversation. Every verification run — per-task,
+red-phase, green-phase, session wrap-up — executes with output captured to a temp log:
+
+```bash
+<verify command> > "$VERIFY_LOG" 2>&1
+```
+
+(`$VERIFY_LOG` = a file in the session temp/scratchpad dir, e.g. `verify-<task-id>.log`.)
+
+- **PASS** → surface ONE line: `VERIFY PASS (task N.N.N)`, plus the test count if it is
+  extractable from the log tail at no extra cost.
+- **FAIL** → surface the **last 50 lines** of the log + the log path, nothing more. Read further
+  slices of the log file on demand while fixing — do not re-run verify just to "see the output".
+- **Red-phase runs** (spec tests expected to fail) → surface only the failing spec-test
+  names/count confirming the red state — never the full dump.
+
+The full log always remains on disk for the session. If the log location is unwritable, fall
+back to running verify plainly ONCE and note the fallback in the session summary. This rule is
+about CONTEXT, not rigor: the verify command itself, its scope, and pass/fail gating are
+unchanged — and the temp log is read-only evidence, never executed.
 
 ### Zero-Ambiguity During Execution
 
@@ -203,7 +226,7 @@ otherwise still `[~]` — with the progress counter and Last Updated stamp curre
 
 1. Complete the current task before stopping.
 2. **🚨 First: update `99-execution-plan.md`** with ALL completed tasks (before anything else).
-3. Run the verify command.
+3. Run the verify command (output captured per the Verify-output capture rule).
 4. Handle the commit per the active commit mode (see [commit-modes.md](commit-modes.md)).
 5. Report the session summary (must include `Execution Plan Updated: ✅`).
 
