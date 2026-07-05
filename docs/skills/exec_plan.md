@@ -7,8 +7,22 @@
 `exec_plan` reads `plans/<feature>/99-execution-plan.md`, finds the next incomplete task, and runs
 the per-task loop: **implement → immediately update the execution plan → verify → commit per mode**.
 It follows the plan's specification-first task ordering (spec tests → red → implement → green → impl
-tests → verify) and keeps the Master Progress Checklist current so progress survives crashes and
-session handoffs.
+tests → verify) and keeps the plan's task checkboxes current — two-stage `[~]`/`[x]` marks in the
+phase sections (or the legacy consolidated checklist in pre-3.3.0 plans; both formats run
+unchanged) — so progress survives crashes and session handoffs.
+
+Verify runs are **output-captured**: the full build/test output goes to a temp log, and only a
+PASS one-liner (or the last 50 lines on failure) enters the conversation — the biggest per-task
+token saving in the loop.
+
+## Execution mode — inline first
+
+`exec_plan` runs each **phase** on the model its task tags call for (via a project routing block,
+if one exists). It implements a phase **inline** when the session model already fits, and
+dispatches the whole phase as **one** pinned-model executor only when a cheaper model is
+warranted. Per-task or parallel dispatch is opt-in — for wall-clock parallelism or isolating a
+very large plan — because splitting into many subagents costs *more* tokens, not fewer. Untagged
+and older plans run unchanged.
 
 ## When to use it
 
