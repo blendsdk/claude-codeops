@@ -21,7 +21,7 @@ arguments: feature
 
 # upgrade_plan — Upgrade a Plan or Requirements Set
 
-> **CodeOps Skills Version**: 3.2.0
+> **CodeOps Skills Version**: 3.3.0
 
 Plans and requirements are living documents. As CodeOps standards evolve, older artifacts drift
 out of date. This skill **detects** staleness, **assesses** gaps against current standards,
@@ -55,15 +55,15 @@ branches share the same 4-phase flow; the per-document checklists differ and liv
 1. Read the plan's `00-index.md` (or `99-execution-plan.md`), or for requirements the `README.md`
    and individual RD documents.
 2. Look for a version stamp: `> **CodeOps Version**: X.Y.Z` or `> **CodeOps Skills Version**: X.Y.Z`.
-3. Compare the stamp against the current standard version **3.2.0** (the bumps since `3.0.0` are behavioral — no document migration — so `3.0.0`/`3.1.0` artifacts remain compatible).
+3. Compare the stamp against the current standard version **3.3.0** (the bumps since `3.0.0` are behavioral — no document migration — so `3.0.0`–`3.2.0` artifacts remain compatible).
 
 | Condition | Classification | Action |
 |-----------|---------------|--------|
 | No version stamp found | Pre-versioning / outdated | Full upgrade recommended — the artifact predates version stamping |
-| Stamp = `3.0.0`, `3.1.0`, or `3.2.0` | Current | Report "No upgrade needed" — already compatible (behavioral, no-migration bumps since 3.0.0) |
+| Stamp = `3.0.0`, `3.1.0`, `3.2.0`, or `3.3.0` | Current | Report "No upgrade needed" — already compatible (behavioral, no-migration bumps since 3.0.0) |
 | Stamp < `3.0.0` | Outdated | Upgrade recommended — re-evaluate against current standards |
 
-After a successful upgrade, every stamped document carries `> **CodeOps Skills Version**: 3.2.0`.
+After a successful upgrade, every stamped document carries `> **CodeOps Skills Version**: 3.3.0`.
 
 ## The 4 phases (overview)
 
@@ -86,7 +86,7 @@ The same flow applies to both branches. Per-document checklists are in
 |-------|--------|
 | Target directory doesn't exist | **STOP** — suggest the make_plan skill (plans) or the make_requirements skill (requirements) |
 | Directory is empty / has no `.md` files | **STOP** — suggest make_plan / make_requirements |
-| Artifact is already at version `3.0.0`, `3.1.0`, or `3.2.0` | Report "Already current, no upgrade needed" and stop |
+| Artifact is already at version `3.0.0`, `3.1.0`, `3.2.0`, or `3.3.0` | Report "Already current, no upgrade needed" and stop |
 
 ### Phase 2 — Upgrade Report (BEFORE any changes)
 
@@ -98,7 +98,7 @@ Present findings to the user **before making any changes**:
 ## Upgrade Report: [feature-name | requirements]
 
 **Current Version:** [stamp or "none (pre-versioning)"]
-**Target Version:** 3.2.0
+**Target Version:** 3.3.0
 
 ### Will Be Added (missing sections/content)
 - [ ] ...
@@ -161,7 +161,7 @@ checklists in [upgrade-checklists.md](upgrade-checklists.md) (separate checklist
 | Completed task checkboxes `[x]` | **Preserve** |
 | Requirement descriptions, acceptance criteria, rationale | **Preserve verbatim** |
 | Priority/status decisions, custom notes/comments | **Preserve** |
-| Version stamps | **Update** to `3.2.0` |
+| Version stamps | **Update** to `3.3.0` |
 | Template structural sections | **Update** if the format changed |
 | Missing protocol sections (security, techdocs, session protocol, …) | **Add** |
 | Cross-references | **Update** to current skill/command names |
@@ -171,7 +171,7 @@ checklists in [upgrade-checklists.md](upgrade-checklists.md) (separate checklist
 
 1. ✅ Confirm all documents updated.
 2. ✅ No user content lost (compare document count, task/RD count, technical specs, acceptance criteria).
-3. ✅ Version stamps now read `> **CodeOps Skills Version**: 3.2.0`.
+3. ✅ Version stamps now read `> **CodeOps Skills Version**: 3.3.0`.
 4. ✅ Ambiguity Register complete — every entry resolved.
 5. ✅ Zero vague language remaining in any document.
 6. ✅ `AR #` back-references present for every content gap resolved during the upgrade.
@@ -180,7 +180,7 @@ checklists in [upgrade-checklists.md](upgrade-checklists.md) (separate checklist
 ```markdown
 ## Upgrade Complete: [feature-name | requirements]
 
-**Version:** [old] → 3.2.0
+**Version:** [old] → 3.3.0
 
 ### Structural Changes Applied
 - ...
