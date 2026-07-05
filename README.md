@@ -15,6 +15,15 @@ and only the knowledge remains. See [CHANGES.md](CHANGES.md) for the full migrat
 > **New here?** Follow the step-by-step [TUTORIAL.md](TUTORIAL.md) — it walks install → verify →
 > use → update on a fresh machine.
 
+**What's new in 3.3.0 — token efficiency.** Measured against two production repos and an A/B
+pilot: execution plans carry each task **once** (single checkbox list — the Master Progress
+Checklist is gone from new plans; old plans run unchanged, no migration), verify runs are
+**output-captured** (a PASS one-liner or a 50-line failure tail instead of the full build/test
+dump), plan documents **cite instead of restating** (one owning doc per fact), and execution is
+**inline-first** (phases run inline on the tagged model; whole-phase dispatch only when a cheaper
+model is warranted). Validated at ~16% fewer tokens per plan on a small project at full quality
+parity — more on repos with verbose verify chains. Details in [CHANGES.md](CHANGES.md).
+
 ## Install (recommended): the plugin
 
 Inside Claude Code, add this repo as a marketplace and install the plugin:
@@ -131,8 +140,8 @@ codeops-skills/                # repo root == plugin root
 
 | You type / say | What happens |
 |---|---|
-| `make a plan` / `make_plan` | Clarifying interview → Zero-Ambiguity Gate → `plans/<feature>/` doc set |
-| `exec_plan <feature> [--auto-commit]` | Implements the plan task-by-task, verifying and committing per mode |
+| `make a plan` / `make_plan` | Clarifying interview → Zero-Ambiguity Gate → `plans/<feature>/` doc set (deduplicated: each task stated once, documents cite their owning doc) |
+| `exec_plan <feature> [--auto-commit]` | Implements the plan task-by-task — inline-first, verify output captured to a log — verifying and committing per mode |
 | `make_requirements` / `add_requirement` / `review_requirements` | Requirements discovery / add one RD / health-check |
 | `retro_requirements [--scope <path>]` | Reverse-engineer a codebase into a reconstruction brief |
 | `grill_me [topic]` | Relentless design-disambiguation interview |
