@@ -41,7 +41,7 @@ same name — report the collision and skip, or offer a suffixed name.
 The override starting-point content is NOT duplicated here (it would drift): read the plugin's
 `agents/plan-task-executor.md` (Sonnet, effort medium) and `agents/plan-task-executor-opus.md`
 (Opus, effort high) and copy their current content verbatim, then customize. Both carry the
-handoff-packet contract, the spec-test blocker rule, and the never-guess/never-edit-the-plan
+phase-packet contract, the spec-test blocker rule, and the never-guess/never-edit-the-plan
 rules — keep those in any customization.
 
 ---
@@ -60,9 +60,12 @@ Profile: <PROFILE NAME>
 - Task tags: trivial | standard | complex | sensitive.
 - Default for untagged tasks: <DEFAULT TAG>.
 - During /codeops:make_plan, tag each generated task with one of the levels above.
-- During /codeops:exec_plan, delegate each task to a subagent by tag:
-  - trivial / standard  -> plan-task-executor (Sonnet)
-  - complex / sensitive -> plan-task-executor-opus (Opus)
+- During /codeops:exec_plan, run each phase inline on the model its tags call for;
+  dispatch a phase as ONE pinned executor only when a cheaper model than the
+  session's is warranted (see exec_plan's inline-first mode). Per-task or parallel
+  dispatch only on explicit request:
+  - trivial / standard  -> Sonnet (plan-task-executor when dispatched)
+  - complex / sensitive -> Opus (plan-task-executor-opus when dispatched)
 - <PROFILE-SPECIFIC OVERRIDES, e.g. "All SQL-lowering tasks are sensitive.">
 - Reserve Opus + high/xhigh thinking for /codeops:make_plan, /codeops:grill_me,
   and /codeops:preflight. Do not run execution at xhigh by default.

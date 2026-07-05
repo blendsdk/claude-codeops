@@ -32,16 +32,18 @@ If the execution plan can't be loaded cleanly, **STOP** and handle as follows:
 
 ### Version Check (auto-suggest)
 
-After loading, check the version stamp against the current **CodeOps Skills Version: 3.2.0**:
+After loading, check the version stamp against the current **CodeOps Skills Version: 3.3.0**:
 
 1. Read `00-index.md` or `99-execution-plan.md`.
 2. Look for `> **CodeOps Version**: X.Y.Z` (or `CodeOps Skills Version`).
-3. Compare against `3.2.0` (current; `3.0.0` and `3.1.0` remain compatible — the bumps since 3.0.0 are behavioral, no document migration).
+3. Compare against `3.3.0` (current; `3.0.0`–`3.2.0` remain compatible — pre-3.3.0 task-list
+   format differences are handled by the format detection below; no document migration, and
+   never suggest an upgrade on format grounds).
 
 | Condition | Action |
 |-----------|--------|
-| Matches `3.0.0`, `3.1.0`, or `3.2.0` | Proceed normally — plan is compatible |
-| Older than `3.0.0` | Suggest: "This plan was created with an older CodeOps version (current: 3.2.0). Consider running the upgrade_plan skill. Proceed anyway?" |
+| Matches `3.0.0`, `3.1.0`, `3.2.0`, or `3.3.0` | Proceed normally — plan is compatible |
+| Older than `3.0.0` | Suggest: "This plan was created with an older CodeOps version (current: 3.3.0). Consider running the upgrade_plan skill. Proceed anyway?" |
 | No version stamp | Suggest: "This plan has no version stamp. Consider running the upgrade_plan skill to bring it to current standards. Proceed anyway?" |
 
 Suggestion only — the user may proceed without upgrading.
@@ -60,7 +62,7 @@ complete. For each task, in order:
    session crashes now, the implementation progress is preserved and the resume session knows the
    task still needs verification.
 3. Run verification (your project's verify command — from the project's CLAUDE.md, or detected
-   project conventions).
+   project conventions), with output captured per the **Verify-output capture rule** below.
    - **PASS** → promote the mark to `[x]` with a completion timestamp
      (`- [x] 1.1.1 … ✅ (completed: YYYY-MM-DD HH:MM)`).
    - **FAIL** → the mark STAYS `[~]`. Fix the implementation and re-verify; promote only on pass.
@@ -72,6 +74,29 @@ complete. For each task, in order:
    or infrastructure), perform an incremental techdocs update via the techdocs skill.
 6. Continue until all tasks are complete. Claude Code auto-compacts context, so there is no
    manual context-threshold handling — just keep going.
+
+### Verify-output capture (NON-NEGOTIABLE)
+
+Never let a full verify run's output into the conversation. Every verification run — per-task,
+red-phase, green-phase, session wrap-up — executes with output captured to a temp log:
+
+```bash
+<verify command> > "$VERIFY_LOG" 2>&1
+```
+
+(`$VERIFY_LOG` = a file in the session temp/scratchpad dir, e.g. `verify-<task-id>.log`.)
+
+- **PASS** → surface ONE line: `VERIFY PASS (task N.N.N)`, plus the test count if it is
+  extractable from the log tail at no extra cost.
+- **FAIL** → surface the **last 50 lines** of the log + the log path, nothing more. Read further
+  slices of the log file on demand while fixing — do not re-run verify just to "see the output".
+- **Red-phase runs** (spec tests expected to fail) → surface only the failing spec-test
+  names/count confirming the red state — never the full dump.
+
+The full log always remains on disk for the session. If the log location is unwritable, fall
+back to running verify plainly ONCE and note the fallback in the session summary. This rule is
+about CONTEXT, not rigor: the verify command itself, its scope, and pass/fail gating are
+unchanged — and the temp log is read-only evidence, never executed.
 
 ### Zero-Ambiguity During Execution
 
@@ -91,35 +116,52 @@ handling. Never fill gaps by guessing.
 
 ---
 
-## Delegated Execution (routing-tagged tasks → executor subagents)
+## Execution mode — inline first (routing-aware)
 
-When the project's CLAUDE.md carries a routing policy (see the setup_routing skill) that maps
-task tags to executor subagents (`plan-task-executor` / `plan-task-executor-opus`, shipped in the
-plugin's `agents/` directory), delegate tagged tasks as follows.
+When the project's CLAUDE.md carries a routing policy (see the setup_routing skill), route by
+PHASE, not by task, and prefer inline (measured basis: the 2026-07-04 dispatch pilot — per-task
+dispatch cost 1.5–2× inline tokens; each executor bootstrap ≈ 13k tokens and does not amortize
+across tasks):
 
-**The handoff packet.** The parent composes it; the subagent receives nothing else and must not
-need anything else:
+1. **Inline by default.** If the session model already satisfies the phase's tag (or there is no
+   routing block), implement the phase inline. One context amortizes one bootstrap across all of
+   the phase's tasks — the measured cheapest shape.
+2. **Phase dispatch — only when a cheaper model is warranted.** A phase MAY be dispatched as ONE
+   pinned-model executor (`plan-task-executor` / `plan-task-executor-opus`, shipped in the
+   plugin's `agents/` directory) only when BOTH hold: (a) the phase's tag maps to a CHEAPER
+   model than the session model, and (b) the phase is large enough to amortize one executor
+   bootstrap (~13k tokens) — a couple of small tasks are cheaper inline even on the pricier
+   model.
+3. **Per-task or parallel dispatch is opt-in ONLY** — on the user's explicit request, for
+   wall-clock parallelism or for isolating a very large plan from context exhaustion. It costs
+   more tokens, not fewer; say so when the user asks for it.
 
-- the verbatim task line from `99-execution-plan.md`, plus its phase's Deliverables and Verify lines;
-- the relevant excerpt of the governing `03-XX` spec document (the excerpt, not a filename);
+**The phase packet.** When a phase IS dispatched, the parent composes the packet; the executor
+receives nothing else and must not need anything else:
+
+- the phase's task lines, Deliverables, and Verify lines verbatim from `99-execution-plan.md`;
+- the relevant excerpts of the governing `03-XX` spec documents (the excerpts, not filenames);
 - the applicable ST-cases from `07-testing-strategy.md`;
-- the AR decisions that bear on this task (quoted rows, not the whole register);
+- the AR decisions that bear on the phase (quoted rows, not the whole register);
 - the target file paths and the project's verify command.
 
-**Division of labor.** The PARENT — never the subagent — updates `99-execution-plan.md`
-(two-stage marks), the Progress header, and the roadmap. The subagent implements and reports.
-Mark `[~]` when the subagent reports implementation done; verify (or trust the subagent's verify
-run and spot-check it); promote to `[x]` on pass.
+Excerpting owned content into a packet is the intended retrieval mechanism, not restatement.
 
-**Blocker path.** On ambiguity, missing packet context, or a failing SPEC test, the subagent
+**Division of labor.** The PARENT — never the executor — updates `99-execution-plan.md`
+(two-stage marks), the Progress header, and the roadmap. The executor implements task-by-task,
+runs verify per the Verify-output capture rule, and reports per task. Mark `[~]` as the executor
+reports each implementation; verify (or trust the executor's verify run and spot-check it);
+promote to `[x]` on pass.
+
+**Blocker path.** On ambiguity, missing packet context, or a failing SPEC test, the executor
 stops and returns a blocker report. The parent then runs the zero-ambiguity loop above with the
-user (STOP → options → decision → AR `(runtime)` entry) and re-delegates with the enriched
-packet. A subagent never asks the user directly and never guesses.
+user (STOP → options → decision → AR `(runtime)` entry) and re-dispatches with the enriched
+packet. An executor never asks the user directly and never guesses.
 
 **Missing-executor guard.** If the routing policy names executors that are not present in the
 agent registry (e.g. the plugin's `agents/` isn't loaded, or the project overrode them and the
-override is gone), execute the task inline and tell the user delegation was skipped and why.
-Delegation is an optimization — the protocol's guarantees hold either way.
+override is gone), run the phase inline and tell the user dispatch was skipped and why.
+Dispatch is an optimization — the protocol's guarantees hold either way.
 
 ---
 
@@ -150,8 +192,9 @@ agent crashes during verify or commit, the plan already reflects exactly how far
 
 ### Update procedure
 
-1. On implementation: change `[ ]` → `[~]` with an implemented-timestamp in the **Master Progress
-   Checklist**; on verify pass: promote `[~]` → `[x]` with a completion timestamp.
+1. On implementation: change `[ ]` → `[~]` with an implemented-timestamp in the plan's task
+   list — the **phase checkbox lists** (3.3.0 format) or the **Master Progress Checklist**
+   (legacy format); on verify pass: promote `[~]` → `[x]` with a completion timestamp.
 2. Update the Progress counter in the header (e.g., `3/12 tasks (25%)`) — only `[x]` tasks count
    as complete.
 3. Update the Last Updated timestamp (obtain timestamps via `date '+%Y-%m-%d %H:%M'` — never
@@ -172,12 +215,20 @@ markdown marks, so the user sees live progress in the UI. The mirror is a conven
 only — **`99-execution-plan.md` remains the single durable source of truth**, and its absence
 or divergence never blocks execution. Skip silently where the tools are unavailable.
 
-### Master Progress Checklist — existence gate
+### Task-list format detection (dual-format)
 
-Before executing the first task, verify the `## 🚨 Master Progress Checklist (All Phases)` section
-exists. If missing, reconstruct it from the phase/session/task details (`- [ ] X.X.X [desc]`,
-grouped by phase) before any task execution begins. If incomplete, add the missing tasks. Do NOT
-execute any task while the checklist is missing or incomplete.
+After loading the plan, detect its task-list format — both formats execute identically otherwise:
+
+- A `## 🚨 Master Progress Checklist` section present → **legacy format (≤3.2.0)**: the checklist
+  remains the single source of truth. Maintain it exactly as before — if it is missing task
+  entries, or the section is absent while phase sections carry task TABLES, reconstruct it from
+  the phase/session/task details (`- [ ] X.X.X [desc]`, grouped by phase) before any task
+  execution begins.
+- No such section AND the phase sections carry task checkboxes → **3.3.0 format**: the phase
+  checkbox lists are the single source of truth. Do NOT create a Master Progress Checklist.
+- Neither found → STOP (empty plan — see the load table).
+
+Never suggest an upgrade on format grounds (AR-5, plans/plan-token-efficiency).
 
 ### Hard gate
 
@@ -192,7 +243,7 @@ otherwise still `[~]` — with the progress counter and Last Updated stamp curre
 
 1. Complete the current task before stopping.
 2. **🚨 First: update `99-execution-plan.md`** with ALL completed tasks (before anything else).
-3. Run the verify command.
+3. Run the verify command (output captured per the Verify-output capture rule).
 4. Handle the commit per the active commit mode (see [commit-modes.md](commit-modes.md)).
 5. Report the session summary (must include `Execution Plan Updated: ✅`).
 

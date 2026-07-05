@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.2.0"
+CODEOPS_VERSION="3.3.0"
 
 FAILURES=0
 
@@ -1027,6 +1027,123 @@ if grep -qiF 'renders it natively' "skills/techdocs/authoring-and-update.md" 2>/
   fail "authoring-and-update still claims native Mermaid rendering (false)"
 else
   pass "native-Mermaid claim removed"
+fi
+
+# -----------------------------------------------------------------------------
+# Token-efficiency checks (ST-41…ST-46) — plans/plan-token-efficiency/07-testing-strategy.md
+# -----------------------------------------------------------------------------
+
+# ST-41 — 99-template deduplicated: tasks live once, as phase checkboxes (AR-2).
+section "ST-41: make_plan template has no Master Progress Checklist"
+TPL="skills/make_plan/templates.md"
+if grep -qF 'Master Progress Checklist' "$TPL" 2>/dev/null; then
+  fail "$TPL still contains a Master Progress Checklist (AR-2)"
+else
+  pass "Master Progress Checklist removed from the 99-template"
+fi
+if grep -qF 'single source of truth' "$TPL" 2>/dev/null; then
+  pass "phase-checkbox single-source rule present"
+else
+  fail "$TPL lacks the phase-checkbox single-source rule (AR-2)"
+fi
+if grep -qF '(implemented:' "$TPL" 2>/dev/null && grep -qF '(completed:' "$TPL" 2>/dev/null; then
+  pass "two-stage mark formats retained"
+else
+  fail "$TPL lost the two-stage [~]/[x] mark formats (AR-2)"
+fi
+
+# ST-42 — exec_plan verify-output capture rule (AR-3/AR-4).
+section "ST-42: exec_plan verify-output capture rule"
+PROTO="skills/exec_plan/execution-protocol.md"
+if grep -qF 'Verify-output capture' "$PROTO" 2>/dev/null; then
+  pass "capture section present"
+else
+  fail "$PROTO lacks the Verify-output capture section (AR-3)"
+fi
+if grep -qiF 'last 50 lines' "$PROTO" 2>/dev/null; then
+  pass "50-line failure tail rule present"
+else
+  fail "$PROTO lacks the 50-line failure tail rule (AR-4)"
+fi
+if grep -qF 'VERIFY PASS' "$PROTO" 2>/dev/null; then
+  pass "PASS one-liner format present"
+else
+  fail "$PROTO lacks the PASS one-liner format (AR-4)"
+fi
+
+# ST-43 — quality checklist enforces single-list + reference-don't-restate (AR-2/AR-6).
+section "ST-43: quality checklist single-list + restate blocks"
+QC="skills/make_plan/quality-checklist.md"
+if grep -qF 'Master Progress Checklist' "$QC" 2>/dev/null; then
+  fail "$QC still requires the Master Progress Checklist (AR-2)"
+else
+  pass "Master-Checklist requirement removed"
+fi
+if grep -qF 'appears exactly once' "$QC" 2>/dev/null; then
+  pass "single-list completeness item present"
+else
+  fail "$QC lacks the appears-exactly-once item (AR-2)"
+fi
+if grep -qF 'No document restates' "$QC" 2>/dev/null; then
+  pass "restate-enforcement block present"
+else
+  fail "$QC lacks the restate-enforcement block (AR-6)"
+fi
+
+# ST-44 — exec_plan dual-format detection + 3.3.0 version table (AR-5).
+section "ST-44: exec_plan dual-format detection"
+if grep -qiF 'legacy format' "$PROTO" 2>/dev/null && grep -qF '3.3.0 format' "$PROTO" 2>/dev/null; then
+  pass "dual-format detection present"
+else
+  fail "$PROTO lacks dual-format detection (AR-5)"
+fi
+if grep -qF 'reconstruct' "$PROTO" 2>/dev/null; then
+  pass "legacy reconstruct wording retained"
+else
+  fail "$PROTO lost the legacy reconstruct wording (AR-5)"
+fi
+
+# ST-45 — reference-don't-restate rule + thin 01-requirements variant (AR-6/AR-15).
+section "ST-45: reference-don't-restate authoring rule"
+if grep -qF "Reference, don't restate" "$TPL" 2>/dev/null; then
+  pass "authoring rule present in templates"
+else
+  fail "$TPL lacks the Reference-don't-restate rule (AR-6)"
+fi
+if grep -qF 'delta view' "$TPL" 2>/dev/null; then
+  pass "thin 01-requirements delta variant present"
+else
+  fail "$TPL lacks the thin 01-requirements variant (AR-15)"
+fi
+
+# ST-46 — inline-first execution mode across all consumers (AR-1/AR-7/AR-12/AR-13).
+section "ST-46: inline-first execution mode"
+if grep -qiF 'inline first' "$PROTO" 2>/dev/null; then
+  pass "inline-first section present in the protocol"
+else
+  fail "$PROTO lacks the inline-first execution mode (AR-1)"
+fi
+if grep -qF 'Delegated Execution (routing-tagged' "$PROTO" 2>/dev/null; then
+  fail "$PROTO still carries the per-task Delegated Execution heading (AR-1)"
+else
+  pass "per-task delegation heading removed"
+fi
+for f in agents/plan-task-executor.md agents/plan-task-executor-opus.md; do
+  if grep -qiF 'phase packet' "$f" 2>/dev/null; then
+    pass "$f uses the phase-packet wording"
+  else
+    fail "$f lacks the phase-packet wording (AR-12)"
+  fi
+done
+if grep -qiF 'run each phase inline' "skills/setup_routing/SKILL.md" 2>/dev/null; then
+  pass "setup_routing block template carries inline-first wording"
+else
+  fail "setup_routing lacks the inline-first wording (AR-12)"
+fi
+if grep -qF 'Master Progress Checklist' "docs/skills/exec_plan.md" 2>/dev/null; then
+  fail "docs/skills/exec_plan.md still claims the Master Progress Checklist (AR-13)"
+else
+  pass "docs page no longer claims the Master Progress Checklist"
 fi
 
 # -----------------------------------------------------------------------------

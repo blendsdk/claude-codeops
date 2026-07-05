@@ -61,14 +61,20 @@ Run this before finalizing the plan documents. The **Specification-First Testing
 - [ ] Surface-during-authoring rule was followed — new ambiguities discovered during writing were added to the register and resolved with the user
 
 ## ✅ Execution Plan Completeness — 🚨 NON-NEGOTIABLE
-- [ ] `99-execution-plan.md` contains the `🚨 Master Progress Checklist (All Phases) — MANDATORY` section
-- [ ] The Master Progress Checklist lists ALL tasks from ALL phases (no tasks omitted)
-- [ ] The Master Progress Checklist includes the embedded execution rule block instructing agents to update it
-- [ ] Every task in the checklist matches the task tables in the phase sections (consistent numbering and descriptions)
+- [ ] Every phase section carries its tasks as a checkbox list (`- [ ] N.N.N …` with target file)
+- [ ] Every task appears exactly once document-wide — no consolidated restatement anywhere
+- [ ] The execution-rule callout (single-source marks, two-stage `[~]`/`[x]`, progress-header update, resume rule) is present under Implementation Phases
+- [ ] Task numbering is consistent across phase sections and the phase table
+
+## ✅ Reference, Don't Restate — 🚨 NON-NEGOTIABLE
+- [ ] Every citation (ST-#, 03-doc §, AR-#) resolves to an existing anchor/entry
+- [ ] No document restates content owned by another (spot-check 3 facts: each has a single owner)
+- [ ] RD-based plans use the thin delta `01-requirements.md`; standalone plans use the full form
+- [ ] No audit/traceability table duplicates AR or ST rows (citations only)
 
 ## ✅ Format
 - [ ] All documents follow the templates
 - [ ] Tables are properly formatted
 - [ ] Task numbers follow the convention (Phase.Session.Task)
 - [ ] Checkboxes included for tracking
-- [ ] `00-index.md` and `99-execution-plan.md` are stamped with `> **CodeOps Skills Version**: 3.2.0`
+- [ ] `00-index.md` and `99-execution-plan.md` are stamped with `> **CodeOps Skills Version**: 3.3.0`

@@ -9,7 +9,7 @@ argument-hint: "[short description of the project]"
 
 # Model & Effort Routing Setup (`setup_routing`)
 
-> **CodeOps Skills Version**: 3.2.0
+> **CodeOps Skills Version**: 3.3.0
 
 Configure **per-project model and effort routing** for the project the user is currently in, so
 that expensive reasoning (Opus, high/xhigh thinking) is spent only where it changes output
@@ -21,7 +21,8 @@ the typeable alias `/setup_routing`.
 Routing has **two layers**, and they must stay coordinated:
 
 1. **Policy layer (soft, behavioral).** A block in the project's `CLAUDE.md` decides *which
-   executor* a task is delegated to, expressed as a rule over task tags.
+   model* each phase runs on — inline-first — and which pinned executor backs a dispatch when
+   one is warranted, expressed as a rule over task tags.
 2. **Enforcement layer (hard, guaranteed).** Each executor subagent's frontmatter pins both
    `model:` (which model runs) and `effort:` (which reasoning effort runs) when that executor is
    invoked. Claude Code enforces both, overriding the user's session/`settings.json`/env config —
@@ -37,9 +38,10 @@ Routing has **two layers**, and they must stay coordinated:
 > want customized executor prompts (a project agent of the same name shadows the plugin one).
 
 > The policy layer is a *behavioral instruction to the orchestrator*, not a hard guarantee. The
-> `exec_plan` skill's "Delegated Execution" protocol (execution-protocol.md) defines the handoff
-> packet, the parent/subagent division of labor, and a missing-executor guard (inline fallback
-> with notice). Watching one real delegated task run is still the recommended validation (Phase 5).
+> `exec_plan` skill's "Execution mode — inline first" protocol (execution-protocol.md) defines
+> when a phase may be dispatched at all, the phase packet, the parent/executor division of
+> labor, and a missing-executor guard (inline fallback with notice). Watching one real phase run
+> under the policy is still the recommended validation (Phase 5).
 
 ## Project configuration
 
@@ -113,8 +115,10 @@ classification before confirming.
 Routing is **tag-driven**, not a blanket per-project switch (Profiles A and B are internally
 mixed). The vocabulary is fixed: `trivial`, `standard`, `complex`, `sensitive`. Each profile sets
 only the **default tag** for untagged tasks and the **escalation/de-escalation** it applies. The
-routing rule is constant: `trivial`/`standard` → Sonnet executor; `complex`/`sensitive` → Opus
-executor.
+routing rule is constant — `trivial`/`standard` → Sonnet; `complex`/`sensitive` → Opus — applied
+inline-first: run each phase inline on the model its tag calls for, and dispatch a phase to the
+matching pinned executor only when a cheaper model than the session's is warranted (see the
+exec_plan skill's inline-first mode).
 
 The generated routing block also instructs `make_plan`/`exec_plan` (within this project) to **tag
 each task** with one of these levels, so routing becomes a mechanical rule rather than a per-task
