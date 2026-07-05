@@ -2,6 +2,29 @@
 
 ## Changelog
 
+### 3.3.0 — token efficiency (2026-07-05)
+
+Implements the measured token-diet findings (plan: `plan-token-efficiency`; evidence: the
+2026-07-05 corpus analysis of two production repos + the 2026-07-04 dispatch pilots). Highlights:
+
+- **Deduplicated execution plans:** the 99-execution-plan template carries each phase's tasks
+  ONCE as a checkbox list (single source of truth; two-stage `[~]`/`[x]` marks live there); the
+  Master Progress Checklist section is gone from new plans. exec_plan runs BOTH formats via
+  dual-format detection — pre-3.3.0 plans keep their checklist, no migration, no upgrade nag.
+- **Verify-output capture (exec_plan, NON-NEGOTIABLE):** verify runs redirect to a temp log;
+  PASS surfaces one line, FAIL the last 50 lines + log path, red-phase runs a failing-test
+  summary — the full build/test dump never enters context.
+- **Reference, don't restate (make_plan, NON-NEGOTIABLE):** every fact has one owning doc
+  (RD/01 → scope, 03 → design, 07 → ST-cases, register → decisions); other docs cite with a
+  one-line gloss; AR/ST-restating audit tables banned; RD-based plans get a thin delta-only
+  `01-requirements.md`.
+- **Inline-first execution:** per-task delegation replaced — phases run inline on the tagged
+  model (pilot-measured: per-task dispatch costs 1.5–2× inline; ~13k bootstrap per executor);
+  a phase is dispatched as ONE pinned executor only when a cheaper model is warranted; per-task/
+  parallel dispatch is opt-in. Executors are phase-packet units; setup_routing's generated block
+  and docs match.
+- **Guards:** validate.sh ST-41…ST-46 lock all of the above in place.
+
 ### 3.2.0 — v3 hardening (2026-07-03)
 
 Implements all findings of the 2026-07-03 deep analysis (plan: `codeops-v3-hardening`). Highlights:
