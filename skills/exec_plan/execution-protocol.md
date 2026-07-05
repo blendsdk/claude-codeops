@@ -116,35 +116,52 @@ handling. Never fill gaps by guessing.
 
 ---
 
-## Delegated Execution (routing-tagged tasks → executor subagents)
+## Execution mode — inline first (routing-aware)
 
-When the project's CLAUDE.md carries a routing policy (see the setup_routing skill) that maps
-task tags to executor subagents (`plan-task-executor` / `plan-task-executor-opus`, shipped in the
-plugin's `agents/` directory), delegate tagged tasks as follows.
+When the project's CLAUDE.md carries a routing policy (see the setup_routing skill), route by
+PHASE, not by task, and prefer inline (measured basis: the 2026-07-04 dispatch pilot — per-task
+dispatch cost 1.5–2× inline tokens; each executor bootstrap ≈ 13k tokens and does not amortize
+across tasks):
 
-**The handoff packet.** The parent composes it; the subagent receives nothing else and must not
-need anything else:
+1. **Inline by default.** If the session model already satisfies the phase's tag (or there is no
+   routing block), implement the phase inline. One context amortizes one bootstrap across all of
+   the phase's tasks — the measured cheapest shape.
+2. **Phase dispatch — only when a cheaper model is warranted.** A phase MAY be dispatched as ONE
+   pinned-model executor (`plan-task-executor` / `plan-task-executor-opus`, shipped in the
+   plugin's `agents/` directory) only when BOTH hold: (a) the phase's tag maps to a CHEAPER
+   model than the session model, and (b) the phase is large enough to amortize one executor
+   bootstrap (~13k tokens) — a couple of small tasks are cheaper inline even on the pricier
+   model.
+3. **Per-task or parallel dispatch is opt-in ONLY** — on the user's explicit request, for
+   wall-clock parallelism or for isolating a very large plan from context exhaustion. It costs
+   more tokens, not fewer; say so when the user asks for it.
 
-- the verbatim task line from `99-execution-plan.md`, plus its phase's Deliverables and Verify lines;
-- the relevant excerpt of the governing `03-XX` spec document (the excerpt, not a filename);
+**The phase packet.** When a phase IS dispatched, the parent composes the packet; the executor
+receives nothing else and must not need anything else:
+
+- the phase's task lines, Deliverables, and Verify lines verbatim from `99-execution-plan.md`;
+- the relevant excerpts of the governing `03-XX` spec documents (the excerpts, not filenames);
 - the applicable ST-cases from `07-testing-strategy.md`;
-- the AR decisions that bear on this task (quoted rows, not the whole register);
+- the AR decisions that bear on the phase (quoted rows, not the whole register);
 - the target file paths and the project's verify command.
 
-**Division of labor.** The PARENT — never the subagent — updates `99-execution-plan.md`
-(two-stage marks), the Progress header, and the roadmap. The subagent implements and reports.
-Mark `[~]` when the subagent reports implementation done; verify (or trust the subagent's verify
-run and spot-check it); promote to `[x]` on pass.
+Excerpting owned content into a packet is the intended retrieval mechanism, not restatement.
 
-**Blocker path.** On ambiguity, missing packet context, or a failing SPEC test, the subagent
+**Division of labor.** The PARENT — never the executor — updates `99-execution-plan.md`
+(two-stage marks), the Progress header, and the roadmap. The executor implements task-by-task,
+runs verify per the Verify-output capture rule, and reports per task. Mark `[~]` as the executor
+reports each implementation; verify (or trust the executor's verify run and spot-check it);
+promote to `[x]` on pass.
+
+**Blocker path.** On ambiguity, missing packet context, or a failing SPEC test, the executor
 stops and returns a blocker report. The parent then runs the zero-ambiguity loop above with the
-user (STOP → options → decision → AR `(runtime)` entry) and re-delegates with the enriched
-packet. A subagent never asks the user directly and never guesses.
+user (STOP → options → decision → AR `(runtime)` entry) and re-dispatches with the enriched
+packet. An executor never asks the user directly and never guesses.
 
 **Missing-executor guard.** If the routing policy names executors that are not present in the
 agent registry (e.g. the plugin's `agents/` isn't loaded, or the project overrode them and the
-override is gone), execute the task inline and tell the user delegation was skipped and why.
-Delegation is an optimization — the protocol's guarantees hold either way.
+override is gone), run the phase inline and tell the user dispatch was skipped and why.
+Dispatch is an optimization — the protocol's guarantees hold either way.
 
 ---
 
