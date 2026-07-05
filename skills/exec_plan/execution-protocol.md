@@ -36,7 +36,9 @@ After loading, check the version stamp against the current **CodeOps Skills Vers
 
 1. Read `00-index.md` or `99-execution-plan.md`.
 2. Look for `> **CodeOps Version**: X.Y.Z` (or `CodeOps Skills Version`).
-3. Compare against `3.3.0` (current; `3.0.0`–`3.2.0` remain compatible — the bumps since 3.0.0 are behavioral, no document migration).
+3. Compare against `3.3.0` (current; `3.0.0`–`3.2.0` remain compatible — pre-3.3.0 task-list
+   format differences are handled by the format detection below; no document migration, and
+   never suggest an upgrade on format grounds).
 
 | Condition | Action |
 |-----------|--------|
@@ -150,8 +152,9 @@ agent crashes during verify or commit, the plan already reflects exactly how far
 
 ### Update procedure
 
-1. On implementation: change `[ ]` → `[~]` with an implemented-timestamp in the **Master Progress
-   Checklist**; on verify pass: promote `[~]` → `[x]` with a completion timestamp.
+1. On implementation: change `[ ]` → `[~]` with an implemented-timestamp in the plan's task
+   list — the **phase checkbox lists** (3.3.0 format) or the **Master Progress Checklist**
+   (legacy format); on verify pass: promote `[~]` → `[x]` with a completion timestamp.
 2. Update the Progress counter in the header (e.g., `3/12 tasks (25%)`) — only `[x]` tasks count
    as complete.
 3. Update the Last Updated timestamp (obtain timestamps via `date '+%Y-%m-%d %H:%M'` — never
@@ -172,12 +175,20 @@ markdown marks, so the user sees live progress in the UI. The mirror is a conven
 only — **`99-execution-plan.md` remains the single durable source of truth**, and its absence
 or divergence never blocks execution. Skip silently where the tools are unavailable.
 
-### Master Progress Checklist — existence gate
+### Task-list format detection (dual-format)
 
-Before executing the first task, verify the `## 🚨 Master Progress Checklist (All Phases)` section
-exists. If missing, reconstruct it from the phase/session/task details (`- [ ] X.X.X [desc]`,
-grouped by phase) before any task execution begins. If incomplete, add the missing tasks. Do NOT
-execute any task while the checklist is missing or incomplete.
+After loading the plan, detect its task-list format — both formats execute identically otherwise:
+
+- A `## 🚨 Master Progress Checklist` section present → **legacy format (≤3.2.0)**: the checklist
+  remains the single source of truth. Maintain it exactly as before — if it is missing task
+  entries, or the section is absent while phase sections carry task TABLES, reconstruct it from
+  the phase/session/task details (`- [ ] X.X.X [desc]`, grouped by phase) before any task
+  execution begins.
+- No such section AND the phase sections carry task checkboxes → **3.3.0 format**: the phase
+  checkbox lists are the single source of truth. Do NOT create a Master Progress Checklist.
+- Neither found → STOP (empty plan — see the load table).
+
+Never suggest an upgrade on format grounds (AR-5, plans/plan-token-efficiency).
 
 ### Hard gate
 
