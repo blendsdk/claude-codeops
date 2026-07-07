@@ -18,7 +18,7 @@ arguments: feature
 
 # exec_plan — Execute an Implementation Plan
 
-> **CodeOps Skills Version**: 3.3.1
+> **CodeOps Skills Version**: 3.3.2
 
 Execute the implementation plan at `plans/$ARGUMENTS/99-execution-plan.md`. The first
 argument is the feature name; an optional flag selects the commit mode.
