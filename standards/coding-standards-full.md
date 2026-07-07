@@ -24,7 +24,7 @@ These apply to all code I write unless this project's `CLAUDE.md` overrides a sp
 - Doc comments carry **no change history, bug-fix notes, or "fixed in vX" annotations** — that belongs in the commit / PR body, where the developer and reviewer see it. A doc comment describes what the entity *is and does now*, not how it got there.
 
 ## Architecture & boundaries
-- **Split files before ~500 lines** or when they hold multiple concerns; aim for 200–500 lines per file. Use foundation-first layering with a single public entry point (`index`/`mod`/`__init__`).
+- **Split files before ~700 lines** or when they hold multiple concerns; aim for 200–500 lines per file (700 is the ceiling, not the goal). Use foundation-first layering with a single public entry point (`index`/`mod`/`__init__`).
 - **Respect module/package boundaries** — import from public APIs, never reach into another module's internals.
 - Keep imports at the top; separate type-only imports from value imports where supported; avoid deprecated import styles.
 - Separate runtime dependencies from dev/build dependencies; keep the dependency surface minimal.

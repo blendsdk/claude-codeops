@@ -32,18 +32,18 @@ If the execution plan can't be loaded cleanly, **STOP** and handle as follows:
 
 ### Version Check (auto-suggest)
 
-After loading, check the version stamp against the current **CodeOps Skills Version: 3.3.1**:
+After loading, check the version stamp against the current **CodeOps Skills Version: 3.3.2**:
 
 1. Read `00-index.md` or `99-execution-plan.md`.
 2. Look for `> **CodeOps Version**: X.Y.Z` (or `CodeOps Skills Version`).
-3. Compare against `3.3.1` (current; `3.0.0`–`3.3.0` remain compatible — pre-3.3.0 task-list
+3. Compare against `3.3.2` (current; `3.0.0`–`3.3.1` remain compatible — pre-3.3.0 task-list
    format differences are handled by the format detection below; no document migration, and
    never suggest an upgrade on format grounds).
 
 | Condition | Action |
 |-----------|--------|
-| Matches `3.0.0`, `3.1.0`, `3.2.0`, `3.3.0`, or `3.3.1` | Proceed normally — plan is compatible |
-| Older than `3.0.0` | Suggest: "This plan was created with an older CodeOps version (current: 3.3.1). Consider running the upgrade_plan skill. Proceed anyway?" |
+| Matches `3.0.0`, `3.1.0`, `3.2.0`, `3.3.0`, `3.3.1`, or `3.3.2` | Proceed normally — plan is compatible |
+| Older than `3.0.0` | Suggest: "This plan was created with an older CodeOps version (current: 3.3.2). Consider running the upgrade_plan skill. Proceed anyway?" |
 | No version stamp | Suggest: "This plan has no version stamp. Consider running the upgrade_plan skill to bring it to current standards. Proceed anyway?" |
 
 Suggestion only — the user may proceed without upgrading.

@@ -2,6 +2,17 @@
 
 ## Changelog
 
+### 3.3.2 — file-size ceiling raised to ~700 lines (2026-07-08)
+
+Behavioral, no document migration — 3.0.0–3.3.1 plans/requirements remain compatible.
+
+- **Standards:** the file-split guidance moves from "split before ~500 lines" to **"split before
+  ~700 lines"**, while **200–500 lines stays the aspirational target** (700 is the ceiling, not the
+  goal) and "split when a file holds multiple concerns" remains the primary trigger. Modern models
+  (Opus 4.8, Sonnet 5, Haiku 4.5, Fable 5) read and edit 700-line files with room to spare — the
+  cap is a human-readability / single-responsibility heuristic, not a context limit. Applied in both
+  standards cores and the make_plan Phase-1 architecture check.
+
 ### 3.3.1 — self-contained code documentation (2026-07-08)
 
 Behavioral, no document migration — 3.0.0–3.3.0 plans/requirements remain compatible. Highlights:
