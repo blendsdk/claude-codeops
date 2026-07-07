@@ -1147,6 +1147,38 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# ST-47 — self-contained code documentation: the ephemeral-reference ban is
+# present in both standards cores, enforced in the exec_plan per-task loop and in
+# both executor agents, and the /clean_jsdoc retrofit command ships (3.3.1).
+# Sentinels quoted so a rewording can't silently drop the enforcement.
+# -----------------------------------------------------------------------------
+section "ST-47: code-comment / JSDoc ephemeral-reference ban is enforced"
+for f in "$STANDARDS" "$STANDARDS_FULL"; do
+  if grep -qiF 'never reference' "$f" 2>/dev/null; then
+    pass "$f carries the ephemeral-reference ban"
+  else
+    fail "$f lacks the ephemeral-reference ban (3.3.1)"
+  fi
+done
+if grep -qiF 'doc-standard self-check' "$PROTO" 2>/dev/null; then
+  pass "exec_plan gates promotion on the doc-standard self-check"
+else
+  fail "$PROTO lacks the doc-standard self-check before [x] (3.3.1)"
+fi
+for f in agents/plan-task-executor.md agents/plan-task-executor-opus.md; do
+  if grep -qiF 'Documentation ban' "$f" 2>/dev/null; then
+    pass "$f carries the Documentation ban"
+  else
+    fail "$f lacks the Documentation ban (3.3.1)"
+  fi
+done
+if [[ -f commands/clean_jsdoc.md ]]; then
+  pass "clean_jsdoc retrofit command present"
+else
+  fail "commands/clean_jsdoc.md is missing (3.3.1)"
+fi
+
+# -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
 section "Summary"

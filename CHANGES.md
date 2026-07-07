@@ -11,8 +11,11 @@ Behavioral, no document migration — 3.0.0–3.3.0 plans/requirements remain co
   execution plan, or an `RD-`/`AR-`/task identifier). Those files are regenerated, migrated between
   layouts, or deleted once a feature ships, so a reference into them is a dangling pointer and noise
   to a reviewer. Shipped code must stand on its own; restate any plan rationale in plain language.
-  Commit / PR messages stay exempt (durable git history). Enforced in both `standards/` cores and
-  reinforced at the exec_plan per-task implement step.
+  Commit / PR messages stay exempt (durable git history). Enforced at every path that writes code:
+  both `standards/` cores, the exec_plan per-task implement step, a **doc-standard self-check** that
+  gates `[~]`→`[x]` promotion (a leaked reference is invisible to build+test, so a green verify is
+  not sufficient), and both dispatched executor agents (which run in a separate context that never
+  sees the SessionStart standards hook). `validate.sh` ST-47 locks all of this in place.
 - **Documentation standard — expanded:** document every non-trivial entity; `@example` on public /
   external-facing API (AI tools learn the contract from it); calm explaining tone; no change-history
   / bug-fix notes in doc comments (that belongs in the commit body). Spec-test traceability comments
