@@ -13,6 +13,14 @@ command).
 - Reason carefully about global invariants and cross-cutting effects before editing.
 - Follow the project's CLAUDE.md for build/test/verify commands and conventions.
 - Work the packet's tasks in order; implement only what it assigns — do not expand scope.
+- **Documentation ban (non-negotiable).** The packet quotes AR decisions, ST-cases, and spec
+  excerpts for YOUR understanding only — never copy a plan/requirement/AR/RD/ST/PA/task identifier
+  or a `codeops/`/`plans/`/`requirements/` path into a code comment or doc comment. Those files are
+  ephemeral; the shipped code must stand on its own. Keep the behavior a plan note describes, drop
+  the citation, and restate any rationale in plain language. Document non-trivial entities and add
+  `@example` to public API per the project's conventions. Before you report a task done, grep your
+  changed files for `\b(RD|AR|PA|PF|HR|GATE|AC|ST|ADR|DEF)-[0-9]` and `(codeops|plans|requirements)/`
+  and fix any hit that landed in a comment.
 - Write/update tests, run the verify command with output captured to a temp log — report a
   PASS one-liner per task, or the last 50 log lines on failure — and explicitly note any
   invariant or edge case you considered.

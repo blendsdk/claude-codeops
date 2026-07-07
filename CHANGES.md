@@ -2,6 +2,29 @@
 
 ## Changelog
 
+### 3.3.1 — self-contained code documentation (2026-07-08)
+
+Behavioral, no document migration — 3.0.0–3.3.0 plans/requirements remain compatible. Highlights:
+
+- **Documentation standard — ephemeral-reference ban (NON-NEGOTIABLE):** no code comment or doc
+  comment may reference a CodeOps planning artifact (`codeops/`, `plans/`, `requirements/`, an
+  execution plan, or an `RD-`/`AR-`/task identifier). Those files are regenerated, migrated between
+  layouts, or deleted once a feature ships, so a reference into them is a dangling pointer and noise
+  to a reviewer. Shipped code must stand on its own; restate any plan rationale in plain language.
+  Commit / PR messages stay exempt (durable git history). Enforced at every path that writes code:
+  both `standards/` cores, the exec_plan per-task implement step, a **doc-standard self-check** that
+  gates `[~]`→`[x]` promotion (a leaked reference is invisible to build+test, so a green verify is
+  not sufficient), and both dispatched executor agents (which run in a separate context that never
+  sees the SessionStart standards hook). `validate.sh` ST-47 locks all of this in place.
+- **Documentation standard — expanded:** document every non-trivial entity; `@example` on public /
+  external-facing API (AI tools learn the contract from it); calm explaining tone; no change-history
+  / bug-fix notes in doc comments (that belongs in the commit body). Spec-test traceability comments
+  now quote the requirement's *substance* in plain language, never a path/ID into `requirements/`.
+- **New `/clean_jsdoc` command:** a detection-first, language-agnostic retrofit that brings an
+  existing project's JSDoc and code comments up to the standard above — cheap grep pass to find
+  violations, then scoped semantic rewrites (comments only, never behavior). Runs well on a cheaper
+  model. Modes: `--dry-run` (report only) and `--refs-only` (strip references only).
+
 ### 3.3.0 — token efficiency (2026-07-05)
 
 Implements the measured token-diet findings (plan: `plan-token-efficiency`; evidence: the
@@ -63,7 +86,7 @@ Implements all findings of the 2026-07-03 deep analysis (plan: `codeops-v3-harde
   a permanent flat fallback, selected by the `codeops/.codeops.yml` marker.
 - New `setup_codeops` skill + command; deterministic migration engine `scripts/codeops-migrate.sh`
   with the `migration-check.sh` spec suite; `_shared/layout-convention.md` as the single layout
-  source; 11 skills + 15 commands.
+  source; 11 skills plus the slash-command set.
 
 ---
 

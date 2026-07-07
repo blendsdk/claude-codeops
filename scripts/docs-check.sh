@@ -175,8 +175,8 @@ fi
 # ST-H20 — CHANGES.md is a live changelog: it must carry an entry header for every
 # release since 3.0.0 (the changelog froze at the v2 era — v3-hardening AR #21).
 # -----------------------------------------------------------------------------
-section "ST-H20: CHANGES.md carries 3.0.0 / 3.1.0 / 3.2.0 / 3.3.0 entries"
-for v in "3.0.0" "3.1.0" "3.2.0" "3.3.0"; do
+section "ST-H20: CHANGES.md carries 3.0.0 / 3.1.0 / 3.2.0 / 3.3.0 / 3.3.1 entries"
+for v in "3.0.0" "3.1.0" "3.2.0" "3.3.0" "3.3.1"; do
   if grep -qE "^#+ .*${v//./\\.}" CHANGES.md 2>/dev/null; then
     pass "CHANGES.md has an entry header for $v"
   else

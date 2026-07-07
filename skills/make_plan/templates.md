@@ -1,6 +1,6 @@
 # Plan Document Templates
 
-Read this when writing the Phase 2 documents. Create files in `plans/<feature-name>/`. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.3.0`. Every `[Date]` / `[YYYY-MM-DD HH:MM]` placeholder is filled from `date '+%Y-%m-%d %H:%M'` — never an invented timestamp.
+Read this when writing the Phase 2 documents. Create files in `plans/<feature-name>/`. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.3.1`. Every `[Date]` / `[YYYY-MM-DD HH:MM]` placeholder is filled from `date '+%Y-%m-%d %H:%M'` — never an invented timestamp.
 
 Folder layout:
 
@@ -46,7 +46,7 @@ excerpt at dispatch time — excerpting for a handoff packet is not restatement)
 > **Status**: Planning Complete
 > **Created**: [Date]
 > **Implements**: RD-NN   (only if based on a requirements document; omit otherwise)
-> **CodeOps Skills Version**: 3.3.0
+> **CodeOps Skills Version**: 3.3.1
 
 ## Overview
 
@@ -304,6 +304,12 @@ With no RD upstream, `01-requirements.md` IS the owning requirements doc:
 >
 > **Every spec test case MUST include a source reference** tracing it to the requirement,
 > spec document, or AR entry that defines the expected behavior.
+>
+> The `Source` column lives **in this plan document** — it is not a code comment. When the
+> executor turns an ST-case into a `.spec.test` file, the test's in-code traceability comment
+> quotes the behavior in **plain language** (e.g. `// password must be at least 8 characters`),
+> **never** the `Source` cell's `ST-`/`Req`/`AR #` id or a `requirements/` path — per the
+> standards' Documentation ban (the planning folder is ephemeral; the test must stand alone).
 
 ### [Component/Feature 1]
 
@@ -382,7 +388,7 @@ once in the document), and MUST structure feature phases with the specification-
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: [YYYY-MM-DD HH:MM]
 > **Progress**: 0/X tasks (0%)
-> **CodeOps Skills Version**: 3.3.0
+> **CodeOps Skills Version**: 3.3.1
 
 ## Overview
 

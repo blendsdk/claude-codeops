@@ -1,6 +1,6 @@
 # Zero-Ambiguity Gate (shared protocol)
 
-> **CodeOps Skills Version**: 3.3.0
+> **CodeOps Skills Version**: 3.3.1
 
 This is the **single canonical definition** of the Zero-Ambiguity Gate. It lives at the plugin
 root in `_shared/` (deliberately outside `skills/`, like `layout-convention.md`). The gate-running

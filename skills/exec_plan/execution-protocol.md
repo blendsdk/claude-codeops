@@ -32,18 +32,18 @@ If the execution plan can't be loaded cleanly, **STOP** and handle as follows:
 
 ### Version Check (auto-suggest)
 
-After loading, check the version stamp against the current **CodeOps Skills Version: 3.3.0**:
+After loading, check the version stamp against the current **CodeOps Skills Version: 3.3.1**:
 
 1. Read `00-index.md` or `99-execution-plan.md`.
 2. Look for `> **CodeOps Version**: X.Y.Z` (or `CodeOps Skills Version`).
-3. Compare against `3.3.0` (current; `3.0.0`–`3.2.0` remain compatible — pre-3.3.0 task-list
+3. Compare against `3.3.1` (current; `3.0.0`–`3.3.0` remain compatible — pre-3.3.0 task-list
    format differences are handled by the format detection below; no document migration, and
    never suggest an upgrade on format grounds).
 
 | Condition | Action |
 |-----------|--------|
-| Matches `3.0.0`, `3.1.0`, `3.2.0`, or `3.3.0` | Proceed normally — plan is compatible |
-| Older than `3.0.0` | Suggest: "This plan was created with an older CodeOps version (current: 3.3.0). Consider running the upgrade_plan skill. Proceed anyway?" |
+| Matches `3.0.0`, `3.1.0`, `3.2.0`, `3.3.0`, or `3.3.1` | Proceed normally — plan is compatible |
+| Older than `3.0.0` | Suggest: "This plan was created with an older CodeOps version (current: 3.3.1). Consider running the upgrade_plan skill. Proceed anyway?" |
 | No version stamp | Suggest: "This plan has no version stamp. Consider running the upgrade_plan skill to bring it to current standards. Proceed anyway?" |
 
 Suggestion only — the user may proceed without upgrading.
@@ -55,7 +55,10 @@ Suggestion only — the user may proceed without upgrading.
 Task completion is **two-stage**: `[~]` = implemented (crash-safe progress mark), `[x]` = verified
 complete. For each task, in order:
 
-1. Implement the task following the technical specifications.
+1. Implement the task following the technical specifications. **The code and doc comments you
+   write must never reference the plan, requirements, `codeops/`, or any RD/AR/task ID** — those
+   files are ephemeral; the shipped code must stand on its own (per the standards' Documentation
+   ban). Restate any rationale you drew from the plan in plain language instead.
 2. **🚨 Immediately update `99-execution-plan.md`** — mark the task `[~]` with a timestamp
    (`- [~] 1.1.1 … ⏳ (implemented: YYYY-MM-DD HH:MM)`, timestamp via `date '+%Y-%m-%d %H:%M'`)
    and update the Progress header. Do this before running verification or anything else — if the
@@ -63,10 +66,26 @@ complete. For each task, in order:
    task still needs verification.
 3. Run verification (your project's verify command — from the project's CLAUDE.md, or detected
    project conventions), with output captured per the **Verify-output capture rule** below.
-   - **PASS** → promote the mark to `[x]` with a completion timestamp
+   - **PASS** → before promoting, run the **doc-standard self-check** below on the files this task
+     changed. A leaked plan reference is invisible to build+test, so a green verify is NOT
+     sufficient — the self-check is a hard part of the done-criterion. Only when it is clean,
+     promote the mark to `[x]` with a completion timestamp
      (`- [x] 1.1.1 … ✅ (completed: YYYY-MM-DD HH:MM)`).
    - **FAIL** → the mark STAYS `[~]`. Fix the implementation and re-verify; promote only on pass.
      A task is never `[x]` with a failing verify.
+
+   **Doc-standard self-check (NON-NEGOTIABLE, before every `[x]`).** Confirm the code and comments
+   you just wrote reference no ephemeral CodeOps artifact. Grep the files this task changed:
+
+   ```bash
+   git diff --name-only | xargs grep -nEI \
+     -e '\b(RD|AR|PA|PF|HR|GATE|AC|ST|ADR|DEF)-[0-9]+' \
+     -e '\b(codeops|plans|requirements)/[[:alnum:]._/-]*' 2>/dev/null
+   ```
+
+   Any hit inside a comment or doc comment is a leak — rewrite it per the standard (keep the
+   behavior it annotated, drop the citation; restate any plan rationale in plain language) before
+   marking the task `[x]`. Hits inside real code strings/paths the program actually uses are fine.
 4. Commit per the active commit mode (see [commit-modes.md](commit-modes.md)) — the commit gate
    keys off `[x]`, never `[~]`.
 5. **Techdocs check (after each phase):** if techdocs exist and the just-completed phase
@@ -145,7 +164,9 @@ receives nothing else and must not need anything else:
 - the AR decisions that bear on the phase (quoted rows, not the whole register);
 - the target file paths and the project's verify command.
 
-Excerpting owned content into a packet is the intended retrieval mechanism, not restatement.
+Excerpting owned content into a packet is the intended retrieval mechanism, not restatement. The
+quoted AR/ST/spec content is context for the executor's *understanding* — it must not surface as a
+citation in shipped code (the executor carries the same doc-standard ban and self-check).
 
 **Division of labor.** The PARENT — never the executor — updates `99-execution-plan.md`
 (two-stage marks), the Progress header, and the roadmap. The executor implements task-by-task,

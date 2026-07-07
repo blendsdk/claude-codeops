@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.3.0"
+CODEOPS_VERSION="3.3.1"
 
 FAILURES=0
 
@@ -1144,6 +1144,38 @@ if grep -qF 'Master Progress Checklist' "docs/skills/exec_plan.md" 2>/dev/null; 
   fail "docs/skills/exec_plan.md still claims the Master Progress Checklist (AR-13)"
 else
   pass "docs page no longer claims the Master Progress Checklist"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-47 — self-contained code documentation: the ephemeral-reference ban is
+# present in both standards cores, enforced in the exec_plan per-task loop and in
+# both executor agents, and the /clean_jsdoc retrofit command ships (3.3.1).
+# Sentinels quoted so a rewording can't silently drop the enforcement.
+# -----------------------------------------------------------------------------
+section "ST-47: code-comment / JSDoc ephemeral-reference ban is enforced"
+for f in "$STANDARDS" "$STANDARDS_FULL"; do
+  if grep -qiF 'never reference' "$f" 2>/dev/null; then
+    pass "$f carries the ephemeral-reference ban"
+  else
+    fail "$f lacks the ephemeral-reference ban (3.3.1)"
+  fi
+done
+if grep -qiF 'doc-standard self-check' "$PROTO" 2>/dev/null; then
+  pass "exec_plan gates promotion on the doc-standard self-check"
+else
+  fail "$PROTO lacks the doc-standard self-check before [x] (3.3.1)"
+fi
+for f in agents/plan-task-executor.md agents/plan-task-executor-opus.md; do
+  if grep -qiF 'Documentation ban' "$f" 2>/dev/null; then
+    pass "$f carries the Documentation ban"
+  else
+    fail "$f lacks the Documentation ban (3.3.1)"
+  fi
+done
+if [[ -f commands/clean_jsdoc.md ]]; then
+  pass "clean_jsdoc retrofit command present"
+else
+  fail "commands/clean_jsdoc.md is missing (3.3.1)"
 fi
 
 # -----------------------------------------------------------------------------
