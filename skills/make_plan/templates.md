@@ -304,6 +304,12 @@ With no RD upstream, `01-requirements.md` IS the owning requirements doc:
 >
 > **Every spec test case MUST include a source reference** tracing it to the requirement,
 > spec document, or AR entry that defines the expected behavior.
+>
+> The `Source` column lives **in this plan document** — it is not a code comment. When the
+> executor turns an ST-case into a `.spec.test` file, the test's in-code traceability comment
+> quotes the behavior in **plain language** (e.g. `// password must be at least 8 characters`),
+> **never** the `Source` cell's `ST-`/`Req`/`AR #` id or a `requirements/` path — per the
+> standards' Documentation ban (the planning folder is ephemeral; the test must stand alone).
 
 ### [Component/Feature 1]
 
