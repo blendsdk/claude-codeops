@@ -13,6 +13,7 @@ These do focused jobs of their own:
 | `/gitcmp` | Commit **and push** with a Conventional Commit message. |
 | `/analyze_project` | Scan the project's manifests and structure and generate/refresh its `CLAUDE.md` (toolchain, commands, structure, conventions). Merges non-destructively. |
 | `/migrate_clinerules` | Convert a legacy `codeops-mcp` `.clinerules/project.md` into this project's `CLAUDE.md`, preserving hand-authored content. |
+| `/clean_jsdoc` | Retrofit an existing project's JSDoc and code comments to the CodeOps documentation standard — strip references to ephemeral planning artifacts (`plans/`, `requirements/`, RD/AR IDs), document non-trivial entities, and add `@example` to public API. Detection-first, comments-only; `--dry-run` / `--refs-only`. |
 
 ## Alias commands
 

@@ -1,6 +1,6 @@
 # Introduction
 
-**CodeOps** is the CodeOps AI-development workflow — **11 skills + 15 slash commands + always-on
+**CodeOps** is the CodeOps AI-development workflow — **11 skills + 16 slash commands + always-on
 coding standards** — packaged as an installable [Claude Code plugin](https://code.claude.com/docs/en/plugins).
 
 ## Why it exists
@@ -19,7 +19,7 @@ So the MCP machinery is gone and only the knowledge remains.
   [`grill_me`](/skills/grill_me), [`preflight`](/skills/preflight), [`techdocs`](/skills/techdocs),
   [`roadmap`](/skills/roadmap), [`upgrade_plan`](/skills/upgrade_plan),
   [`setup_codeops`](/skills/setup_codeops), and [`setup_routing`](/skills/setup_routing).
-- **15 slash commands** — including [`/gitcm` / `/gitcmp`](/skills/commands) for Conventional-Commit
+- **16 slash commands** — including [`/gitcm` / `/gitcmp`](/skills/commands) for Conventional-Commit
   flows, `/analyze_project`, `/migrate_clinerules`, and thin alias commands that delegate to the
   parent skills.
 - **Always-on coding standards** — a single source of universal coding, testing, and working-style

@@ -10,7 +10,7 @@ Do not duplicate these standards in `~/.claude/CLAUDE.md` — the plugin injects
   code**; **consistency with the existing codebase is non-negotiable**; be explicit when in doubt.
 - Split files before ~500 lines; respect module boundaries (import public APIs only); imports at
   the top; keep the dependency surface minimal.
-- Comment **why**, not what; every public/protected API gets a doc comment.
+- Comment **why** not what, in a calm explaining tone; document every non-trivial entity (public/external API always, with `@example`); no change-history in doc comments; **NON-NEGOTIABLE — never reference `codeops/`/`plans/`/`requirements/`, an execution plan, or a plan/RD/AR/task ID in any code or doc comment** (they are ephemeral — code must stand alone; restate the rationale in plain language instead). Full rules: `coding-standards-full.md`.
 - Statically-typed code: no unsafe casts (`as any`/`as unknown`); use type guards; enums/constants
   for discriminators.
 
