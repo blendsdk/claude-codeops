@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.3.2"
+CODEOPS_VERSION="3.4.0"
 
 FAILURES=0
 
@@ -1279,6 +1279,23 @@ if grep -qiF 'already present' commands/analyze_project.md; then
   pass "fold skips content already present (no double-append)"
 else
   fail "analyze_project fold lacks the content-presence idempotency guard (FR-6/PA-1)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-54 — the user-facing "Parallel agents" docs guide exists and the README points to it
+# (FR-7 / AR-14). Link integrity is covered by the VitePress dead-link build.
+# -----------------------------------------------------------------------------
+section "ST-54: parallel-agents docs guide + README pointer"
+PA_GUIDE="docs/guide/parallel-agents.md"
+if [[ -s "$PA_GUIDE" ]]; then
+  pass "$PA_GUIDE exists"
+else
+  fail "parallel-agents docs guide missing (FR-7)"
+fi
+if grep -qF 'guide/parallel-agents' README.md; then
+  pass "README links the parallel-agents guide"
+else
+  fail "README lacks a link to the parallel-agents guide (FR-7)"
 fi
 
 # -----------------------------------------------------------------------------

@@ -110,6 +110,9 @@ branches: `codeops-worktree new billing` creates a `feat/billing` worktree in a 
 marketplace plugin can't install PATH executables, so this is dev-installer-only; marketplace users
 can symlink `bin/codeops-worktree` into `~/.local/bin` by hand.
 
+Full workflow (worktrees, how conflicts are avoided, and adopting it in an existing project) is in
+the **[Parallel agents guide](https://blendsdk.github.io/claude-codeops/guide/parallel-agents)**.
+
 **On Windows**, run it from **Git Bash** (every Git for Windows install ships it) or **WSL** — the
 tool is a Bash script and `git worktree` behaves identically there. Git Bash may turn the
 `~/.local/bin` symlink into a plain copy unless native symlinks are enabled; `./install.sh --copy`
