@@ -237,6 +237,12 @@ for path in \
   fi
 done
 [[ "$apply_ok" -eq 1 ]] && pass "apply produced the expected nested tree"
+# The emitted marker carries integrationBranch (FR-4 — parallel-agents onboarding).
+if grep -qE '^integrationBranch:[[:space:]]*\S' "$repo_apply/codeops/.codeops.yml" 2>/dev/null; then
+  pass "apply: marker carries integrationBranch"
+else
+  fail "apply: marker missing integrationBranch (FR-4)"
+fi
 # Old flat dirs are gone (moved, not copied).
 if [[ ! -e "$repo_apply/requirements" && ! -e "$repo_apply/plans" ]]; then
   pass "apply removed the old flat requirements/ and plans/ trees"

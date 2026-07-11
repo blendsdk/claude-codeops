@@ -34,12 +34,19 @@ front. Those appear lazily when the first RD, plan, or task is authored (AR #5).
 # Sole writer: the setup_codeops skill. Schema: _shared/layout-convention.md
 codeopsLayout: nested
 layoutVersion: "3.0.0"
+integrationBranch: <the repo's integration branch — resolve; see the note below>
 conventions:
   rdIdScope: per-feature
   taskIdPrefix: "T"
   maintenanceFeature: _maintenance
   archiveDir: codeops/_archive
 ```
+
+Resolve `integrationBranch` to the repo's default branch — `git symbolic-ref refs/remotes/origin/HEAD`
+(strip `origin/`), else the current branch, else `main`/`master`. It names the branch where features
+integrate and derived files (the portfolio roadmap, `CLAUDE.md`) are regenerated, so parallel feature
+worktrees don't collide on them. The key is **optional** — every consumer auto-detects the same
+default when it is absent — so this line is a convenience/pin, not a requirement.
 
 ## Notes
 

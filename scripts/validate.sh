@@ -1226,6 +1226,37 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# ST-50 — setup_codeops emits + idempotently backfills the integrationBranch marker key
+# (FR-3 / AR-6): scaffold.md writes it on a fresh repo; the marker-present path backfills a
+# missing key. Sentinels: "integrationBranch" in scaffold.md; "backfill" + "integrationBranch"
+# in SKILL.md.
+# -----------------------------------------------------------------------------
+section "ST-50: setup_codeops emits + backfills integrationBranch"
+SC_SCAFFOLD="skills/setup_codeops/scaffold.md"
+SC_SKILL="skills/setup_codeops/SKILL.md"
+if grep -qF 'integrationBranch' "$SC_SCAFFOLD"; then
+  pass "scaffold.md marker emits integrationBranch"
+else
+  fail "scaffold.md does not emit integrationBranch (FR-3)"
+fi
+if grep -qiF 'backfill' "$SC_SKILL" && grep -qF 'integrationBranch' "$SC_SKILL"; then
+  pass "setup_codeops backfills integrationBranch on the marker-present path"
+else
+  fail "setup_codeops does not backfill integrationBranch (FR-3)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-51 — codeops-migrate.sh writes integrationBranch into the flat→nested marker (FR-4 / AR-7).
+# migration-check.sh additionally asserts the *emitted* marker carries it.
+# -----------------------------------------------------------------------------
+section "ST-51: codeops-migrate.sh emits integrationBranch"
+if grep -qF 'integrationBranch' scripts/codeops-migrate.sh; then
+  pass "codeops-migrate.sh marker includes integrationBranch"
+else
+  fail "codeops-migrate.sh marker omits integrationBranch (FR-4)"
+fi
+
+# -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
 section "Summary"
