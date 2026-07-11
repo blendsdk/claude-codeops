@@ -48,6 +48,7 @@ fi
 | Plan folder | `plans/<plan>/` | `codeops/features/<f>/plans/<plan>/` |
 | Feature roadmap | `plans/00-roadmap.md` | `codeops/features/<f>/00-roadmap.md` |
 | Portfolio roadmap | *(n/a)* | `codeops/00-roadmap.md` |
+| Staged CLAUDE.md notes | *(n/a)* | `codeops/features/<f>/CLAUDE.notes.md` |
 | Ambiguity register | `requirements/00-ambiguity-register.md` or `plans/<plan>/00-ambiguity-register.md` | the same file, under the feature |
 | Task mini-plan | `plans/<task-slug>/99-execution-plan.md` | `codeops/features/<f>/plans/<task-slug>/99-execution-plan.md` |
 | Archive | `plans/_archive/<set>/` | `codeops/_archive/<f>/` |
@@ -94,12 +95,14 @@ The portfolio roadmap keeps a compact Archived section — the feature's row is 
 ## `codeops/.codeops.yml` marker schema
 
 Minimal and flat so it parses trivially. **`setup_codeops` is the sole writer of this file**
-(`analyze_project` and every other skill must leave it untouched).
+(every other skill must leave it untouched; the `analyze_project` command may *read*
+`integrationBranch`, but never writes here).
 
 ```yaml
 # CodeOps layout marker. Presence of this file opts the repo into the nested layout.
 codeopsLayout: nested
 layoutVersion: "3.0.0"
+integrationBranch: master       # branch where features integrate; analyze_project refreshes CLAUDE.md here
 conventions:
   rdIdScope: per-feature        # RD numbering resets per feature
   taskIdPrefix: "T"             # lightweight task ids: T-01, T-02 …
@@ -109,6 +112,10 @@ conventions:
 
 - Only `codeopsLayout: nested` is **required** for detection; the rest document the conventions
   and let future versions evolve.
+- `integrationBranch` is **optional** — the branch where feature work integrates and
+  `analyze_project` regenerates `CLAUDE.md` (folding in any staged `CLAUDE.notes.md`). When absent,
+  `analyze_project` falls back to the repo default branch (`origin/HEAD`, else `main`/`master`), so
+  existing markers keep working. `setup_codeops` should emit it.
 - A committed sample marker lives at `scripts/fixtures/sample.codeops.yml` (used by
   `validate.sh` ST-16 to assert the schema parses and carries `codeopsLayout`).
 

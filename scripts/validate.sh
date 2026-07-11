@@ -648,10 +648,10 @@ done
 # scope could not see it), and plugin.json's "version" must match too (AR #5).
 # Fixtures under scripts/fixtures/ are test data and stay excluded.
 # -----------------------------------------------------------------------------
-section "ST-24: version stamps are $EXPECTED_VERSION and consistent (incl. scripts/, agents/, plugin.json)"
+section "ST-24: version stamps are $EXPECTED_VERSION and consistent (incl. scripts/, bin/, agents/, plugin.json)"
 stamp_lines="$(grep -rhoE 'CodeOps (Skills )?Version[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' \
   skills/ commands/ standards/ _shared/ agents/ 2>/dev/null || true)"
-script_stamps="$(grep -rhoE 'CodeOps (Skills )?Version[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' scripts/ \
+script_stamps="$(grep -rhoE 'CodeOps (Skills )?Version[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' scripts/ bin/ \
   --exclude-dir=fixtures 2>/dev/null || true)"
 uniq_versions="$(printf '%s\n%s\n' "$stamp_lines" "$script_stamps" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u | tr '\n' ' ' | sed 's/ *$//')"
 if [[ -z "$uniq_versions" ]]; then
@@ -1176,6 +1176,32 @@ if [[ -f commands/clean_jsdoc.md ]]; then
   pass "clean_jsdoc retrofit command present"
 else
   fail "commands/clean_jsdoc.md is missing (3.3.1)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-48 — analyze_project is branch-aware for parallel worktrees: it stages to a
+# feature's CLAUDE.notes.md off the integration branch and folds them on it, instead
+# of rewriting the shared CLAUDE.md everywhere. Sentinels: "integration branch" +
+# "CLAUDE.notes.md" + "worktree" in the command; the marker key "integrationBranch"
+# and the "CLAUDE.notes.md" path documented in the convention; the sample carrying it.
+# -----------------------------------------------------------------------------
+section "ST-48: analyze_project branch-aware CLAUDE.md routing"
+AP_CMD="commands/analyze_project.md"
+if [[ -f "$AP_CMD" ]] && grep -qiF 'integration branch' "$AP_CMD" \
+   && grep -qF 'CLAUDE.notes.md' "$AP_CMD" && grep -qiF 'worktree' "$AP_CMD"; then
+  pass "$AP_CMD routes by branch (feature-branch staging + integration-branch fold)"
+else
+  fail "$AP_CMD is missing the branch-aware parallel-worktree contract"
+fi
+if grep -qF 'integrationBranch' "$SHARED_DOC" && grep -qF 'CLAUDE.notes.md' "$SHARED_DOC"; then
+  pass "$SHARED_DOC documents integrationBranch + the CLAUDE.notes.md path"
+else
+  fail "$SHARED_DOC does not document integrationBranch / CLAUDE.notes.md"
+fi
+if grep -qE '^integrationBranch:' "$SAMPLE_MARKER"; then
+  pass "$SAMPLE_MARKER carries integrationBranch"
+else
+  fail "$SAMPLE_MARKER is missing integrationBranch"
 fi
 
 # -----------------------------------------------------------------------------

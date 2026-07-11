@@ -21,6 +21,7 @@
 # Verified install paths (Claude Code docs, code.claude.com/docs/en/skills):
 #   personal skills   -> ~/.claude/skills/<name>/SKILL.md
 #   personal commands -> ~/.claude/commands/<name>.md
+#   codeops-worktree  -> ~/.local/bin/codeops-worktree (added to PATH if missing)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,6 +35,10 @@ DEST_COMMANDS="$CLAUDE_DIR/commands"
 # Shared reference docs live at the plugin root and are linked by skills as ../../_shared/…;
 # mirror them to $CLAUDE_DIR/_shared so those links resolve under the symlink layout too.
 DEST_SHARED="$CLAUDE_DIR/_shared"
+# The codeops-worktree CLI is a terminal helper (run OUTSIDE Claude to spawn worktrees), so it
+# goes on PATH rather than into ~/.claude. Override the location with CODEOPS_BIN_DIR.
+SRC_BIN="$SCRIPT_DIR/bin"
+DEST_BIN="${CODEOPS_BIN_DIR:-$HOME/.local/bin}"
 MANIFEST="$CLAUDE_DIR/.codeops-skills-manifest"
 
 MODE="symlink"
@@ -96,6 +101,40 @@ install_one() {
   record "$dest"
 }
 
+# Ensure a bin dir is on PATH by appending a guarded, marker-wrapped block to the user's
+# shell rc. Idempotent (the block re-checks PATH at runtime and is never written twice),
+# reversible (uninstall.sh strips it by marker), and honest that it cannot change the shell
+# that is running right now.
+PATH_MARK_BEGIN="# >>> codeops-worktree PATH >>>"
+PATH_MARK_END="# <<< codeops-worktree PATH <<<"
+ensure_on_path() {
+  local bindir="$1" rc
+  case ":${PATH}:" in
+    *":${bindir}:"*) say "  = PATH already includes $bindir"; return ;;
+  esac
+  case "$(basename "${SHELL:-}")" in
+    zsh)  rc="$HOME/.zshrc" ;;
+    bash) rc="$HOME/.bashrc" ;;
+    *)    rc="$HOME/.profile" ;;
+  esac
+  # Already added by an earlier run? Re-record it (so uninstall still strips it) and stop.
+  if [ -f "$rc" ] && grep -qF "$PATH_MARK_BEGIN" "$rc"; then
+    say "  = PATH block already present in $rc"
+    record "$(printf 'PATHBLOCK\t%s' "$rc")"
+    return
+  fi
+  say "  + adding $bindir to PATH in $(basename "$rc")"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    {
+      printf '\n%s\n' "$PATH_MARK_BEGIN"
+      printf 'case ":$PATH:" in *":%s:"*) ;; *) export PATH="%s:$PATH" ;; esac\n' "$bindir" "$bindir"
+      printf '%s\n' "$PATH_MARK_END"
+    } >> "$rc"
+  fi
+  record "$(printf 'PATHBLOCK\t%s' "$rc")"
+  say "    (not active in THIS shell — run:  source $rc  or open a new terminal)"
+}
+
 say "Skills -> $DEST_SKILLS"
 for d in "$SRC_SKILLS"/*/; do
   [ -f "$d/SKILL.md" ] || continue
@@ -115,6 +154,16 @@ if [ -d "$SRC_SHARED" ]; then
   say ""
   say "Shared docs -> $DEST_SHARED"
   install_one "$SRC_SHARED" "$DEST_SHARED"
+fi
+
+# codeops-worktree CLI -> a PATH dir. Installer-only: the marketplace plugin loader reads only
+# skills/commands/hooks/.claude-plugin, so it cannot place an executable on PATH — this does.
+if [ -f "$SRC_BIN/codeops-worktree" ]; then
+  say ""
+  say "CLI -> $DEST_BIN"
+  run "mkdir -p \"$DEST_BIN\""
+  install_one "$SRC_BIN/codeops-worktree" "$DEST_BIN/codeops-worktree"
+  ensure_on_path "$DEST_BIN"
 fi
 
 say ""
@@ -141,3 +190,6 @@ say "  SessionStart hook (no merge needed). This dev installer does NOT install 
 say "  use the installer instead of the plugin, you can optionally merge standards/coding-standards.md"
 say "  into ~/.claude/CLAUDE.md by hand."
 say "Per-project setup: run  /analyze_project  inside a project to generate its CLAUDE.md"
+say ""
+say "Parallel worktrees: 'codeops-worktree new <topic>' spins up a feature worktree for a second"
+say "  agent (run  codeops-worktree help). If your shell can't find it yet, open a new terminal."
