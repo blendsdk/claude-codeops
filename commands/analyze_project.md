@@ -62,8 +62,10 @@ solo checkout:
 
 **Folding (integration branch, nested layout):** for each `codeops/features/*/CLAUDE.notes.md`,
 append its content under the matching `CLAUDE.md` heading (`## Special rules`, `## Conventions`, …)
-**additively — never replace a section** — so the fold can't itself conflict, then `git rm` the
-consumed file. Flat layout has no notes; the integration-branch refresh alone is canonical.
+**additively — never replace a section** — but first **skip any block already present** under that
+heading, so a fold interrupted after appending but before it could `git rm` the note re-runs without
+double-appending (idempotent). Then `git rm` the consumed file. Flat layout has no notes; the
+integration-branch refresh alone is canonical.
 
 ## Step 3 — Generate or merge (on the integration branch, or a solo checkout)
 

@@ -129,8 +129,9 @@ cmd_new() {
   printf '\nStart an agent there:\n   cd %q && claude\n' "$path"
   printf '\nParallel-safety reminders:\n'
   printf '   • Keep this agent to ONE feature/lane — its own codeops/features/<f>/ files never clash.\n'
-  printf '   • Do NOT run repo-wide skills here (analyze_project, setup_routing) — they touch root\n'
-  printf '     CLAUDE.md and would conflict across branches. Run those on master only.\n'
+  printf '   • analyze_project is branch-aware here — it previews/stages, never rewriting the shared\n'
+  printf '     CLAUDE.md on a feature branch. But do NOT run setup_routing here: its routing block is\n'
+  printf '     a repo-wide CLAUDE.md write — run it on the integration branch.\n'
   printf '   • After the PRs merge, reconcile the portfolio on the integration branch: `update the roadmap`.\n'
   printf '   • Tear this down when done:  codeops-worktree rm %s\n\n' "$slug"
 

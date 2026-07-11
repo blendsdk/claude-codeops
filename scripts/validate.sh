@@ -1257,6 +1257,31 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# ST-52 — setup_routing has an integration-branch guard (FR-5 / AR-8): the routing block is a
+# repo-wide CLAUDE.md write, so off the integration branch it warns and skips (light guard, no
+# staging). Sentinels: "integration branch" + "non-integration" in the skill.
+# -----------------------------------------------------------------------------
+section "ST-52: setup_routing integration-branch guard"
+SR_SKILL="skills/setup_routing/SKILL.md"
+if grep -qiF 'integration branch' "$SR_SKILL" && grep -qiF 'non-integration' "$SR_SKILL"; then
+  pass "setup_routing warns/skips the routing-block write off the integration branch"
+else
+  fail "setup_routing has no integration-branch guard (FR-5)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-53 — analyze_project's notes-fold is idempotent (FR-6 / PA-1): before appending a note it
+# checks whether the content is already present under the heading, so an interrupted-then-rerun
+# fold cannot double-append. Sentinel: "already present" in the command.
+# -----------------------------------------------------------------------------
+section "ST-53: analyze_project fold idempotency (content-presence check)"
+if grep -qiF 'already present' commands/analyze_project.md; then
+  pass "fold skips content already present (no double-append)"
+else
+  fail "analyze_project fold lacks the content-presence idempotency guard (FR-6/PA-1)"
+fi
+
+# -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
 section "Summary"
