@@ -37,13 +37,22 @@ update mandate **one altitude up**. On **every** per-feature stage transition ab
 
 ```
 complete the per-feature roadmap transition (codeops/features/<f>/00-roadmap.md)
-  → immediately update that feature's row in codeops/00-roadmap.md
-     (re-roll Stage Summary / Progress / Status; bump the portfolio Last Updated + Features count)
+  → on the INTEGRATION branch: immediately update that feature's row in codeops/00-roadmap.md
+       (re-roll Stage Summary / Progress / Status; bump the portfolio Last Updated + Features count)
+  → on a NON-INTEGRATION branch (a parallel feature worktree): DEFER the portfolio write —
+       leave codeops/00-roadmap.md untouched; `roadmap update` reconciles it from disk on landing
   → THEN proceed (verify / commit / next action)
 ```
 
-- The cascade is **mandatory and immediate** — never end a session/task with a portfolio row that
-  disagrees with its feature roadmap; `review` flags any such drift.
+- On the **integration branch** the cascade is **mandatory and immediate** — never end a
+  session/task there with a portfolio row that disagrees with its feature roadmap; `review` flags
+  any such drift.
+- **Parallel worktrees — integration-branch deferral:** on a **non-integration branch** the
+  portfolio write is **deferred** so concurrent worktrees never collide on the shared
+  `codeops/00-roadmap.md`. Resolve the integration branch the way `analyze_project` does — the
+  `integrationBranch` marker key, else `origin/HEAD`, else `main`/`master`; if `git` is unavailable,
+  treat the current branch as integration (unchanged behaviour). The **per-feature** roadmap write
+  stays immediate — it is isolated per feature, so it never conflicts.
 - **Status roll-up:** any executing row → 🔄; all rows done → ✅; any blocked row → ⛔; otherwise ⬜.
 - **Cross-feature blockers** stay within the feature's roadmap but are named feature-qualified in
   the `Notes / Blocker` cell (e.g. `waiting on auth/RD-02`) and surfaced in the portfolio **Notes**.

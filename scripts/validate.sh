@@ -1205,6 +1205,27 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# ST-49 — roadmap Portfolio cascade mandate is branch-aware for parallel worktrees
+# (FR-1 / AR-3): on a non-integration branch, update only the isolated per-feature roadmap and
+# DEFER the portfolio write; reconcile on the integration branch. Sentinels: "integration branch"
+# in both the mandate (SKILL.md) and the cascade-rule doc (stage-hooks.md), plus a "non-integration"
+# + defer/skip cue so a mere mention can't pass.
+# -----------------------------------------------------------------------------
+section "ST-49: roadmap portfolio cascade is branch-aware (parallel worktrees)"
+RM_SKILL="skills/roadmap/SKILL.md"
+RM_HOOKS="skills/roadmap/stage-hooks.md"
+if grep -qiF 'integration branch' "$RM_SKILL" && grep -qiF 'integration branch' "$RM_HOOKS"; then
+  pass "cascade mandate + stage-hooks reference the integration branch"
+else
+  fail "roadmap cascade mandate is not branch-aware (missing 'integration branch' in SKILL.md/stage-hooks.md)"
+fi
+if grep -qiF 'non-integration' "$RM_HOOKS" && grep -qiE 'defer|skip' "$RM_HOOKS"; then
+  pass "stage-hooks defers the portfolio write off the integration branch"
+else
+  fail "stage-hooks does not defer the portfolio cascade on a non-integration branch (FR-1)"
+fi
+
+# -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
 section "Summary"
