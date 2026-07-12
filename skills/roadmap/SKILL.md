@@ -15,7 +15,7 @@ argument-hint: "[make | update | review | archive]"
 
 # roadmap — Live Feature-Set Roadmap Keeper
 
-> **CodeOps Skills Version**: 3.3.2
+> **CodeOps Skills Version**: 3.4.0
 
 ## Resolve paths first (layout-aware)
 
@@ -113,10 +113,14 @@ session/task with a stale roadmap.
   Notes.
 
 **Portfolio cascade mandate (nested layout only)** — the real-time update extends one altitude
-up. After completing a per-feature stage transition, **immediately** update that feature's row in
+up. After completing a per-feature stage transition, update that feature's row in
 `codeops/00-roadmap.md` (re-roll Stage Summary / Progress / Status; bump the portfolio counts)
-**before** verify/commit/next. In flat layout this step is inert. Full cascade rule and the
-status roll-up are in [stage-hooks.md](stage-hooks.md).
+**before** verify/commit/next — **but only on the integration branch**. On a **non-integration
+branch** (a parallel feature worktree) the portfolio write is **deferred**: update only the
+isolated per-feature roadmap and leave `codeops/00-roadmap.md` untouched, so concurrent worktrees
+never collide on it; `roadmap update` reconciles the portfolio from disk once the work lands on the
+integration branch. In flat layout this step is inert. Full cascade rule, the integration-branch
+deferral, and the status roll-up are in [stage-hooks.md](stage-hooks.md).
 
 ## Deterministic linking (RD ↔ plan)
 

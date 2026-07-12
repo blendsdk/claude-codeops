@@ -28,6 +28,7 @@ export default defineConfig({
             { text: 'Verify', link: '/guide/verify' },
             { text: 'Update', link: '/guide/update' },
             { text: 'Concepts', link: '/guide/concepts' },
+            { text: 'Parallel agents', link: '/guide/parallel-agents' },
           ],
         },
       ],

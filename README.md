@@ -103,6 +103,21 @@ names (`/codeops:make_plan`). **Pick one — the plugin OR the dev installer, no
 see duplicate skills. Note the dev installer does *not* install the standards hook (that is a plugin
 mechanism); see [Always-on standards](#always-on-standards) for the manual-merge alternative.
 
+The dev installer also puts the **`codeops-worktree`** CLI on your `PATH` (`~/.local/bin`, adding it
+to your shell rc if missing) — a terminal helper for running **parallel agents** on separate feature
+branches: `codeops-worktree new billing` creates a `feat/billing` worktree in a sibling folder; add
+`--launch` to start `claude` in it. Run `codeops-worktree help` for `new` / `ls` / `rm`. The
+marketplace plugin can't install PATH executables, so this is dev-installer-only; marketplace users
+can symlink `bin/codeops-worktree` into `~/.local/bin` by hand.
+
+Full workflow (worktrees, how conflicts are avoided, and adopting it in an existing project) is in
+the **[Parallel agents guide](https://blendsdk.github.io/claude-codeops/guide/parallel-agents)**.
+
+**On Windows**, run it from **Git Bash** (every Git for Windows install ships it) or **WSL** — the
+tool is a Bash script and `git worktree` behaves identically there. Git Bash may turn the
+`~/.local/bin` symlink into a plain copy unless native symlinks are enabled; `./install.sh --copy`
+makes that explicit, and either way the CLI works (a copy just won't auto-update on `git pull`).
+
 ## What's here
 
 ```text
@@ -130,6 +145,7 @@ codeops-skills/                # repo root == plugin root
 ├── hooks/hooks.json           # SessionStart hook → injects the standards every session
 ├── standards/coding-standards.md  # always-on coding/testing/working-style standards (single source)
 ├── scripts/validate.sh        # pre-push validation guard
+├── bin/codeops-worktree       # CLI: git worktrees for parallel agents (dev installer → PATH)
 ├── install.sh / uninstall.sh  # optional in-repo dev installer (symlink loop)
 ├── LICENSE                    # MIT
 ├── TUTORIAL.md                # end-to-end walkthrough

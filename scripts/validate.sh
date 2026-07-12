@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.3.2"
+CODEOPS_VERSION="3.4.0"
 
 FAILURES=0
 
@@ -648,10 +648,10 @@ done
 # scope could not see it), and plugin.json's "version" must match too (AR #5).
 # Fixtures under scripts/fixtures/ are test data and stay excluded.
 # -----------------------------------------------------------------------------
-section "ST-24: version stamps are $EXPECTED_VERSION and consistent (incl. scripts/, agents/, plugin.json)"
+section "ST-24: version stamps are $EXPECTED_VERSION and consistent (incl. scripts/, bin/, agents/, plugin.json)"
 stamp_lines="$(grep -rhoE 'CodeOps (Skills )?Version[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' \
   skills/ commands/ standards/ _shared/ agents/ 2>/dev/null || true)"
-script_stamps="$(grep -rhoE 'CodeOps (Skills )?Version[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' scripts/ \
+script_stamps="$(grep -rhoE 'CodeOps (Skills )?Version[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' scripts/ bin/ \
   --exclude-dir=fixtures 2>/dev/null || true)"
 uniq_versions="$(printf '%s\n%s\n' "$stamp_lines" "$script_stamps" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u | tr '\n' ' ' | sed 's/ *$//')"
 if [[ -z "$uniq_versions" ]]; then
@@ -1176,6 +1176,126 @@ if [[ -f commands/clean_jsdoc.md ]]; then
   pass "clean_jsdoc retrofit command present"
 else
   fail "commands/clean_jsdoc.md is missing (3.3.1)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-48 — analyze_project is branch-aware for parallel worktrees: it stages to a
+# feature's CLAUDE.notes.md off the integration branch and folds them on it, instead
+# of rewriting the shared CLAUDE.md everywhere. Sentinels: "integration branch" +
+# "CLAUDE.notes.md" + "worktree" in the command; the marker key "integrationBranch"
+# and the "CLAUDE.notes.md" path documented in the convention; the sample carrying it.
+# -----------------------------------------------------------------------------
+section "ST-48: analyze_project branch-aware CLAUDE.md routing"
+AP_CMD="commands/analyze_project.md"
+if [[ -f "$AP_CMD" ]] && grep -qiF 'integration branch' "$AP_CMD" \
+   && grep -qF 'CLAUDE.notes.md' "$AP_CMD" && grep -qiF 'worktree' "$AP_CMD"; then
+  pass "$AP_CMD routes by branch (feature-branch staging + integration-branch fold)"
+else
+  fail "$AP_CMD is missing the branch-aware parallel-worktree contract"
+fi
+if grep -qF 'integrationBranch' "$SHARED_DOC" && grep -qF 'CLAUDE.notes.md' "$SHARED_DOC"; then
+  pass "$SHARED_DOC documents integrationBranch + the CLAUDE.notes.md path"
+else
+  fail "$SHARED_DOC does not document integrationBranch / CLAUDE.notes.md"
+fi
+if grep -qE '^integrationBranch:' "$SAMPLE_MARKER"; then
+  pass "$SAMPLE_MARKER carries integrationBranch"
+else
+  fail "$SAMPLE_MARKER is missing integrationBranch"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-49 — roadmap Portfolio cascade mandate is branch-aware for parallel worktrees
+# (FR-1 / AR-3): on a non-integration branch, update only the isolated per-feature roadmap and
+# DEFER the portfolio write; reconcile on the integration branch. Sentinels: "integration branch"
+# in both the mandate (SKILL.md) and the cascade-rule doc (stage-hooks.md), plus a "non-integration"
+# + defer/skip cue so a mere mention can't pass.
+# -----------------------------------------------------------------------------
+section "ST-49: roadmap portfolio cascade is branch-aware (parallel worktrees)"
+RM_SKILL="skills/roadmap/SKILL.md"
+RM_HOOKS="skills/roadmap/stage-hooks.md"
+if grep -qiF 'integration branch' "$RM_SKILL" && grep -qiF 'integration branch' "$RM_HOOKS"; then
+  pass "cascade mandate + stage-hooks reference the integration branch"
+else
+  fail "roadmap cascade mandate is not branch-aware (missing 'integration branch' in SKILL.md/stage-hooks.md)"
+fi
+if grep -qiF 'non-integration' "$RM_HOOKS" && grep -qiE 'defer|skip' "$RM_HOOKS"; then
+  pass "stage-hooks defers the portfolio write off the integration branch"
+else
+  fail "stage-hooks does not defer the portfolio cascade on a non-integration branch (FR-1)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-50 — setup_codeops emits + idempotently backfills the integrationBranch marker key
+# (FR-3 / AR-6): scaffold.md writes it on a fresh repo; the marker-present path backfills a
+# missing key. Sentinels: "integrationBranch" in scaffold.md; "backfill" + "integrationBranch"
+# in SKILL.md.
+# -----------------------------------------------------------------------------
+section "ST-50: setup_codeops emits + backfills integrationBranch"
+SC_SCAFFOLD="skills/setup_codeops/scaffold.md"
+SC_SKILL="skills/setup_codeops/SKILL.md"
+if grep -qF 'integrationBranch' "$SC_SCAFFOLD"; then
+  pass "scaffold.md marker emits integrationBranch"
+else
+  fail "scaffold.md does not emit integrationBranch (FR-3)"
+fi
+if grep -qiF 'backfill' "$SC_SKILL" && grep -qF 'integrationBranch' "$SC_SKILL"; then
+  pass "setup_codeops backfills integrationBranch on the marker-present path"
+else
+  fail "setup_codeops does not backfill integrationBranch (FR-3)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-51 — codeops-migrate.sh writes integrationBranch into the flat→nested marker (FR-4 / AR-7).
+# migration-check.sh additionally asserts the *emitted* marker carries it.
+# -----------------------------------------------------------------------------
+section "ST-51: codeops-migrate.sh emits integrationBranch"
+if grep -qF 'integrationBranch' scripts/codeops-migrate.sh; then
+  pass "codeops-migrate.sh marker includes integrationBranch"
+else
+  fail "codeops-migrate.sh marker omits integrationBranch (FR-4)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-52 — setup_routing has an integration-branch guard (FR-5 / AR-8): the routing block is a
+# repo-wide CLAUDE.md write, so off the integration branch it warns and skips (light guard, no
+# staging). Sentinels: "integration branch" + "non-integration" in the skill.
+# -----------------------------------------------------------------------------
+section "ST-52: setup_routing integration-branch guard"
+SR_SKILL="skills/setup_routing/SKILL.md"
+if grep -qiF 'integration branch' "$SR_SKILL" && grep -qiF 'non-integration' "$SR_SKILL"; then
+  pass "setup_routing warns/skips the routing-block write off the integration branch"
+else
+  fail "setup_routing has no integration-branch guard (FR-5)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-53 — analyze_project's notes-fold is idempotent (FR-6 / PA-1): before appending a note it
+# checks whether the content is already present under the heading, so an interrupted-then-rerun
+# fold cannot double-append. Sentinel: "already present" in the command.
+# -----------------------------------------------------------------------------
+section "ST-53: analyze_project fold idempotency (content-presence check)"
+if grep -qiF 'already present' commands/analyze_project.md; then
+  pass "fold skips content already present (no double-append)"
+else
+  fail "analyze_project fold lacks the content-presence idempotency guard (FR-6/PA-1)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-54 — the user-facing "Parallel agents" docs guide exists and the README points to it
+# (FR-7 / AR-14). Link integrity is covered by the VitePress dead-link build.
+# -----------------------------------------------------------------------------
+section "ST-54: parallel-agents docs guide + README pointer"
+PA_GUIDE="docs/guide/parallel-agents.md"
+if [[ -s "$PA_GUIDE" ]]; then
+  pass "$PA_GUIDE exists"
+else
+  fail "parallel-agents docs guide missing (FR-7)"
+fi
+if grep -qF 'guide/parallel-agents' README.md; then
+  pass "README links the parallel-agents guide"
+else
+  fail "README lacks a link to the parallel-agents guide (FR-7)"
 fi
 
 # -----------------------------------------------------------------------------

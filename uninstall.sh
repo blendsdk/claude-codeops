@@ -18,7 +18,11 @@ CLAUDE_DIR="${CLAUDE_HOME:-$HOME/.claude}"
 DEST_SKILLS="$CLAUDE_DIR/skills"
 DEST_COMMANDS="$CLAUDE_DIR/commands"
 DEST_SHARED="$CLAUDE_DIR/_shared"
+DEST_BIN="${CODEOPS_BIN_DIR:-$HOME/.local/bin}"
 MANIFEST="$CLAUDE_DIR/.codeops-skills-manifest"
+# Markers wrapping the PATH block install.sh appends to a shell rc (kept in sync with it).
+PATH_MARK_BEGIN="# >>> codeops-worktree PATH >>>"
+PATH_MARK_END="# <<< codeops-worktree PATH <<<"
 
 DRY_RUN=0
 [ "${1:-}" = "--dry-run" ] && DRY_RUN=1
@@ -41,6 +45,7 @@ if [ -f "$MANIFEST" ]; then
     case "$line" in
       \#*|"") continue ;;
       BACKUP*) continue ;;
+      PATHBLOCK*) continue ;;
     esac
     if [ -e "$line" ] || [ -L "$line" ]; then
       say "  - remove $(basename "$line")"
@@ -57,6 +62,21 @@ if [ -f "$MANIFEST" ]; then
       run "mv \"$backup\" \"$original\""
       restored=$((restored+1))
     fi
+  done < "$MANIFEST"
+
+  # Third pass: strip the PATH block (BEGIN..END markers) from each recorded rc file.
+  while IFS=$'\t' read -r tag rc; do
+    [ "$tag" = "PATHBLOCK" ] || continue
+    [ -f "$rc" ] && grep -qF "$PATH_MARK_BEGIN" "$rc" || continue
+    say "  ^ remove PATH block from $(basename "$rc")"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      say "  [dry-run] strip $PATH_MARK_BEGIN .. $PATH_MARK_END from $rc"
+    else
+      awk -v b="$PATH_MARK_BEGIN" -v e="$PATH_MARK_END" \
+        '$0==b{skip=1;next} skip&&$0==e{skip=0;next} !skip{print}' \
+        "$rc" > "$rc.codeops.tmp" && mv "$rc.codeops.tmp" "$rc"
+    fi
+    restored=$((restored+1))
   done < "$MANIFEST"
 
   run "rm -f \"$MANIFEST\""
@@ -80,6 +100,22 @@ else
   if [ -L "$DEST_SHARED" ] && [ "$(readlink "$DEST_SHARED")" = "$SRC/_shared" ]; then
     say "  - remove _shared"; run "rm -f \"$DEST_SHARED\""; removed=$((removed+1))
   fi
+  # codeops-worktree CLI symlink, only if it points back into this repo's bin/.
+  t="$DEST_BIN/codeops-worktree"
+  if [ -L "$t" ] && [ "$(readlink "$t")" = "$SRC/bin/codeops-worktree" ]; then
+    say "  - remove codeops-worktree"; run "rm -f \"$t\""; removed=$((removed+1))
+  fi
+  # Best-effort PATH-block strip (no manifest to name the rc file — scan the usual ones).
+  for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+    { [ -f "$rc" ] && grep -qF "$PATH_MARK_BEGIN" "$rc"; } || continue
+    say "  ^ remove PATH block from $(basename "$rc")"
+    if [ "$DRY_RUN" -eq 0 ]; then
+      awk -v b="$PATH_MARK_BEGIN" -v e="$PATH_MARK_END" \
+        '$0==b{skip=1;next} skip&&$0==e{skip=0;next} !skip{print}' \
+        "$rc" > "$rc.codeops.tmp" && mv "$rc.codeops.tmp" "$rc"
+    fi
+    restored=$((restored+1))
+  done
 fi
 
 say ""

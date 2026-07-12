@@ -9,7 +9,7 @@ argument-hint: "[short description of the project]"
 
 # Model & Effort Routing Setup (`setup_routing`)
 
-> **CodeOps Skills Version**: 3.3.2
+> **CodeOps Skills Version**: 3.4.0
 
 Configure **per-project model and effort routing** for the project the user is currently in, so
 that expensive reasoning (Opus, high/xhigh thinking) is spent only where it changes output
@@ -60,6 +60,13 @@ rewrites the user's own sections. It reuses the non-destructive merge discipline
   never overwrite a user's existing file.
 - **Operate on the current project only.** Touch the project's `CLAUDE.md` (and `.claude/agents/`
   only for opted-in overrides). **Never edit `~/.claude/CLAUDE.md` or any global user file.**
+- **Integration-branch write (parallel agents).** The routing block is a repo-wide `CLAUDE.md`
+  write, so it belongs on the **integration branch**. Resolve it the way `analyze_project` does —
+  the `integrationBranch` marker key, else `origin/HEAD`, else `main`/`master`; if `git` is
+  unavailable, treat the current branch as integration. On a **non-integration** (feature) branch,
+  **warn and skip** the write and tell the user to run `setup_routing` on the integration branch —
+  don't stage or fork the block. It's a once-per-repo idempotent write that only needs to happen
+  there, so concurrent feature worktrees never collide on the routing block.
 - **Concise generated output.** The routing block is injected into every session; keep it tight.
 - **Grounded options & recommendations.** When you present the profile, the proposal, or any
   adjustment choice, follow the always-on Grounded Options directive in the coding standards:

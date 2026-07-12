@@ -9,7 +9,7 @@ argument-hint: "[--dry-run | --yes]"
 
 # CodeOps Layout Setup (`setup_codeops`)
 
-> **CodeOps Skills Version**: 3.3.2
+> **CodeOps Skills Version**: 3.4.0
 
 Set up the CodeOps **nested `codeops/` layout** for the git repo the user is currently in. Run as
 `/codeops:setup_codeops` or the typeable alias `/setup_codeops`. This is the one skill that
@@ -30,8 +30,12 @@ Run inside the repo and detect, in this order:
 
 ```
 1. codeops/.codeops.yml present
-       → already set up. NO-OP: print a short status report (layout = nested, where things live).
-         Never re-scaffold or re-migrate. (Idempotent.)
+       → already set up. NO-OP for the layout: print a short status report (layout = nested, where
+         things live). BUT if the marker is **missing `integrationBranch`**, BACKFILL it — add that
+         one line (resolved to the repo's integration branch: `origin/HEAD`, else the current branch,
+         else `main`/`master`) without touching any other key; if it is already present, leave it.
+         Never re-scaffold or re-migrate. (Idempotent — a marker that is present and complete → no
+         change; this is the existing-project entry point for parallel-agents support.)
 2. Flat layout detected (requirements/  OR  plans/00-roadmap.md  OR  any plans/<dir>/)
        → MIGRATE. Follow migration.md: run the engine --dry-run, render the preview, take ONE
          confirmation, then apply. The engine (scripts/codeops-migrate.sh) owns the algorithm.

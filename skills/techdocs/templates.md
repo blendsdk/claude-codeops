@@ -1,6 +1,6 @@
 # techdocs — Document Templates (Phase 4)
 
-> **CodeOps Skills Version**: 3.3.2
+> **CodeOps Skills Version**: 3.4.0
 
 Canonical templates for every document in the VitePress `docs/` tree. Write a file from the
 matching template, then fill the bracketed placeholders with real, verified project details. Only

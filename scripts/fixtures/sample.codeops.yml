@@ -5,6 +5,7 @@
 # documented in _shared/layout-convention.md. This is sample data, not a live marker.
 codeopsLayout: nested
 layoutVersion: "3.0.0"
+integrationBranch: master
 conventions:
   rdIdScope: per-feature
   taskIdPrefix: "T"

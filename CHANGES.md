@@ -2,6 +2,40 @@
 
 ## Changelog
 
+### 3.4.0 — parallel agents: branch-aware derived files (2026-07-12)
+
+Behavioral, no document migration — 3.0.0–3.3.2 plans/requirements remain compatible, and every
+new marker key is **optional** (a repo that never onboards keeps working unchanged). Lets multiple
+Claude Code agents work concurrently on one repo — **one git worktree per feature** — without
+colliding on the *derived*, repo-wide files. Highlights:
+
+- **`codeops-worktree` CLI (shipped 3.3.x, now first-class):** `new` / `ls` / `rm` spin up and tear
+  down a sibling worktree per feature branch (`--dry-run`, `--launch`). Installed onto `~/.local/bin`
+  by the dev `install.sh` (with a reversible PATH-add); the marketplace plugin cannot place PATH
+  executables, so rolling installs get it via the installer. Windows: Git Bash.
+- **Derived files are reconciled, not cascaded (the core principle):** per-feature files under
+  `codeops/features/<f>/` were already isolated; the conflict surface is the *derived* files — the
+  portfolio roadmap, `CLAUDE.md`, and the routing block. Three skills now defer those writes off the
+  integration branch:
+  - **roadmap:** the portfolio cascade (`codeops/00-roadmap.md`) is **deferred on a non-integration
+    branch** — only the isolated per-feature roadmap is written; `roadmap update` reconciles the
+    portfolio from disk once the work lands on the integration branch (flat layout stays inert).
+  - **setup_routing:** a light integration-branch guard — warn/skip the repo-wide `CLAUDE.md`
+    routing-block write on a feature branch.
+  - **analyze_project:** branch-aware — previews/stages generated `CLAUDE.md` sections to a
+    per-feature `CLAUDE.notes.md` off the integration branch and folds them (idempotently) on it,
+    instead of rewriting the shared `CLAUDE.md` on a feature branch.
+- **New optional marker key `integrationBranch`:** names the branch derived files reconcile onto.
+  `setup_codeops` (the sole marker writer) emits it on fresh scaffold and **idempotently backfills**
+  it on the "marker already present" path — the one-command entry point for existing projects;
+  `codeops-migrate.sh` writes it on flat→nested. When absent, every skill auto-detects the default
+  branch (`origin/HEAD` → `main`/`master`; if git is unavailable, behaves exactly as today).
+- **User guide:** a **[Parallel agents](https://blendsdk.github.io/claude-codeops/guide/parallel-agents)**
+  page on the docs site (the idea, `codeops-worktree` usage, why there are no conflicts, the
+  post-merge reconcile, and adopting it in existing projects) + a README pointer.
+- **Guards:** `validate.sh` ST-48…ST-54 lock the branch-aware behavior, the marker emit/backfill,
+  and the guide in place; ST-24's stamp glob now covers `bin/`.
+
 ### 3.3.2 — file-size ceiling raised to ~700 lines (2026-07-08)
 
 Behavioral, no document migration — 3.0.0–3.3.1 plans/requirements remain compatible.

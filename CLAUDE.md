@@ -42,6 +42,9 @@
 - `scripts/` — `validate.sh` (plugin guard incl. count/stamp drift guards), `docs-check.sh`,
   `migration-check.sh`, `codeops-migrate.sh` (flat→nested engine), `codeops-roadmap-sync.sh`
   (roadmap counter/cascade engine), `fixtures/`
+- `bin/codeops-worktree` — user-facing CLI (installed onto PATH by the dev installer, NOT by the
+  marketplace plugin) that spins up/tears down git worktrees for running parallel agents. Carries a
+  `CodeOps Skills Version` stamp watched by `validate.sh` ST-24, like the `scripts/` engines.
 - `docs/` — VitePress user-facing documentation site (`.vitepress/config.ts`, guide/skills/tutorials/reference)
 - `.github/workflows/docs.yml` — builds + deploys the docs site to GitHub Pages
 - `plans/` — internal CodeOps planning docs (git-ignored at the repo root via `/plans/`, not distributed)
