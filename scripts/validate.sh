@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.4.0"
+CODEOPS_VERSION="3.4.1"
 
 FAILURES=0
 
@@ -1296,6 +1296,26 @@ if grep -qF 'guide/parallel-agents' README.md; then
   pass "README links the parallel-agents guide"
 else
   fail "README lacks a link to the parallel-agents guide (FR-7)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-55 — codeops-worktree defaults its base branch to the marker's
+# integrationBranch (falling back to origin/HEAD -> main/master -> HEAD when the
+# key or the marker is absent), so a devel/acceptance-based workflow needs no
+# per-command --from flag and the CLI agrees with the branch-aware skills.
+# -----------------------------------------------------------------------------
+section "ST-55: codeops-worktree honors integrationBranch as the default base"
+WT="bin/codeops-worktree"
+if grep -qF 'integrationBranch' "$WT" && grep -qF '.codeops.yml' "$WT"; then
+  pass "codeops-worktree reads integrationBranch from the .codeops.yml marker"
+else
+  fail "codeops-worktree does not read integrationBranch from the .codeops.yml marker"
+fi
+# The marker must be consulted by the base-branch resolver, ahead of the origin/HEAD fallback.
+if awk '/^default_base_branch\(\)/{f=1} f&&/integrationBranch|marker_integration_branch/{hit=1; exit} END{exit !hit}' "$WT"; then
+  pass "default_base_branch prefers the marker's integrationBranch"
+else
+  fail "default_base_branch does not consult the marker's integrationBranch"
 fi
 
 # -----------------------------------------------------------------------------

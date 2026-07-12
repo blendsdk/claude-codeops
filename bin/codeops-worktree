@@ -3,7 +3,7 @@
 # codeops-worktree — spin up / tear down git worktrees for running parallel
 # Claude Code agents on separate feature branches, one worktree per agent.
 #
-# CodeOps Skills Version: 3.4.0
+# CodeOps Skills Version: 3.4.1
 #
 # A worktree is a second working folder that shares the ONE .git of the repo, so
 # every branch/commit is visible everywhere and you never re-clone. The number of
@@ -22,6 +22,10 @@
 #   codeops-worktree new hotfix --from master --branch fix/login
 #   codeops-worktree ls
 #   codeops-worktree rm billing --delete-branch
+#
+# New branches fork from the marker's integrationBranch (codeops/.codeops.yml) when
+# that key is set — so a devel/acceptance workflow needs no flag — otherwise from the
+# repo's default branch. Override per-run with --from.
 #
 # Run it from anywhere inside the repo (the main checkout or any worktree).
 
@@ -65,9 +69,32 @@ slugify() {
 branch_exists_local()  { git show-ref --verify --quiet "refs/heads/$1"; }
 branch_exists_remote() { git show-ref --verify --quiet "refs/remotes/origin/$1"; }
 
-# The branch new features fork from: origin/HEAD if known, else main, else master,
-# else whatever is currently checked out.
+# The configured integration branch from the CodeOps marker, if any: the branch
+# where feature work integrates and derived files (the portfolio roadmap, CLAUDE.md)
+# get reconciled. This is committed config that is only parsed, never executed, and
+# the marker is a tracked file so it is present in every worktree checkout. Empty
+# output + non-zero return when there is no marker or no key.
+marker_integration_branch() {
+  local top marker val
+  top="$(git rev-parse --show-toplevel 2>/dev/null)" || return 1
+  marker="$top/codeops/.codeops.yml"
+  [[ -f "$marker" ]] || return 1
+  # `|| true` so a no-match grep (or a SIGPIPE from head) can't trip pipefail when
+  # this resolver is called outside an `if`/`||` context.
+  val="$(grep -E '^[[:space:]]*integrationBranch:' "$marker" 2>/dev/null | head -1 \
+        | sed -E 's/^[[:space:]]*integrationBranch:[[:space:]]*//; s/[[:space:]]*#.*$//; s/[[:space:]]+$//' || true)"
+  [[ -n "$val" ]] || return 1
+  printf '%s\n' "$val"
+}
+
+# The branch new features fork from: the marker's integrationBranch if set (so the
+# base agrees with the branch-aware skills), else origin/HEAD if known, else main,
+# else master, else whatever is currently checked out.
 default_base_branch() {
+  local ib
+  if ib="$(marker_integration_branch)"; then
+    printf '%s\n' "$ib"; return
+  fi
   local ref
   if ref=$(git symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null); then
     printf '%s\n' "${ref#refs/remotes/origin/}"; return
