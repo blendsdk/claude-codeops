@@ -2,6 +2,19 @@
 
 ## Changelog
 
+### 3.4.1 — worktree base branch follows `integrationBranch` (2026-07-12)
+
+Behavioral, no document migration — 3.0.0–3.4.0 plans/requirements remain compatible.
+
+- **`codeops-worktree` now reads `integrationBranch` from the marker.** New feature branches
+  fork from the marker's `integrationBranch` (`codeops/.codeops.yml`) when that key is set,
+  falling back to `origin/HEAD` → `main`/`master` → the current branch when it is absent (exactly
+  as before). This makes the CLI's default base agree with the branch-aware skills, so a
+  **`devel`/`acceptance`-based workflow works with no per-command `--from` flag** — set
+  `integrationBranch: devel` once and `codeops-worktree new <topic>` forks from `devel`. `--from`
+  still overrides per run. The marker value is only parsed, never executed. Guarded by
+  `validate.sh` ST-55.
+
 ### 3.4.0 — parallel agents: branch-aware derived files (2026-07-12)
 
 Behavioral, no document migration — 3.0.0–3.3.2 plans/requirements remain compatible, and every

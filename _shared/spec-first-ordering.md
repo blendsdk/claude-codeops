@@ -1,6 +1,6 @@
 # Specification-First Task Ordering (shared protocol)
 
-> **CodeOps Skills Version**: 3.4.0
+> **CodeOps Skills Version**: 3.4.1
 
 The **single canonical definition** of CodeOps' specification-first ordering. `make_plan` applies
 it when generating `99-execution-plan.md`; `exec_plan` enforces it while executing one. Both link
