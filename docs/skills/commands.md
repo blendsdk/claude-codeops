@@ -1,6 +1,6 @@
 # Commands
 
-CodeOps ships **15 slash commands**. Under the plugin they are namespaced as `/codeops:<name>`; with
+CodeOps ships **16 slash commands**. Under the plugin they are namespaced as `/codeops:<name>`; with
 the dev installer they get short names (`/<name>`).
 
 ## Core commands
