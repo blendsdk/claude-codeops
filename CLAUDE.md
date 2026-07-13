@@ -21,9 +21,10 @@
 ## Commands
 - **Build (docs):** `npm run docs:build`
 - **Dev (docs preview):** `npm run docs:dev` → http://localhost:5173/claude-codeops/
-- **Test:** `./scripts/validate.sh` (plugin guard), `./scripts/docs-check.sh` (docs structure/CI), and
-  `./scripts/migration-check.sh` (flat→nested migration engine, against `scripts/fixtures/flat-repo/`)
-- **Verify (run before every commit):** `./scripts/validate.sh && npm run docs:build && ./scripts/docs-check.sh && ./scripts/migration-check.sh`
+- **Test:** `./scripts/validate.sh` (plugin guard), `./scripts/docs-check.sh` (docs structure/CI),
+  `./scripts/migration-check.sh` (flat→nested migration engine, against `scripts/fixtures/flat-repo/`), and
+  `./scripts/compact-check.sh` (roadmap compact engine, against `scripts/fixtures/bloated-repo/`)
+- **Verify (run before every commit):** `./scripts/validate.sh && npm run docs:build && ./scripts/docs-check.sh && ./scripts/migration-check.sh && ./scripts/compact-check.sh`
 - **Clean:** `rm -rf node_modules docs/.vitepress/dist docs/.vitepress/cache`
 
 ## Project structure
@@ -40,8 +41,10 @@
 - `standards/coding-standards.md` — always-on injected core (≤50 lines, enforced); full text in
   `standards/coding-standards-full.md`
 - `scripts/` — `validate.sh` (plugin guard incl. count/stamp drift guards), `docs-check.sh`,
-  `migration-check.sh`, `codeops-migrate.sh` (flat→nested engine), `codeops-roadmap-sync.sh`
-  (roadmap counter/cascade engine), `fixtures/`
+  `migration-check.sh`, `compact-check.sh` (roadmap compact-engine spec suite), `codeops-migrate.sh`
+  (flat→nested engine), `codeops-roadmap-sync.sh` (roadmap counter/cascade engine),
+  `codeops-roadmap-compact.sh` (roadmap slimming engine — strips the legacy Notes log, flags fat
+  cells), `fixtures/`
 - `bin/codeops-worktree` — user-facing CLI (installed onto PATH by the dev installer, NOT by the
   marketplace plugin) that spins up/tears down git worktrees for running parallel agents. Carries a
   `CodeOps Skills Version` stamp watched by `validate.sh` ST-24, like the `scripts/` engines.

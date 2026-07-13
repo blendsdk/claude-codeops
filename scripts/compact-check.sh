@@ -300,7 +300,6 @@ cat >"$repo_none/plans/00-roadmap.md" <<'MD'
 # Roadmap: Lean
 
 > **Progress**: 0 / 1 (0%)
-> **CodeOps Skills Version**: 3.4.1
 
 ## Tracker
 
@@ -326,7 +325,6 @@ cat >"$repo_word/plans/00-roadmap.md" <<'MD'
 # Roadmap: Wordy
 
 > **Progress**: 0 / 1 (0%)
-> **CodeOps Skills Version**: 3.4.1
 
 ## Tracker
 
@@ -372,7 +370,6 @@ cat >"$repo_mid/plans/00-roadmap.md" <<'MD'
 # Roadmap: Mid
 
 > **Progress**: 0 / 1 (0%)
-> **CodeOps Skills Version**: 3.4.1
 
 ## Tracker
 
@@ -412,8 +409,7 @@ p = sys.argv[1]
 c199, c201 = 'x' * 199, 'x' * 201
 out = (
     "# Roadmap: Threshold\n\n"
-    "> **Progress**: 0 / 2 (0%)\n"
-    "> **CodeOps Skills Version**: 3.4.1\n\n"
+    "> **Progress**: 0 / 2 (0%)\n\n"
     "## Tracker\n\n"
     "| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |\n"
     "|----|-------|----|------|-------|--------|--------------|----------------------|\n"

@@ -2,6 +2,26 @@
 
 ## Changelog
 
+### 3.5.0 — lean, table-only roadmaps + a `compact` action (2026-07-13)
+
+Behavioral + format guidance, no document migration — existing roadmaps keep working and can be
+slimmed on demand with the new action.
+
+- **Roadmaps are a table, not a log.** The `## Notes` running log is dropped from every roadmap
+  template, and the per-row `Notes / Blocker` column is renamed **`Depends-on / Blocker`** (terse:
+  a planned prerequisite or the `DEF-n` a `Blocked` row waits on). Rows are ordered by dependency
+  and worked top-to-bottom. Per-item history now lives only in the plan folder and git, so a
+  roadmap can no longer bloat the context it is loaded into. `codeops-migrate.sh` stops seeding a
+  Notes log in the portfolio it writes.
+- **New `compact` roadmap action + engine.** `compact_roadmap` slims a bloated roadmap back to a
+  lean table: the new deterministic `scripts/codeops-roadmap-compact.sh` strips every `## Notes`
+  section and flags oversized cells (`FLAG <file>:<row>:<column>`), then the action trims the
+  flagged cells to terse phrases while preserving the load-bearing `waiting on DEF-n` /
+  `Blocked (was: <stage>)` tokens. Git is the archive, so `apply` refuses a non-git or dirty tree
+  (mirrors `codeops-migrate.sh`). `update`/`review` run its `--check` mode to detect legacy bloat
+  and recommend `compact`, but never mutate. Guarded by `validate.sh` ST-56…ST-59 and the
+  `scripts/compact-check.sh` spec suite.
+
 ### 3.4.1 — worktree base branch follows `integrationBranch` (2026-07-12)
 
 Behavioral, no document migration — 3.0.0–3.4.0 plans/requirements remain compatible.
