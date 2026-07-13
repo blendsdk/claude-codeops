@@ -21,7 +21,7 @@ codeops-skills/                # repo root == plugin root
 │   └── setup_routing/         #   per-project model & effort routing (Opus/Sonnet by tag)
 ├── commands/                  # 16 slash commands → /codeops:<name>
 │   ├── gitcm.md / gitcmp.md   #   commit (and push) with a Conventional Commit message
-│   ├── analyze_project.md     #   generate/refresh this project's CLAUDE.md
+│   ├── analyze_project.md     #   generate/refresh this project's CLAUDE.md (+ --compact leaning mode)
 │   ├── migrate_clinerules.md  #   convert a legacy .clinerules/project.md → CLAUDE.md
 │   ├── clean_jsdoc.md         #   retrofit JSDoc/comments to the doc standard (strip plan refs)
 │   └── …                      #   + thin alias commands that delegate to a parent skill

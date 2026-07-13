@@ -15,7 +15,15 @@ and only the knowledge remains. See [CHANGES.md](CHANGES.md) for the full migrat
 > **New here?** Follow the step-by-step [TUTORIAL.md](TUTORIAL.md) — it walks install → verify →
 > use → update on a fresh machine.
 
-**What's new in 3.3.0 — token efficiency.** Measured against two production repos and an A/B
+**What's new in 3.6.0 — lean, always-on `CLAUDE.md`.** `CLAUDE.md` rides into every session, so its
+size is a permanent per-session cost. The generators keep it lean by default — `analyze_project`
+writes a terse *Project structure* (one line per top-level item) and replaces its refresh comment in
+place instead of stacking, and `setup_routing` emits a **≤10-line** routing block. For a file that has
+already grown, **`/analyze_project --compact`** slims it against explicit budgets (preview-first,
+current-project-only; hand-authored sections are advisory-flagged, never silently rewritten), and a
+`validate.sh` guard keeps this repo's own `CLAUDE.md` honest. Details in [CHANGES.md](CHANGES.md).
+
+**Token-efficient by design (since 3.3.0).** Measured against two production repos and an A/B
 pilot: execution plans carry each task **once** (single checkbox list — the Master Progress
 Checklist is gone from new plans; old plans run unchanged, no migration), verify runs are
 **output-captured** (a PASS one-liner or a 50-line failure tail instead of the full build/test
@@ -139,7 +147,7 @@ codeops-skills/                # repo root == plugin root
 │   └── setup_codeops/         #   scaffold / migrate a repo into the nested codeops/ layout
 ├── commands/                  # 16 slash commands → /codeops:<name>
 │   ├── gitcm.md / gitcmp.md   #   commit (and push) with a Conventional Commit message
-│   ├── analyze_project.md     #   generate/refresh this project's CLAUDE.md
+│   ├── analyze_project.md     #   generate/refresh this project's CLAUDE.md (+ --compact leaning mode)
 │   ├── migrate_clinerules.md  #   convert a legacy .clinerules/project.md → CLAUDE.md
 │   └── …                      #   + thin alias commands that delegate to a parent skill
 ├── hooks/hooks.json           # SessionStart hook → injects the standards every session
@@ -168,7 +176,7 @@ codeops-skills/                # repo root == plugin root
 | `setup_routing` / `/setup_routing` | Analyze the repo, then wire per-project model & effort routing (Opus/Sonnet by task tag) into `CLAUDE.md` + `.claude/agents/` |
 | `setup_codeops` / `/setup_codeops` | Scaffold a fresh `codeops/` skeleton, or auto-migrate an existing flat `requirements/` + `plans/` layout into the nested layout (preview → one confirmation → `git mv`) |
 | `/gitcm` / `/gitcmp` | Commit (and push) with a detailed Conventional Commit message |
-| `/analyze_project` | Generate/refresh this project's `CLAUDE.md` |
+| `/analyze_project` | Generate/refresh this project's `CLAUDE.md`; `--compact` slims an over-grown one (preview-first) |
 | `/migrate_clinerules` | Convert a legacy `.clinerules/project.md` into `CLAUDE.md` |
 
 The consolidated skills cover several verbs each, and thin **alias commands** make each verb directly
