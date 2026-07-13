@@ -17,7 +17,7 @@ argument-hint: "[idea or brain dump]"
 
 # Requirements Gathering & Documentation
 
-> **CodeOps Skills Version**: 3.4.1
+> **CodeOps Skills Version**: 3.5.0
 
 Transform a rough project idea into a structured, complete set of formal
 **requirement documents (RDs)**. This skill is upstream of, and independent

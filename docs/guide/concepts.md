@@ -127,8 +127,10 @@ trusting it. Routing-tagged tasks can be **delegated** to the executor subagents
 with the plugin (`agents/plan-task-executor{,-opus}`) via a defined handoff packet; executors
 report blockers instead of guessing and can never rewrite a failing spec test. Roadmap counters
 and portfolio cascades are recomputed by `scripts/codeops-roadmap-sync.sh` (review_roadmap uses
-its `--check` mode), and the lightweight **task lane** (mini-plans for bugfixes/chores) now
-exists in the flat layout too.
+its `--check` mode); a companion `scripts/codeops-roadmap-compact.sh` (the roadmap skill's
+**compact** action) slims a legacy roadmap back to a lean, table-only shape — stripping the old
+`## Notes` log and flagging overstuffed cells. The lightweight **task lane** (mini-plans for
+bugfixes/chores) now exists in the flat layout too.
 
 ## The pipeline
 

@@ -25,7 +25,7 @@ When the user types `grill_me` (with or without additional context), enter
 designed to eliminate every ambiguity before any plan, requirement, or
 implementation work begins.
 
-> **CodeOps Skills Version**: 3.4.1
+> **CodeOps Skills Version**: 3.5.0
 
 ## Core Directive
 

@@ -243,6 +243,13 @@ if grep -qE '^integrationBranch:[[:space:]]*\S' "$repo_apply/codeops/.codeops.ym
 else
   fail "apply: marker missing integrationBranch (FR-4)"
 fi
+# The seeded portfolio must ship lean — no `## Notes` running log (the migration status lives in
+# the feature row's Stage Summary, not a Notes log).
+if grep -q '^## Notes' "$repo_apply/codeops/00-roadmap.md"; then
+  fail "seeded portfolio still carries a ## Notes running log (must ship lean)"
+else
+  pass "seeded portfolio ships lean (no ## Notes section)"
+fi
 # Old flat dirs are gone (moved, not copied).
 if [[ ! -e "$repo_apply/requirements" && ! -e "$repo_apply/plans" ]]; then
   pass "apply removed the old flat requirements/ and plans/ trees"

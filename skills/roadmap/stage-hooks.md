@@ -54,8 +54,9 @@ complete the per-feature roadmap transition (codeops/features/<f>/00-roadmap.md)
   treat the current branch as integration (unchanged behaviour). The **per-feature** roadmap write
   stays immediate — it is isolated per feature, so it never conflicts.
 - **Status roll-up:** any executing row → 🔄; all rows done → ✅; any blocked row → ⛔; otherwise ⬜.
-- **Cross-feature blockers** stay within the feature's roadmap but are named feature-qualified in
-  the `Notes / Blocker` cell (e.g. `waiting on auth/RD-02`) and surfaced in the portfolio **Notes**.
+- **Cross-feature blockers** stay within the feature's roadmap, named feature-qualified in the
+  depending row's `Depends-on / Blocker` cell (e.g. `waiting on auth/RD-02`). The portfolio has no
+  Notes section — it rolls the blocked feature up to ⛔ and the detail lives in that row's cell.
 - In **flat layout** there is no portfolio, so this hook is **inert** (unchanged flat-layout behaviour).
 
 ## Which skill owns which hook

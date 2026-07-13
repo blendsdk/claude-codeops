@@ -21,7 +21,7 @@ verbatim when creating either. The portfolio is a separate, higher-altitude temp
 > **Created**: [YYYY-MM-DD]
 > **Last Updated**: [YYYY-MM-DD HH:MM]
 > **Progress**: [Done RDs] / [Total RDs] ([Z]%)
-> **CodeOps Skills Version**: 3.4.1
+> **CodeOps Skills Version**: 3.5.0
 
 ## Legend
 
@@ -29,17 +29,13 @@ verbatim when creating either. The portfolio is a separate, higher-altitude temp
 
 ## Tracker
 
-| ID | Title | RD | Plan | Stage | Status | Last Updated | Notes / Blocker |
-|----|-------|----|------|-------|--------|--------------|-----------------|
+| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |
+|----|-------|----|------|-------|--------|--------------|----------------------|
 | RD-01 | [Title] | [link] | [link] | Done | ✅ | [date] | — |
 | RD-02 | [Title] | [link] | [link] | Executing | 🔄 | [date] | — |
 | RD-03 | [Title] | [link] | — | Blocked (was: RD Preflighted) | ⛔ | [date] | waiting on DEF-1 |
 | ↳ DEF-1 | [Discovered dependency] | — | [link] | Plan Created | 📋 | [date] | blocks RD-03 |
 | RD-04 | [Title] | — | — | Backlog | ⬜ | [date] | — |
-
-## Notes
-
-[Free-form running log of significant transitions, detours, and decisions.]
 ````
 
 ## Header fields
@@ -48,7 +44,7 @@ verbatim when creating either. The portfolio is a separate, higher-altitude temp
 - **Status** — `In Progress` while active; `Archived` once `archive_roadmap` runs.
 - **Created** / **Last Updated** — `Last Updated` bumps on every transition.
 - **Progress** — `[Done RDs] / [Total RDs] ([Z]%)`; counts only top-level RD rows that reached `Done`.
-- **CodeOps Skills Version** — the release stamp (currently `3.4.1`).
+- **CodeOps Skills Version** — the release stamp (currently `3.5.0`).
 
 ## Tracker columns
 
@@ -61,12 +57,23 @@ verbatim when creating either. The portfolio is a separate, higher-altitude temp
 | Stage | One of the 9 lifecycle states (text form). A `Blocked` row records its prior stage in-cell — `Blocked (was: <stage>)` — so unblocking never depends on memory. |
 | Status | The matching emoji for the stage (see legend). |
 | Last Updated | Date (or date + time) of the last change to this row. |
-| Notes / Blocker | Free text; for `Blocked` rows, name the `DEF-n` being waited on. |
+| Depends-on / Blocker | Terse. Name a planned prerequisite (`depends on RD-03`) or, for a `Blocked` row, the `DEF-n` being waited on — a short phrase, never a paragraph. |
 
 Links are relative to the roadmap file itself. Flat layout (`plans/00-roadmap.md`): RDs are
 `../requirements/RD-NN-*.md`, plans are `<plan>/00-index.md`. Nested layout
 (`codeops/features/<f>/00-roadmap.md`): RDs are `requirements/RD-NN-*.md`, plans are
 `plans/<plan>/00-index.md`.
+
+## Row ordering & discipline
+
+- **Order rows by dependency** — put prerequisites above the rows that depend on them, so the list
+  is worked top-to-bottom, one row at a time, until the roadmap is done. Capture a *planned*
+  dependency terse in the `Depends-on / Blocker` cell (e.g. `depends on RD-01`); a *discovered*
+  blocker becomes a `↳ DEF-n` sub-row with `waiting on DEF-n` in the cell.
+- **Keep it a table.** A roadmap is only its table (the per-feature/flat roadmap is header + Legend
+  + Tracker; the portfolio adds Features + Archived). A row's cells are short status phrases, never
+  narrative — per-item history and rationale live in the plan folder and git, not here. There is no
+  running-notes log; a stage regression is explained in the git commit that makes it.
 
 ## Worked example
 
@@ -78,7 +85,7 @@ Links are relative to the roadmap file itself. Flat layout (`plans/00-roadmap.md
 > **Created**: 2026-05-01
 > **Last Updated**: 2026-05-14 16:20
 > **Progress**: 1 / 4 (25%)
-> **CodeOps Skills Version**: 3.4.1
+> **CodeOps Skills Version**: 3.5.0
 
 ## Legend
 
@@ -86,18 +93,13 @@ Links are relative to the roadmap file itself. Flat layout (`plans/00-roadmap.md
 
 ## Tracker
 
-| ID | Title | RD | Plan | Stage | Status | Last Updated | Notes / Blocker |
-|----|-------|----|------|-------|--------|--------------|-----------------|
+| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |
+|----|-------|----|------|-------|--------|--------------|----------------------|
 | RD-01 | Invoicing core | [RD-01](../requirements/RD-01-invoicing.md) | [invoicing](invoicing/00-index.md) | Done | ✅ | 2026-05-10 | — |
 | RD-02 | Payment gateway | [RD-02](../requirements/RD-02-payments.md) | — | Blocked (was: RD Drafted) | ⛔ | 2026-05-14 | waiting on DEF-1 |
 | ↳ DEF-1 | Secrets vault integration | — | [vault](vault/00-index.md) | Executing | 🔄 | 2026-05-14 | blocks RD-02 |
 | RD-03 | Dunning emails | [RD-03](../requirements/RD-03-dunning.md) | — | RD Preflighted | 🔎 | 2026-05-12 | — |
 | RD-04 | Usage metering | — | — | Backlog | ⬜ | 2026-05-01 | — |
-
-## Notes
-
-- 2026-05-14: RD-02 blocked when payment gateway work hit a hard dependency on a secrets vault;
-  pulled the vault work out as DEF-1 and set RD-02 to Blocked until DEF-1 reaches Done.
 ```
 
 Here RD-02 is `Blocked` by the nested `DEF-1` sub-row; once DEF-1 reaches `Done`,
@@ -123,7 +125,7 @@ one links a single mini-plan). RD and `T` ids are separate per-feature namespace
 > **Status**: Active
 > **Last Updated**: [YYYY-MM-DD HH:MM]
 > **Features**: [Done] / [Total] done
-> **CodeOps Skills Version**: 3.4.1
+> **CodeOps Skills Version**: 3.5.0
 
 ## Legend
 
@@ -141,11 +143,6 @@ one links a single mini-plan). RD and `T` ids are separate per-feature namespace
 | Feature | Roadmap | Completed | Last Updated |
 |---------|---------|-----------|--------------|
 | onboarding | [→](_archive/onboarding/00-roadmap.md) | 4/4 RDs | 2026-05-30 |
-
-## Notes
-
-[Cross-feature running log: dependencies (name them feature-qualified, e.g. `billing waiting on
-auth/RD-02`), detours, decisions.]
 ````
 
 ### Portfolio header fields

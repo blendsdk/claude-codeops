@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.4.1"
+CODEOPS_VERSION="3.5.0"
 
 FAILURES=0
 
@@ -1316,6 +1316,54 @@ if awk '/^default_base_branch\(\)/{f=1} f&&/integrationBranch|marker_integration
   pass "default_base_branch prefers the marker's integrationBranch"
 else
   fail "default_base_branch does not consult the marker's integrationBranch"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-56 — roadmap compact engine present (mirrors ST-30): exists, executable, --help exits 0.
+# -----------------------------------------------------------------------------
+section "ST-56: codeops-roadmap-compact.sh present + --help"
+COMPACT="scripts/codeops-roadmap-compact.sh"
+if [[ -x "$COMPACT" ]]; then
+  pass "$COMPACT present and executable"
+  if "$REPO_ROOT/$COMPACT" --help >/dev/null 2>&1; then
+    pass "--help exits 0"
+  else
+    fail "$COMPACT --help did not exit 0"
+  fi
+else
+  fail "$COMPACT missing or not executable"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-57 — the roadmap template ships lean: no running-log `## Notes` section (a roadmap is only
+# its table; per-item history lives in the plan folder and git).
+# -----------------------------------------------------------------------------
+section "ST-57: roadmap template has no running-log ## Notes section"
+if grep -qE '^## Notes' skills/roadmap/template.md; then
+  fail "skills/roadmap/template.md still contains a ## Notes running-log section"
+else
+  pass "no ## Notes running-log section in the roadmap template"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-58 — the per-row free-text column is Depends-on / Blocker (renamed from Notes / Blocker).
+# -----------------------------------------------------------------------------
+section "ST-58: roadmap column reads Depends-on / Blocker"
+if grep -qF 'Depends-on / Blocker' skills/roadmap/template.md \
+   && ! grep -qF 'Notes / Blocker' skills/roadmap/template.md; then
+  pass "column header is Depends-on / Blocker (Notes / Blocker removed)"
+else
+  fail "template must use 'Depends-on / Blocker' and drop 'Notes / Blocker'"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-59 — the roadmap skill documents the compact action in its dispatch.
+# -----------------------------------------------------------------------------
+section "ST-59: roadmap skill documents the compact action"
+if grep -qF 'compact_roadmap' skills/roadmap/SKILL.md; then
+  pass "compact action present in the roadmap skill dispatch"
+else
+  fail "skills/roadmap/SKILL.md does not document the compact action (compact_roadmap)"
 fi
 
 # -----------------------------------------------------------------------------
