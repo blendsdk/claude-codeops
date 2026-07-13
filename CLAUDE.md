@@ -22,9 +22,10 @@
 - **Build (docs):** `npm run docs:build`
 - **Dev (docs preview):** `npm run docs:dev` → http://localhost:5173/claude-codeops/
 - **Test:** `./scripts/validate.sh` (plugin guard), `./scripts/docs-check.sh` (docs structure/CI),
-  `./scripts/migration-check.sh` (flat→nested migration engine, against `scripts/fixtures/flat-repo/`), and
-  `./scripts/compact-check.sh` (roadmap compact engine, against `scripts/fixtures/bloated-repo/`)
-- **Verify (run before every commit):** `./scripts/validate.sh && npm run docs:build && ./scripts/docs-check.sh && ./scripts/migration-check.sh && ./scripts/compact-check.sh`
+  `./scripts/migration-check.sh` (flat→nested migration engine, against `scripts/fixtures/flat-repo/`),
+  `./scripts/compact-check.sh` (roadmap compact engine, against `scripts/fixtures/bloated-repo/`), and
+  `./scripts/roadmap-sync-check.sh` (roadmap sync engine, against `scripts/fixtures/roadmap-repo/`)
+- **Verify (run before every commit):** `./scripts/validate.sh && npm run docs:build && ./scripts/docs-check.sh && ./scripts/migration-check.sh && ./scripts/compact-check.sh && ./scripts/roadmap-sync-check.sh`
 - **Clean:** `rm -rf node_modules docs/.vitepress/dist docs/.vitepress/cache`
 
 ## Project structure
@@ -59,6 +60,15 @@
 - **Main branch:** `master`  •  **Feature branches:** `feat/<topic>` (PR into `master`).
 
 ## Special rules
+- **🚨 NON-NEGOTIABLE — bump the version on every change, and keep all stamps in sync.** Any change
+  that touches the plugin's shipped surface (`skills/`, `commands/`, `standards/`, `_shared/`,
+  `agents/`, `scripts/`, `bin/`, `hooks/`, `.claude-plugin/`) MUST bump the release version **in the
+  same change**, per SemVer against what changed — **patch** for fixes/docs/refactors, **minor** for
+  a backward-compatible feature, **major** for a breaking change. Bump the single `CODEOPS_VERSION`
+  constant in `scripts/validate.sh` (the one edit point), then sync **every** `CodeOps Skills
+  Version` stamp across the shipped files **and** `plugin.json`'s `version` to that exact value
+  (`validate.sh` ST-4/ST-24 enforce the equality; `scripts/fixtures/` is test data and is excluded).
+  Never commit, merge, or release with a stale or mismatched version.
 - The docs site auto-deploys on push to `master` touching `docs/**`, the workflow, or `package*.json`
   (plus manual `workflow_dispatch`). It serves at https://blendsdk.github.io/claude-codeops/.
 - Before pushing changes that touch the plugin, run `./scripts/validate.sh`; for docs changes also

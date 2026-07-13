@@ -21,7 +21,7 @@ verbatim when creating either. The portfolio is a separate, higher-altitude temp
 > **Created**: [YYYY-MM-DD]
 > **Last Updated**: [YYYY-MM-DD HH:MM]
 > **Progress**: [Done RDs] / [Total RDs] ([Z]%)
-> **CodeOps Skills Version**: 3.6.0
+> **CodeOps Skills Version**: 3.7.0
 
 ## Legend
 
@@ -43,8 +43,13 @@ verbatim when creating either. The portfolio is a separate, higher-altitude temp
 - **Feature-Set** — display name; the slug form is the `plans/_archive/<slug>/` folder name on archive.
 - **Status** — `In Progress` while active; `Archived` once `archive_roadmap` runs.
 - **Created** / **Last Updated** — `Last Updated` bumps on every transition.
-- **Progress** — `[Done RDs] / [Total RDs] ([Z]%)`; counts only top-level RD rows that reached `Done`.
-- **CodeOps Skills Version** — the release stamp (currently `3.6.0`).
+- **Progress** — `[Done RDs] / [Total RDs] ([Z]%)`; counts only top-level `RD-*` rows that reached
+  `Done`. `T-*` task rows and `↳ DEF-n` sub-rows never count toward the fraction. A Progress value
+  that is **not** this computed shape (e.g. `n/a`, or `history archived (no active RD tracker)`) is
+  treated as hand-maintained: the sync engine preserves it verbatim and does not touch it. A
+  computed value may carry a trailing ` · <note>` annotation (e.g. `2 / 2 (100%) · hardening done`);
+  the engine refreshes the count and keeps the ` · …` suffix.
+- **CodeOps Skills Version** — the release stamp (currently `3.7.0`).
 
 ## Tracker columns
 
@@ -85,7 +90,7 @@ Links are relative to the roadmap file itself. Flat layout (`plans/00-roadmap.md
 > **Created**: 2026-05-01
 > **Last Updated**: 2026-05-14 16:20
 > **Progress**: 1 / 4 (25%)
-> **CodeOps Skills Version**: 3.6.0
+> **CodeOps Skills Version**: 3.7.0
 
 ## Legend
 
@@ -109,14 +114,36 @@ In a **nested-layout** repo this same roadmap lives at `codeops/features/<f>/00-
 may also carry `T-NN` **task rows** beside its RD rows (a trivial task is just a row; a non-trivial
 one links a single mini-plan). RD and `T` ids are separate per-feature namespaces and never collide.
 
+## Open follow-ons (optional)
+
+When every `RD-*` row is `Done` but post-completion work is still outstanding, record it in an
+optional `## Open follow-ons` section **below the Tracker** — so the feature reads as "shipped, with
+tail work" rather than either fully done or artificially incomplete:
+
+```markdown
+## Open follow-ons
+
+| Item | Scope | Stage | Status |
+|------|-------|-------|--------|
+| `usage-export` | Production usage export, deferred post-launch | Backlog | ⬜ no plan yet |
+```
+
+The table's **last column must be `Status`**. A follow-on is *open* when its Status cell contains no
+✅. While any follow-on is open, the sync engine rolls the feature up to `🔄` (not `✅`) and excludes
+it from the portfolio `Features` done count — but follow-on rows **never** count toward the RD
+fraction (a feature with 2/2 RDs Done and an open follow-on still reads `2/2 RDs`). A section whose
+table is not `Status`-last is ignored. Once every follow-on row is ✅ (or the section is removed),
+the feature rolls up `✅` normally.
+
 ---
 
 ## The portfolio roadmap template
 
 > **Nested layout only.** Lives at `codeops/00-roadmap.md`. One row per feature in the repo; it is
 > a *derived summary* of the per-feature roadmaps, never the detailed record. Each feature's Stage
-> Summary, Progress, and Status roll up from that feature's own roadmap (any executing → 🔄; all
-> done → ✅; any blocked → ⛔). The portfolio **auto-cascades**: every per-feature stage transition
+> Summary, Progress, and Status roll up from that feature's own roadmap. Roll-up precedence: any
+> blocked → ⛔; all RDs Done with an open follow-on → 🔄; all RDs Done and none open → ✅; any
+> executing → 🔄; else ⬜. The portfolio **auto-cascades**: every per-feature stage transition
 > immediately updates that feature's portfolio row (see [stage-hooks.md](stage-hooks.md)).
 
 ````markdown
@@ -125,7 +152,7 @@ one links a single mini-plan). RD and `T` ids are separate per-feature namespace
 > **Status**: Active
 > **Last Updated**: [YYYY-MM-DD HH:MM]
 > **Features**: [Done] / [Total] done
-> **CodeOps Skills Version**: 3.6.0
+> **CodeOps Skills Version**: 3.7.0
 
 ## Legend
 
@@ -149,7 +176,9 @@ one links a single mini-plan). RD and `T` ids are separate per-feature namespace
 
 - **Status** — `Active` while the repo has live features; informational.
 - **Last Updated** — bumps on every cascade.
-- **Features** — `[Done] / [Total] done`, counting feature rows whose rolled-up Status is ✅.
+- **Features** — `[Done] / [Total] done`, counting feature rows whose rolled-up Status is ✅. Rows
+  whose `Progress` is hand-maintained (e.g. `n/a`) are not engine-computed and are excluded from
+  both totals. A trailing ` (…)` annotation on this value is preserved when the count is refreshed.
 
 ### Portfolio columns
 
@@ -158,8 +187,8 @@ one links a single mini-plan). RD and `T` ids are separate per-feature namespace
 | Feature | The feature folder name under `codeops/features/`. |
 | Roadmap | Relative link to that feature's `00-roadmap.md`. |
 | Stage Summary | Short derived phrase (e.g. "2 RDs · 1 plan executing"). |
-| Progress | Derived count (e.g. "1/2 RDs"). |
-| Status | Rolled-up emoji (🔄 / ✅ / ⛔ / ⬜ / ⏸️). |
+| Progress | Derived count of `RD-*` rows (e.g. "1/2 RDs"), optionally with a ` · …` annotation. A hand-maintained value such as `n/a` is preserved by the engine, which then leaves this row's Status untouched. |
+| Status | Rolled-up emoji (🔄 / ✅ / ⛔ / ⬜ / ⏸️); not re-rolled for a row whose Progress is hand-maintained. |
 | Last Updated | Date of the last cascade to this row. |
 
 ### Archived section

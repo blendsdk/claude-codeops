@@ -16,7 +16,7 @@ argument-hint: "[make | update | review | archive | compact]"
 
 # roadmap — Live Feature-Set Roadmap Keeper
 
-> **CodeOps Skills Version**: 3.6.0
+> **CodeOps Skills Version**: 3.7.0
 
 ## Resolve paths first (layout-aware)
 
@@ -194,7 +194,12 @@ Advance stages and sync the roadmap to current disk state.
   mode). It recomputes the header `Progress` counters, the portfolio `Progress`/`Status` cells,
   and the `Features` count from disk — **never re-derive these numbers in prose** (the same
   prose-vs-script division as the migration engine: the skill owns stage judgment, the script
-  owns arithmetic). Stage Summary phrasing remains yours.
+  owns arithmetic). Stage Summary phrasing remains yours. The engine counts only `RD-*` rows
+  (`T-*` tasks are excluded), is **follow-on aware** (a feature with all RDs Done but an open
+  `## Open follow-ons` row holds at `🔄`), and **preserves hand-maintained values** — a
+  non-computed `Progress` such as `n/a` and any ` · …` / ` (…)` annotation are kept verbatim, and a
+  held row's `Status` is not re-rolled. See [template.md](template.md) → *Open follow-ons* and the
+  Progress/Features field notes for the authoring contract.
 - **Nested layout:** stage re-inference is per-feature (your judgment); the script performs the
   numeric **cascade** into `codeops/00-roadmap.md` in the same run.
 - **Recommend compaction if the roadmap is bloated:** run `scripts/codeops-roadmap-compact.sh
@@ -212,7 +217,10 @@ Run a health check and report findings; change nothing on disk.
 
 - **Counter/cascade drift is mechanical:** run `scripts/codeops-roadmap-sync.sh --check` — its
   `DRIFT` lines and non-zero exit ARE that portion of the report (Progress counters, portfolio
-  Progress/Status cells, Features count). Do not re-derive the numbers in prose.
+  Progress/Status cells, Features count). Do not re-derive the numbers in prose. Preserved
+  hand-maintained values are reported on informational `HELD` lines and do **not** fail the check —
+  an `n/a` sentinel or an annotated cell is healthy, not drift; surface `HELD` lines so a human can
+  eyeball the hand-maintained values.
 - **Bloat is mechanical too:** run `scripts/codeops-roadmap-compact.sh --check` — a reported legacy
   `## Notes` section or oversized cell is that portion of the health report; recommend **compact**
   to slim it (review itself changes nothing on disk).
