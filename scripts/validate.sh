@@ -1366,6 +1366,114 @@ else
   fail "skills/roadmap/SKILL.md does not document the compact action (compact_roadmap)"
 fi
 
+# =============================================================================
+# CLAUDE.md leanness budgets. CLAUDE.md is injected into every session, so its
+# size is a permanent per-session token cost. Derived (machine-generated) sections
+# carry hard per-section caps; hand-authored sections are exempt. Each check skips
+# cleanly when the repo has no root CLAUDE.md (not all repos do).
+# =============================================================================
+CLAUDEMD="CLAUDE.md"
+MAX_TOTAL_LINES=150
+MAX_DERIVED_SECTION=20
+MAX_ROUTING_SPAN=10
+MAX_REFRESH_COMMENTS=1
+
+# -----------------------------------------------------------------------------
+# ST-60 — the CLAUDE.md routing block stays lean (sentinel span <=10 lines). A
+# lone sentinel is a corrupted block: fail rather than guess the span.
+# -----------------------------------------------------------------------------
+section "ST-60: CLAUDE.md routing block is lean (<=$MAX_ROUTING_SPAN lines)"
+if [[ -f "$CLAUDEMD" ]]; then
+  cm_start=$(grep -n 'CODEOPS-ROUTING:START' "$CLAUDEMD" | head -1 | cut -d: -f1)
+  cm_end=$(grep -n 'CODEOPS-ROUTING:END' "$CLAUDEMD" | head -1 | cut -d: -f1)
+  if [[ -n "$cm_start" && -n "$cm_end" ]]; then
+    cm_span=$(( cm_end - cm_start + 1 ))
+    if [[ "$cm_span" -le "$MAX_ROUTING_SPAN" ]]; then
+      pass "routing block span is $cm_span lines (<=$MAX_ROUTING_SPAN)"
+    else
+      fail "CLAUDE.md routing block span is $cm_span lines; must be <=$MAX_ROUTING_SPAN (it rides into every session)"
+    fi
+  elif [[ -n "$cm_start" || -n "$cm_end" ]]; then
+    fail "CLAUDE.md has exactly one routing sentinel (corrupted) — expected both markers or neither"
+  else
+    pass "no routing block present (nothing to bound)"
+  fi
+else
+  pass "no root CLAUDE.md (check skipped)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-61 — the derived `## Project structure` section stays terse (<=20 lines).
+# Only this machine-generated section is hard-capped; hand-authored sections
+# (Conventions, Special rules, …) are intentionally exempt.
+# -----------------------------------------------------------------------------
+section "ST-61: CLAUDE.md Project-structure section is lean (<=$MAX_DERIVED_SECTION lines)"
+if [[ -f "$CLAUDEMD" ]]; then
+  ps_start=$(grep -n '^## Project structure' "$CLAUDEMD" | head -1 | cut -d: -f1)
+  if [[ -n "$ps_start" ]]; then
+    ps_next=$(awk -v s="$ps_start" 'NR>s && /^## / {print NR; exit}' "$CLAUDEMD")
+    [[ -z "$ps_next" ]] && ps_next=$(( $(wc -l < "$CLAUDEMD") + 1 ))
+    ps_span=$(( ps_next - ps_start ))
+    if [[ "$ps_span" -le "$MAX_DERIVED_SECTION" ]]; then
+      pass "Project-structure section is $ps_span lines (<=$MAX_DERIVED_SECTION)"
+    else
+      fail "CLAUDE.md '## Project structure' is $ps_span lines; must be <=$MAX_DERIVED_SECTION (derived section — one line per top-level item)"
+    fi
+  else
+    pass "no '## Project structure' section present"
+  fi
+else
+  pass "no root CLAUDE.md (check skipped)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-62 — at most one analyze_project refresh comment (replace-in-place, not a
+# growing stack).
+# -----------------------------------------------------------------------------
+section "ST-62: CLAUDE.md has <=$MAX_REFRESH_COMMENTS analyze_project refresh comment"
+if [[ -f "$CLAUDEMD" ]]; then
+  rc=$(grep -c '<!-- analyze_project:' "$CLAUDEMD")
+  if [[ "$rc" -le "$MAX_REFRESH_COMMENTS" ]]; then
+    pass "$rc refresh comment(s) (<=$MAX_REFRESH_COMMENTS)"
+  else
+    fail "CLAUDE.md has $rc analyze_project refresh comments; keep <=$MAX_REFRESH_COMMENTS (replace in place, do not stack)"
+  fi
+else
+  pass "no root CLAUDE.md (check skipped)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-63 — total CLAUDE.md size within budget (<=150 lines). Guards against future
+# bloat; the current file passes.
+# -----------------------------------------------------------------------------
+section "ST-63: CLAUDE.md total size within budget (<=$MAX_TOTAL_LINES lines)"
+if [[ -f "$CLAUDEMD" ]]; then
+  tl=$(wc -l < "$CLAUDEMD")
+  if [[ "$tl" -le "$MAX_TOTAL_LINES" ]]; then
+    pass "$tl lines (<=$MAX_TOTAL_LINES)"
+  else
+    fail "CLAUDE.md is $tl lines; keep it <=$MAX_TOTAL_LINES (it is always-on context)"
+  fi
+else
+  pass "no root CLAUDE.md (check skipped)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-64 — CLAUDE.md must not duplicate the injected coding standards. The plugin
+# injects those every session; pasting them in doubles the always-on cost. Match
+# their distinctive section headings.
+# -----------------------------------------------------------------------------
+section "ST-64: CLAUDE.md does not duplicate the injected coding standards"
+if [[ -f "$CLAUDEMD" ]]; then
+  if grep -qE '^## Quality & structure|^## Security .*non-negotiable|^# Testing standards|^# Working style' "$CLAUDEMD"; then
+    fail "CLAUDE.md contains an injected-standards heading — the plugin injects those every session; do not paste them in"
+  else
+    pass "no injected-standards headings duplicated"
+  fi
+else
+  pass "no root CLAUDE.md (check skipped)"
+fi
+
 # -----------------------------------------------------------------------------
 # ST-65 — analyze_project documents the leaning mode: a --compact action (with a
 # composable --dry-run), preview-before-write, scoped to the current project only.
