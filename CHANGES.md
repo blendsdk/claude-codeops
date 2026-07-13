@@ -2,6 +2,27 @@
 
 ## Changelog
 
+### 3.6.0 — lean, always-on `CLAUDE.md` (2026-07-13)
+
+Behavioral + format guidance, no document migration — existing `CLAUDE.md` files keep working and
+can be slimmed on demand.
+
+- **`CLAUDE.md` stays lean, because it is always-on context.** `analyze_project` now generates a
+  terse *Project structure* (one line per top-level item), and `setup_routing` emits a **≤10-line**
+  routing block (every routing directive preserved on dense single lines) instead of the old
+  18-line block. The `analyze_project` refresh comment is **replaced in place** — one comment, not a
+  stack that grows every run.
+- **New `analyze_project --compact` leaning mode.** `/analyze_project --compact` slims an
+  already-bloated `CLAUDE.md`: it measures the file against the budgets, tightens the derived
+  sections, slims the routing block in place (sentinels byte-exact, never relocated), prunes stacked
+  refresh comments to one, and *advisory-flags* over-budget hand-authored sections without rewriting
+  them. It previews before writing and asks for confirmation; `--dry-run` reports without writing; it
+  operates on the current project only.
+- **Mechanical budget guards.** `validate.sh` now gates the verify chain on `CLAUDE.md` leanness —
+  total ≤150 lines, derived *Project structure* ≤20, routing span ≤10, ≤1 refresh comment, and no
+  duplicated injected coding standards — skipping cleanly when a repo has no root `CLAUDE.md`. This
+  repo's own `CLAUDE.md` was slimmed from 102 to 75 lines to match.
+
 ### 3.5.0 — lean, table-only roadmaps + a `compact` action (2026-07-13)
 
 Behavioral + format guidance, no document migration — existing roadmaps keep working and can be

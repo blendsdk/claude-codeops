@@ -9,7 +9,7 @@
 profile**, and proposes a **tag-driven routing policy** — then, only after you confirm, writes two
 coordinated artifacts:
 
-1. a concise, sentinel-delimited routing block in the project's `CLAUDE.md` (the **policy** layer —
+1. a concise (**≤10-line**), sentinel-delimited routing block in the project's `CLAUDE.md` (the **policy** layer —
    which executor a tagged task is delegated to), and
 2. the pinned-model **executor subagents** in `.claude/agents/` that the policy references (the
    **enforcement** layer — `plan-task-executor` on Sonnet, `plan-task-executor-opus` on Opus).
