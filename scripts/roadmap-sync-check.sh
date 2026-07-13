@@ -217,7 +217,7 @@ open(os.path.join(root, 'codeops', '.codeops.yml'), 'w').write(
 def feature(name, rows):
     hdr = ("# Roadmap: %s\n\n> **Feature-Set**: %s\n> **Status**: In Progress\n"
            "> **Created**: 2025-01-01\n> **Last Updated**: 2025-05-01 10:00\n"
-           "> **Progress**: 0 / 0 (0%%)\n> **CodeOps Skills Version**: 3.6.0\n\n"
+           "> **Progress**: 0 / 0 (0%%)\n\n"
            "## Tracker\n\n"
            "| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |\n"
            "|----|-------|----|------|-------|--------|--------------|----------------------|\n"
@@ -240,7 +240,7 @@ portfolio = (
     "# Portfolio Roadmap: Corrections\n\n"
     "> **Status**: Active\n> **Last Updated**: 2025-06-01 10:00\n"
     "> **Features**: 5 / 5 done (legacy audit pending)\n"
-    "> **CodeOps Skills Version**: 3.6.0\n\n"
+    "\n"
     "## Features\n\n"
     "| Feature | Roadmap | Stage Summary | Progress | Status | Last Updated |\n"
     "|---------|---------|---------------|----------|--------|--------------|\n"
@@ -318,7 +318,7 @@ open(os.path.join(root, 'codeops', '.codeops.yml'), 'w').write("codeopsLayout: n
 payload = "`$(touch PWNED)` '; rm -rf ."
 feat = ("# Roadmap: Svc\n\n> **Feature-Set**: Svc\n> **Status**: In Progress\n"
         "> **Created**: 2025-01-01\n> **Last Updated**: 2025-05-01 10:00\n"
-        "> **Progress**: 1 / 1 (100%)\n> **CodeOps Skills Version**: 3.6.0\n\n"
+        "> **Progress**: 1 / 1 (100%)\n\n"
         "## Tracker\n\n"
         "| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |\n"
         "|----|-------|----|------|-------|--------|--------------|----------------------|\n"
@@ -328,7 +328,7 @@ open(os.path.join(root, 'codeops', 'features', 'svc', '00-roadmap.md'), 'w').wri
 # lives in the Stage Summary cell and must pass through the row rebuild untouched.
 portfolio = ("# Portfolio Roadmap: Sec\n\n> **Status**: Active\n"
              "> **Last Updated**: 2025-06-01 10:00\n> **Features**: 0 / 1 done\n"
-             "> **CodeOps Skills Version**: 3.6.0\n\n## Features\n\n"
+             "\n## Features\n\n"
              "| Feature | Roadmap | Stage Summary | Progress | Status | Last Updated |\n"
              "|---------|---------|---------------|----------|--------|--------------|\n"
              "| svc | [→](features/svc/00-roadmap.md) | " + payload + " | 0/1 RDs | ⬜ | 2025-05-01 |\n")
@@ -396,7 +396,6 @@ cat >"$repo_fh/plans/00-roadmap.md" <<'MD'
 > **Created**: 2025-01-01
 > **Last Updated**: 2025-02-01
 > **Progress**: n/a — tracked in the legacy tracker
-> **CodeOps Skills Version**: 3.6.0
 
 ## Tracker
 
@@ -450,7 +449,7 @@ open(os.path.join(root, 'codeops', '.codeops.yml'), 'w').write("codeopsLayout: n
 def feat(name, rows, prog):
     return ("# Roadmap: %s\n\n> **Feature-Set**: %s\n> **Status**: In Progress\n"
             "> **Created**: 2025-01-01\n> **Last Updated**: 2025-05-01 10:00\n"
-            "> **Progress**: %s\n> **CodeOps Skills Version**: 3.6.0\n\n## Tracker\n\n"
+            "> **Progress**: %s\n\n## Tracker\n\n"
             "| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |\n"
             "|----|-------|----|------|-------|--------|--------------|----------------------|\n"
             % (name, name, prog)) + rows
@@ -460,7 +459,7 @@ open(os.path.join(root, 'codeops', 'features', 'arch', '00-roadmap.md'), 'w').wr
     feat('Arch', "", 'n/a'))
 open(os.path.join(root, 'codeops', '00-roadmap.md'), 'w').write(
     "# Portfolio Roadmap: Mixed\n\n> **Status**: Active\n> **Last Updated**: 2025-06-01 10:00\n"
-    "> **Features**: 0 / 0 done\n> **CodeOps Skills Version**: 3.6.0\n\n## Features\n\n"
+    "> **Features**: 0 / 0 done\n\n## Features\n\n"
     "| Feature | Roadmap | Stage Summary | Progress | Status | Last Updated |\n"
     "|---------|---------|---------------|----------|--------|--------------|\n"
     "| svc | [→](features/svc/00-roadmap.md) | done | 0/1 RDs | ⬜ | 2025-05-01 |\n"
@@ -485,7 +484,7 @@ os.makedirs(os.path.join(root, 'codeops', 'features', 'feat'), exist_ok=True)
 open(os.path.join(root, 'codeops', '.codeops.yml'), 'w').write("codeopsLayout: nested\n")
 feature = ("# Roadmap: Feat\n\n> **Feature-Set**: Feat\n> **Status**: In Progress\n"
            "> **Created**: 2025-01-01\n> **Last Updated**: 2025-05-01 10:00\n"
-           "> **Progress**: 1 / 1 (100%%)\n> **CodeOps Skills Version**: 3.6.0\n\n## Tracker\n\n"
+           "> **Progress**: 1 / 1 (100%%)\n\n## Tracker\n\n"
            "| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |\n"
            "|----|-------|----|------|-------|--------|--------------|----------------------|\n"
            "| RD-01 | Core | — | — | Done | ✅ | 2025-05-01 | — |\n\n"
@@ -495,7 +494,7 @@ feature = ("# Roadmap: Feat\n\n> **Feature-Set**: Feat\n> **Status**: In Progres
 open(os.path.join(root, 'codeops', 'features', 'feat', '00-roadmap.md'), 'w').write(feature)
 open(os.path.join(root, 'codeops', '00-roadmap.md'), 'w').write(
     "# Portfolio Roadmap: Follow\n\n> **Status**: Active\n> **Last Updated**: 2025-06-01 10:00\n"
-    "> **Features**: 0 / 1 done\n> **CodeOps Skills Version**: 3.6.0\n\n## Features\n\n"
+    "> **Features**: 0 / 1 done\n\n## Features\n\n"
     "| Feature | Roadmap | Stage Summary | Progress | Status | Last Updated |\n"
     "|---------|---------|---------------|----------|--------|--------------|\n"
     "| feat | [→](features/feat/00-roadmap.md) | done | 1/1 RDs | 🔄 | 2025-05-01 |\n")
