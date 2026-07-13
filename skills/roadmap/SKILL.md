@@ -4,13 +4,14 @@ description: >-
   Tracks features across their lifecycle in a live, per-repo roadmap — every RD, plan, and task and
   the lifecycle stage each is in. Layout-aware: a single plans/00-roadmap.md in flat layout, or a
   two-tier per-feature + portfolio roadmap under codeops/ in nested layout. Use when the user says
-  "roadmap", "make_roadmap", "update_roadmap", "review_roadmap", or "archive_roadmap". Covers four
-  actions: make_roadmap (create the roadmap and seed rows from disk), update_roadmap (re-infer
-  stages, sync to disk, cascade to the portfolio), review_roadmap (read-only health check for drift
-  and broken links), and archive_roadmap (move a completed feature to the archive). Detects the
-  action from the user's phrasing or arguments and branches. The roadmap is the cross-session source
-  of truth at the RD/plan altitude, above any single execution plan.
-argument-hint: "[make | update | review | archive]"
+  "roadmap", "make_roadmap", "update_roadmap", "review_roadmap", "archive_roadmap", or
+  "compact_roadmap". Covers five actions: make_roadmap (create the roadmap and seed rows from disk),
+  update_roadmap (re-infer stages, sync to disk, cascade to the portfolio), review_roadmap
+  (read-only health check for drift and broken links), archive_roadmap (move a completed feature to
+  the archive), and compact_roadmap (slim a bloated roadmap: strip the legacy Notes log and trim fat
+  cells). Detects the action from the user's phrasing or arguments and branches. The roadmap is the
+  cross-session source of truth at the RD/plan altitude, above any single execution plan.
+argument-hint: "[make | update | review | archive | compact]"
 ---
 
 # roadmap — Live Feature-Set Roadmap Keeper
@@ -46,6 +47,7 @@ Detect the action from the user's phrasing or argument and branch:
 | `update_roadmap`, "sync the roadmap", "update the roadmap" | **update** — re-infer + sync |
 | `review_roadmap`, "check the roadmap", "is the roadmap healthy" | **review** — read-only health check |
 | `archive_roadmap`, "archive the feature-set", "archive the roadmap" | **archive** — move to `_archive` |
+| `compact_roadmap`, "compact the roadmap", "clean up / slim the roadmap" | **compact** — strip the legacy Notes log + trim fat cells |
 
 ## The lifecycle state machine
 
@@ -110,7 +112,8 @@ session/task with a stale roadmap.
 - **Stages never regress on sync.** `update` may only advance or preserve a row's stage; if disk
   suggests a LOWER stage than recorded, keep the recorded stage and report the discrepancy
   (review_roadmap flags it). Regressing a row requires an explicit user instruction, recorded in
-  Notes.
+  the git commit message that makes the regression (and, if it changes a dependent, noted terse in
+  that dependent's `Depends-on / Blocker` cell) — never in a running Notes log.
 
 **Portfolio cascade mandate (nested layout only)** — the real-time update extends one altitude
 up. After completing a per-feature stage transition, update that feature's row in
@@ -142,7 +145,7 @@ When a blocking dependency is discovered mid-preflight or mid-execution:
 1. Add a **nested `↳ DEF-n` sub-row** directly beneath the affected parent row, visually tied to it.
 2. Set the **parent row's Stage cell to `⛔ Blocked (was: <prior stage>)`** — the prior stage is
    recorded IN the cell so recovery never depends on conversation memory — and name the `DEF-n`
-   it waits on in `Notes / Blocker`.
+   it waits on in `Depends-on / Blocker`.
 3. Track the `DEF-n` sub-row through its own lifecycle stages like any other item.
 4. When `DEF-n` reaches `Done`, the parent **leaves `Blocked`** and resumes the stage recorded in
    its `(was: …)` annotation.
@@ -194,6 +197,13 @@ Advance stages and sync the roadmap to current disk state.
   owns arithmetic). Stage Summary phrasing remains yours.
 - **Nested layout:** stage re-inference is per-feature (your judgment); the script performs the
   numeric **cascade** into `codeops/00-roadmap.md` in the same run.
+- **Recommend compaction if the roadmap is bloated:** run `scripts/codeops-roadmap-compact.sh
+  --check`; if it reports a legacy `## Notes` section or an oversized cell, recommend the user run
+  **compact**. `update` itself never strips or trims — it only re-infers stages and delegates
+  counters (mirrors how it delegates arithmetic to the sync engine).
+- **Rows stay dependency-ordered:** keep prerequisites above the rows that depend on them (see
+  [template.md](template.md) → Row ordering & discipline); a planned dependency is a terse
+  `depends on RD-NN` in the row's `Depends-on / Blocker` cell.
 - **If the roadmap is missing:** fall back to **make** — ask whether to create it, then create it.
 
 ## review — read-only health check
@@ -203,6 +213,9 @@ Run a health check and report findings; change nothing on disk.
 - **Counter/cascade drift is mechanical:** run `scripts/codeops-roadmap-sync.sh --check` — its
   `DRIFT` lines and non-zero exit ARE that portion of the report (Progress counters, portfolio
   Progress/Status cells, Features count). Do not re-derive the numbers in prose.
+- **Bloat is mechanical too:** run `scripts/codeops-roadmap-compact.sh --check` — a reported legacy
+  `## Notes` section or oversized cell is that portion of the health report; recommend **compact**
+  to slim it (review itself changes nothing on disk).
 - Every RD row references an existing `requirements/RD-*.md` file.
 - Every plan link references an existing plan folder.
 - The recorded `Stage` matches on-disk reality per the stage-inference artifacts (flag drift;
@@ -240,6 +253,33 @@ Run a health check and report findings; change nothing on disk.
 
 ---
 
+## compact — shrink an existing roadmap (both layouts)
+
+Slim a roadmap that has bloated over time — a legacy `## Notes` running log and/or verbose table
+cells — back to a lean status table. The mechanical, safety-critical work is delegated to the
+engine; the judgment (rewriting a fat cell down to a terse phrase) is yours.
+
+1. **Resolve layout.** compact operates on **every** roadmap in the repo — the portfolio, every
+   feature roadmap, and `_archive/` — not a single feature.
+2. **Require a clean git tree.** Deleting the Notes log is only reversible through git, so if the
+   tree is dirty, STOP and ask the user to commit or stash first (the engine also refuses — check
+   early so the user gets a clean message rather than a mid-run abort).
+3. **Run the engine** — `scripts/codeops-roadmap-compact.sh` (apply). It strips every `## Notes`
+   section in place and prints `FLAG <file>:<row>:<column> (<n> chars)` lines for oversized cells.
+   It never rewrites a cell.
+4. **Trim each flagged cell** to a terse status phrase, **preserving the load-bearing tokens
+   verbatim** — `waiting on DEF-n` and `Blocked (was: <stage>)`. The verbose original stays in git
+   history; never relocate it to another file on disk.
+5. **Confirm, then re-sync.** Run `scripts/codeops-roadmap-compact.sh --check` — it must report no
+   `## Notes` section and no oversized cell. Then run `scripts/codeops-roadmap-sync.sh` so the
+   counter surfaces stay consistent.
+6. **Report and stop.** List the affected files and leave the change for the user to review and
+   commit (`git status` / `git diff`); never auto-commit.
+
+**If no roadmap exists:** report `no roadmap found — nothing to compact`; never create one.
+
+---
+
 ## Error handling
 
 | Error case | Handling |
@@ -249,6 +289,8 @@ Run a health check and report findings; change nothing on disk.
 | **make** when roadmap already exists | Do NOT ask; sync from disk state (the update action) |
 | Nested: per-feature transition but portfolio row stale | Cascade is mandatory + immediate; `review` flags the drift (AR #8) |
 | Nested: target feature ambiguous | Ask the user; never guess (AR #26) |
+| **compact** on a dirty or non-git tree | STOP; ask the user to commit/stash first — the engine also refuses (exit 1) |
+| **compact** when no roadmap exists | Report `no roadmap found — nothing to compact`; never create one |
 
 ## Project conventions
 
@@ -263,6 +305,8 @@ only facts you can read — do not invent settings.
   columns, and a worked example. Read before **make**.
 - [stage-hooks.md](stage-hooks.md) — the full stage-transition map, which skill fires
   which hook, and the source-of-truth rule. Read when reasoning about transitions.
+- `scripts/codeops-roadmap-compact.sh` — the compact engine driven by the **compact** action, and
+  by `update`/`review`'s `--check` bloat detection (strips the legacy Notes log, flags fat cells).
 - Related skills: requirements (`RD Drafted` hook), preflight (`RD/Plan Preflighted`
   hooks), make_plan (`Plan Created` hook + linking), exec_plan (`Executing` / `Done` /
   `Blocked` hooks).
