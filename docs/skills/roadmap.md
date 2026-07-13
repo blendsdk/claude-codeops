@@ -5,24 +5,31 @@
 ## What it does
 
 `roadmap` maintains the cross-session source of truth at the RD/plan altitude — above any single
-execution plan. It tracks every RD and plan and the lifecycle stage each is in. It covers four
+execution plan. It tracks every RD and plan and the lifecycle stage each is in. It covers five
 actions:
 
 - **make_roadmap** — create the roadmap and seed rows from what is on disk.
 - **update_roadmap** — re-infer stages and sync to the current disk state.
 - **review_roadmap** — a read-only health check for drift and broken links.
 - **archive_roadmap** — move a completed feature-set into `plans/_archive/<feature-set>/`.
+- **compact_roadmap** — slim a bloated roadmap back to a lean table: strip a legacy `## Notes`
+  running log and trim any overstuffed cells. Git is the archive, so it runs only on a clean tree.
 
 It detects the action from your phrasing or arguments and branches accordingly.
+
+A roadmap is **only a table** — a dependency-ordered list of RDs, plans, and tasks and the lifecycle
+stage each is in, worked top-to-bottom. Per-item history and rationale live in the plan folder and
+git, never in the roadmap, so it stays small; `compact_roadmap` slims any older roadmap that
+predates this and still carries a Notes log or paragraph-sized cells.
 
 ## When to use it
 
 - You are running a multi-feature effort and want one view of where everything stands.
-- "roadmap", "make_roadmap", "update_roadmap", "review_roadmap", "archive_roadmap".
+- "roadmap", "make_roadmap", "update_roadmap", "review_roadmap", "archive_roadmap", "compact_roadmap".
 
 ## Trigger phrases
 
-"roadmap", "make_roadmap", "update_roadmap", "review_roadmap", "archive_roadmap".
+"roadmap", "make_roadmap", "update_roadmap", "review_roadmap", "archive_roadmap", "compact_roadmap".
 
 ## Worked example
 

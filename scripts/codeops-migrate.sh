@@ -332,11 +332,6 @@ cat > codeops/00-roadmap.md <<PORTFOLIO || fail_apply "write codeops/00-roadmap.
 | Feature | Roadmap | Completed | Last Updated |
 |---------|---------|-----------|--------------|
 | — | — | — | — |
-
-## Notes
-
-- $today: migrated from the flat layout via setup_codeops; run /update_roadmap to refine the
-  feature's stage summary and progress from disk.
 PORTFOLIO
 
 printf '\ncodeops-migrate: applied. Review with "git status" / "git diff --staged" and commit.\n'
