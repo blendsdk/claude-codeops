@@ -60,6 +60,15 @@
 - **Main branch:** `master`  •  **Feature branches:** `feat/<topic>` (PR into `master`).
 
 ## Special rules
+- **🚨 NON-NEGOTIABLE — bump the version on every change, and keep all stamps in sync.** Any change
+  that touches the plugin's shipped surface (`skills/`, `commands/`, `standards/`, `_shared/`,
+  `agents/`, `scripts/`, `bin/`, `hooks/`, `.claude-plugin/`) MUST bump the release version **in the
+  same change**, per SemVer against what changed — **patch** for fixes/docs/refactors, **minor** for
+  a backward-compatible feature, **major** for a breaking change. Bump the single `CODEOPS_VERSION`
+  constant in `scripts/validate.sh` (the one edit point), then sync **every** `CodeOps Skills
+  Version` stamp across the shipped files **and** `plugin.json`'s `version` to that exact value
+  (`validate.sh` ST-4/ST-24 enforce the equality; `scripts/fixtures/` is test data and is excluded).
+  Never commit, merge, or release with a stale or mismatched version.
 - The docs site auto-deploys on push to `master` touching `docs/**`, the workflow, or `package*.json`
   (plus manual `workflow_dispatch`). It serves at https://blendsdk.github.io/claude-codeops/.
 - Before pushing changes that touch the plugin, run `./scripts/validate.sh`; for docs changes also
