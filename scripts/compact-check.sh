@@ -280,6 +280,156 @@ else
   fail "--dry-run mutated the working tree"
 fi
 
+# =============================================================================
+# Edge cases (implementation tests — internals + boundaries).
+# =============================================================================
+
+# mk_git_repo — fresh temp git repo; echo path. Caller writes files, then commit_all.
+mk_git_repo() {
+  local tmp; tmp="$(mktemp -d)"; TMP_DIRS+=("$tmp")
+  git -C "$tmp" init -q
+  printf '%s\n' "$tmp"
+}
+
+# -----------------------------------------------------------------------------
+# Edge: a roadmap with NO ## Notes section and no fat cell → apply is a clean no-op.
+# -----------------------------------------------------------------------------
+section "Edge: roadmap with no ## Notes section → apply no-op"
+repo_none="$(mk_git_repo)"; mkdir -p "$repo_none/plans"
+cat >"$repo_none/plans/00-roadmap.md" <<'MD'
+# Roadmap: Lean
+
+> **Progress**: 0 / 1 (0%)
+> **CodeOps Skills Version**: 3.4.1
+
+## Tracker
+
+| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |
+|----|-------|----|------|-------|--------|--------------|----------------------|
+| RD-01 | Thing | — | — | Backlog | ⬜ | 2025-01-01 | — |
+MD
+commit_all "$repo_none" "lean" >/dev/null
+run_engine "$repo_none"
+if [[ "$RC" -eq 0 ]] && grep -qi 'already lean' <<<"$OUT" && is_clean "$repo_none"; then
+  pass "no-Notes roadmap → already-lean no-op, tree clean"
+else
+  fail "no-Notes roadmap was not a clean no-op (rc=$RC)"
+fi
+
+# -----------------------------------------------------------------------------
+# Edge: a "## Notes"-like string inside a table cell must NOT be treated as a heading — only the
+# real ## Notes section is removed; the cell mention survives verbatim.
+# -----------------------------------------------------------------------------
+section "Edge: '## Notes' text inside a cell is not a heading"
+repo_word="$(mk_git_repo)"; mkdir -p "$repo_word/plans"
+cat >"$repo_word/plans/00-roadmap.md" <<'MD'
+# Roadmap: Wordy
+
+> **Progress**: 0 / 1 (0%)
+> **CodeOps Skills Version**: 3.4.1
+
+## Tracker
+
+| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |
+|----|-------|----|------|-------|--------|--------------|----------------------|
+| RD-01 | Thing | — | — | Backlog | ⬜ | 2025-01-01 | documented under ## Notes |
+
+## Notes
+
+- 2025-01-01: this real section must be removed.
+MD
+commit_all "$repo_word" "wordy" >/dev/null
+run_engine "$repo_word"
+if [[ "$RC" -eq 0 ]] \
+   && ! grep -q '^## Notes' "$repo_word/plans/00-roadmap.md" \
+   && grep -qF 'documented under ## Notes' "$repo_word/plans/00-roadmap.md"; then
+  pass "real ## Notes section removed; in-cell '## Notes' mention preserved"
+else
+  fail "heading-anchored removal mishandled the in-cell '## Notes' text (rc=$RC)"
+fi
+
+# -----------------------------------------------------------------------------
+# Edge: empty repo (no roadmap) → apply is a clean no-op, exit 0.
+# -----------------------------------------------------------------------------
+section "Edge: empty repo → apply no-op"
+repo_empty="$(mk_git_repo)"
+printf '# placeholder\n' >"$repo_empty/README.md"
+commit_all "$repo_empty" "empty" >/dev/null
+run_engine "$repo_empty"
+if [[ "$RC" -eq 0 ]] && grep -qi 'nothing to do' <<<"$OUT" && is_clean "$repo_empty"; then
+  pass "empty repo → already-lean no-op, tree clean"
+else
+  fail "empty repo was not a clean no-op (rc=$RC)"
+fi
+
+# -----------------------------------------------------------------------------
+# Edge: ## Notes is NOT the last section — heading-anchored removal stops at the next `## `, so a
+# following ## Archived section survives byte-for-byte.
+# -----------------------------------------------------------------------------
+section "Edge: ## Notes not last — following ## Archived survives"
+repo_mid="$(mk_git_repo)"; mkdir -p "$repo_mid/plans"
+cat >"$repo_mid/plans/00-roadmap.md" <<'MD'
+# Roadmap: Mid
+
+> **Progress**: 0 / 1 (0%)
+> **CodeOps Skills Version**: 3.4.1
+
+## Tracker
+
+| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |
+|----|-------|----|------|-------|--------|--------------|----------------------|
+| RD-01 | Thing | — | — | Backlog | ⬜ | 2025-01-01 | — |
+
+## Notes
+
+- 2025-01-01: remove me but stop at the next heading.
+
+## Archived
+
+| ID | Title | Completed |
+|----|-------|-----------|
+| RD-00 | Legacy | 2024-01-01 |
+MD
+commit_all "$repo_mid" "mid" >/dev/null
+run_engine "$repo_mid"
+if [[ "$RC" -eq 0 ]] \
+   && ! grep -q '^## Notes' "$repo_mid/plans/00-roadmap.md" \
+   && grep -q '^## Archived' "$repo_mid/plans/00-roadmap.md" \
+   && grep -qF '| RD-00 | Legacy | 2024-01-01 |' "$repo_mid/plans/00-roadmap.md"; then
+  pass "## Notes removed; the following ## Archived section survived"
+else
+  fail "removal did not stop at the next heading (rc=$RC)"
+fi
+
+# -----------------------------------------------------------------------------
+# Edge: fat-cell threshold is > 200 — a 199-char cell is not flagged; a 201-char cell is.
+# -----------------------------------------------------------------------------
+section "Edge: fat-cell threshold (199 not flagged, 201 flagged)"
+repo_thr="$(mk_git_repo)"; mkdir -p "$repo_thr/plans"
+python3 - "$repo_thr/plans/00-roadmap.md" <<'PY'
+import sys
+p = sys.argv[1]
+c199, c201 = 'x' * 199, 'x' * 201
+out = (
+    "# Roadmap: Threshold\n\n"
+    "> **Progress**: 0 / 2 (0%)\n"
+    "> **CodeOps Skills Version**: 3.4.1\n\n"
+    "## Tracker\n\n"
+    "| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |\n"
+    "|----|-------|----|------|-------|--------|--------------|----------------------|\n"
+    f"| RD-01 | Under | — | — | Backlog | ⬜ | 2025-01-01 | {c199} |\n"
+    f"| RD-02 | Over  | — | — | Backlog | ⬜ | 2025-01-01 | {c201} |\n"
+)
+open(p, 'w', encoding='utf-8').write(out)
+PY
+commit_all "$repo_thr" "thr" >/dev/null
+run_engine "$repo_thr" --check
+if grep -q 'FLAG plans/00-roadmap.md:RD-02:' <<<"$OUT" && ! grep -q 'FLAG plans/00-roadmap.md:RD-01:' <<<"$OUT"; then
+  pass "201-char cell flagged; 199-char cell not flagged (threshold > 200)"
+else
+  fail "fat-cell threshold wrong at the 200-char boundary"
+fi
+
 # -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
