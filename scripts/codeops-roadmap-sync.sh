@@ -107,12 +107,16 @@ def progress_of(text):
     return done, total, pct, rows
 
 def has_open_followon(text):
-    """True iff an `## Open follow-ons` section holds a table row whose last column (Status)
-    contains no ✅. A pure parse — it never affects the RD fraction, only the roll-up."""
+    """True iff an `## Open follow-ons` section holds a table whose last column header is `Status`
+    and at least one data row's Status cell contains no ✅. A section whose table is not
+    `Status`-last is ignored (fail-safe — no false hold). A pure parse — it never affects the RD
+    fraction, only the roll-up."""
     in_sec = False
+    valid = False                                    # a `Status`-last header row was seen
     for line in text.splitlines():
         if re.match(r'^##\s+Open follow-ons\s*$', line):
             in_sec = True
+            valid = False
             continue
         if in_sec and line.startswith('## '):
             break                                    # the next section ends it
@@ -120,8 +124,11 @@ def has_open_followon(text):
             cells = [c.strip() for c in line.strip().strip('|').split('|')]
             if not cells or set(cells[-1]) <= {'-', ' '}:
                 continue                             # separator row
-            if cells[-1] in ('Status', ''):
-                continue                             # header row / empty
+            if cells[-1] == 'Status':
+                valid = True                         # header row: last column is `Status`
+                continue
+            if not valid or not cells[-1]:
+                continue                             # no `Status`-last header yet, or empty cell
             if '✅' not in cells[-1]:
                 return True
     return False

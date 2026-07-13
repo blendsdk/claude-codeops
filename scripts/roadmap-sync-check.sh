@@ -381,6 +381,151 @@ else
   fail "SKILL.md does not document the follow-on lane / HELD report"
 fi
 
+# =============================================================================
+# Implementation tests — internals and edges beyond the ST specification cases.
+# =============================================================================
+
+# Impl: flat-header-preserve — a hand-maintained Progress header in a FLAT roadmap is held.
+section "Impl: flat layout — hand-maintained Progress header held, not rewritten"
+repo_fh="$(mk_git_repo)"; mkdir -p "$repo_fh/plans"
+cat >"$repo_fh/plans/00-roadmap.md" <<'MD'
+# Roadmap: Archived Set
+
+> **Feature-Set**: Archived Set
+> **Status**: In Progress
+> **Created**: 2025-01-01
+> **Last Updated**: 2025-02-01
+> **Progress**: n/a — tracked in the legacy tracker
+> **CodeOps Skills Version**: 3.6.0
+
+## Tracker
+
+| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |
+|----|-------|----|------|-------|--------|--------------|----------------------|
+| RD-01 | Thing | — | — | Done | ✅ | 2025-02-01 | — |
+MD
+commit_all "$repo_fh" "fh" >/dev/null
+run_sync "$repo_fh" --check
+if [[ "$RC" -eq 0 ]] && has_re "HELD.*Progress 'n/a — tracked in the legacy tracker'"; then
+  pass "flat n/a header reported HELD, exit 0"
+else
+  fail "flat hand-maintained header not held (rc=$RC)"
+fi
+run_sync "$repo_fh"
+if is_clean "$repo_fh"; then
+  pass "flat write leaves the held header byte-identical"
+else
+  fail "flat write rewrote a hand-maintained header"
+fi
+
+# Impl: idempotency — a second write on a corrected repo is a clean no-op.
+section "Impl: idempotency — second write run changes nothing"
+repo_idem="$(mk_git_repo)"
+build_corrections_repo "$repo_idem"
+commit_all "$repo_idem" "c1" >/dev/null
+run_sync "$repo_idem"                       # first write applies the corrections
+commit_all "$repo_idem" "c2" >/dev/null
+run_sync "$repo_idem"                       # second write must change nothing
+if [[ "$RC" -eq 0 ]] && is_clean "$repo_idem"; then
+  pass "second write run is a clean no-op"
+else
+  fail "second write run mutated an already-synced repo (rc=$RC)"
+fi
+run_sync "$repo_idem" --check
+if [[ "$RC" -eq 0 ]]; then
+  pass "--check clean after a full write (no residual drift)"
+else
+  fail "--check still reports drift after a full write (rc=$RC)"
+fi
+
+# Impl: dry-run-channels — --dry-run prints BOTH DRIFT and HELD, writes nothing, exits 0.
+section "Impl: --dry-run prints DRIFT + HELD, writes nothing, exits 0"
+repo_dry="$(mk_git_repo)"
+python3 - "$repo_dry" <<'PY'
+import os, sys
+root = sys.argv[1]
+for f in ('svc', 'arch'):
+    os.makedirs(os.path.join(root, 'codeops', 'features', f), exist_ok=True)
+open(os.path.join(root, 'codeops', '.codeops.yml'), 'w').write("codeopsLayout: nested\n")
+def feat(name, rows, prog):
+    return ("# Roadmap: %s\n\n> **Feature-Set**: %s\n> **Status**: In Progress\n"
+            "> **Created**: 2025-01-01\n> **Last Updated**: 2025-05-01 10:00\n"
+            "> **Progress**: %s\n> **CodeOps Skills Version**: 3.6.0\n\n## Tracker\n\n"
+            "| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |\n"
+            "|----|-------|----|------|-------|--------|--------------|----------------------|\n"
+            % (name, name, prog)) + rows
+open(os.path.join(root, 'codeops', 'features', 'svc', '00-roadmap.md'), 'w').write(
+    feat('Svc', "| RD-01 | Core | — | — | Done | ✅ | 2025-05-01 | — |\n", '1 / 1 (100%)'))
+open(os.path.join(root, 'codeops', 'features', 'arch', '00-roadmap.md'), 'w').write(
+    feat('Arch', "", 'n/a'))
+open(os.path.join(root, 'codeops', '00-roadmap.md'), 'w').write(
+    "# Portfolio Roadmap: Mixed\n\n> **Status**: Active\n> **Last Updated**: 2025-06-01 10:00\n"
+    "> **Features**: 0 / 0 done\n> **CodeOps Skills Version**: 3.6.0\n\n## Features\n\n"
+    "| Feature | Roadmap | Stage Summary | Progress | Status | Last Updated |\n"
+    "|---------|---------|---------------|----------|--------|--------------|\n"
+    "| svc | [→](features/svc/00-roadmap.md) | done | 0/1 RDs | ⬜ | 2025-05-01 |\n"
+    "| arch | [→](features/arch/00-roadmap.md) | archived | n/a | ✅ | 2025-03-01 |\n")
+PY
+commit_all "$repo_dry" "mixed" >/dev/null
+run_sync "$repo_dry" --dry-run
+if [[ "$RC" -eq 0 ]] && has "DRIFT" && has "HELD" && is_clean "$repo_dry"; then
+  pass "--dry-run prints DRIFT + HELD, exits 0, writes nothing"
+else
+  fail "--dry-run channels/exit/no-write wrong (rc=$RC)"
+fi
+
+# build_followon_repo <dir> <status-header> <followon-status-cell> — one feature 'feat' with 1 RD
+# Done and an ## Open follow-ons table; portfolio cell stale at 1/1 RDs / 🔄 so a correct roll to ✅
+# is observable. <status-header> is the follow-on table's last column header.
+build_followon_repo() {
+  python3 - "$1" "$2" "$3" <<'PY'
+import os, sys
+root, hdr, cell = sys.argv[1], sys.argv[2], sys.argv[3]
+os.makedirs(os.path.join(root, 'codeops', 'features', 'feat'), exist_ok=True)
+open(os.path.join(root, 'codeops', '.codeops.yml'), 'w').write("codeopsLayout: nested\n")
+feature = ("# Roadmap: Feat\n\n> **Feature-Set**: Feat\n> **Status**: In Progress\n"
+           "> **Created**: 2025-01-01\n> **Last Updated**: 2025-05-01 10:00\n"
+           "> **Progress**: 1 / 1 (100%%)\n> **CodeOps Skills Version**: 3.6.0\n\n## Tracker\n\n"
+           "| ID | Title | RD | Plan | Stage | Status | Last Updated | Depends-on / Blocker |\n"
+           "|----|-------|----|------|-------|--------|--------------|----------------------|\n"
+           "| RD-01 | Core | — | — | Done | ✅ | 2025-05-01 | — |\n\n"
+           "## Open follow-ons\n\n"
+           "| Item | Scope | %s |\n|------|-------|--------|\n"
+           "| `x` | y | %s |\n" % (hdr, cell))
+open(os.path.join(root, 'codeops', 'features', 'feat', '00-roadmap.md'), 'w').write(feature)
+open(os.path.join(root, 'codeops', '00-roadmap.md'), 'w').write(
+    "# Portfolio Roadmap: Follow\n\n> **Status**: Active\n> **Last Updated**: 2025-06-01 10:00\n"
+    "> **Features**: 0 / 1 done\n> **CodeOps Skills Version**: 3.6.0\n\n## Features\n\n"
+    "| Feature | Roadmap | Stage Summary | Progress | Status | Last Updated |\n"
+    "|---------|---------|---------------|----------|--------|--------------|\n"
+    "| feat | [→](features/feat/00-roadmap.md) | done | 1/1 RDs | 🔄 | 2025-05-01 |\n")
+PY
+}
+
+# Impl: followon-all-done — a follow-on table with every row ✅ does not hold 🔄.
+section "Impl: follow-ons all ✅ → feature rolls ✅ (no false hold)"
+repo_fad="$(mk_git_repo)"
+build_followon_repo "$repo_fad" "Status" "✅ shipped"
+commit_all "$repo_fad" "fad" >/dev/null
+run_sync "$repo_fad"
+if file_has "$repo_fad/codeops/00-roadmap.md" '| 1/1 RDs | ✅ |'; then
+  pass "all-✅ follow-on table → feature rolls ✅ (🔄 corrected)"
+else
+  fail "all-✅ follow-on table wrongly held the feature off ✅"
+fi
+
+# Impl: malformed-followon — a follow-on table whose last column is not Status → no false hold.
+section "Impl: malformed follow-on table (no Status-last column) → no false hold"
+repo_mal="$(mk_git_repo)"
+build_followon_repo "$repo_mal" "Owner" "alice"
+commit_all "$repo_mal" "mal" >/dev/null
+run_sync "$repo_mal"
+if file_has "$repo_mal/codeops/00-roadmap.md" '| 1/1 RDs | ✅ |'; then
+  pass "malformed follow-on ignored — feature rolls ✅"
+else
+  fail "malformed follow-on caused a false 🔄 hold"
+fi
+
 # -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------

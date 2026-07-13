@@ -22,9 +22,10 @@
 - **Build (docs):** `npm run docs:build`
 - **Dev (docs preview):** `npm run docs:dev` → http://localhost:5173/claude-codeops/
 - **Test:** `./scripts/validate.sh` (plugin guard), `./scripts/docs-check.sh` (docs structure/CI),
-  `./scripts/migration-check.sh` (flat→nested migration engine, against `scripts/fixtures/flat-repo/`), and
-  `./scripts/compact-check.sh` (roadmap compact engine, against `scripts/fixtures/bloated-repo/`)
-- **Verify (run before every commit):** `./scripts/validate.sh && npm run docs:build && ./scripts/docs-check.sh && ./scripts/migration-check.sh && ./scripts/compact-check.sh`
+  `./scripts/migration-check.sh` (flat→nested migration engine, against `scripts/fixtures/flat-repo/`),
+  `./scripts/compact-check.sh` (roadmap compact engine, against `scripts/fixtures/bloated-repo/`), and
+  `./scripts/roadmap-sync-check.sh` (roadmap sync engine, against `scripts/fixtures/roadmap-repo/`)
+- **Verify (run before every commit):** `./scripts/validate.sh && npm run docs:build && ./scripts/docs-check.sh && ./scripts/migration-check.sh && ./scripts/compact-check.sh && ./scripts/roadmap-sync-check.sh`
 - **Clean:** `rm -rf node_modules docs/.vitepress/dist docs/.vitepress/cache`
 
 ## Project structure
