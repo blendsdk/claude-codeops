@@ -1367,6 +1367,52 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# ST-65 — analyze_project documents the leaning mode: a --compact action (with a
+# composable --dry-run), preview-before-write, scoped to the current project only.
+# -----------------------------------------------------------------------------
+section "ST-65: analyze_project documents the --compact leaning mode"
+AP="commands/analyze_project.md"
+if grep -qF -- '--compact' "$AP" \
+   && grep -qF -- '--dry-run' "$AP" \
+   && grep -qiE 'preview[- ]before[- ]write' "$AP" \
+   && grep -qiE 'current[- ]project' "$AP"; then
+  pass "documents --compact/--dry-run, preview-before-write, current-project-only"
+else
+  fail "analyze_project must document --compact, --dry-run, preview-before-write, and current-project-only scope"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-66 — the setup_routing routing-block template ships lean: the sentinel span in
+# templates.md is <=10 lines, because that block rides into every session's context.
+# -----------------------------------------------------------------------------
+section "ST-66: setup_routing routing-block template is lean (<=10 lines)"
+RT="skills/setup_routing/templates.md"
+rt_start=$(grep -n 'CODEOPS-ROUTING:START' "$RT" | head -1 | cut -d: -f1)
+rt_end=$(grep -n 'CODEOPS-ROUTING:END' "$RT" | head -1 | cut -d: -f1)
+if [[ -n "$rt_start" && -n "$rt_end" ]]; then
+  rt_span=$(( rt_end - rt_start + 1 ))
+  if [[ "$rt_span" -le 10 ]]; then
+    pass "routing-block template span is $rt_span lines (<=10)"
+  else
+    fail "routing-block template span is $rt_span lines; must be <=10 (it rides into every session)"
+  fi
+else
+  fail "routing-block sentinels not found in $RT"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-67 — analyze_project replaces its refresh comment in place: a single comment,
+# never an appended stack that grows every run.
+# -----------------------------------------------------------------------------
+section "ST-67: analyze_project refresh comment is replace-in-place (single)"
+if grep -qiF 'replace-in-place' "$AP" \
+   && grep -qiE 'single refresh comment' "$AP"; then
+  pass "documents a single replace-in-place refresh comment"
+else
+  fail "analyze_project must document replacing the refresh comment in place (a single comment, not an appended stack)"
+fi
+
+# -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
 section "Summary"
