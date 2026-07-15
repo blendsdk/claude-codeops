@@ -2,7 +2,20 @@
 
 ## Changelog
 
-### 3.6.0 — lean, always-on `CLAUDE.md` (2026-07-13)
+### 3.8.0 — `show_roadmap`, a read-only roadmap status view (2026-07-15)
+
+Additive — no document migration; existing roadmaps and workflows are untouched.
+
+- **New `show` roadmap action + `/show_roadmap` alias.** The `roadmap` skill gains a sixth action
+  that *presents* a roadmap instead of maintaining it: the resolved header and `Last Updated`, the
+  overall progress line, the per-item stage table with its legend, a "where you stand right now"
+  read, and 1–3 grounded next steps — for one feature (`show_roadmap <feature>`) or the whole repo
+  (portfolio overview, layout-aware). It is **read-only**: unlike `update`/`compact` it never writes
+  to disk, and unlike `review` (a drift/broken-link health check) it is a human-facing status
+  dashboard. Stale counters or stages are noted with a suggestion to run `update_roadmap`, never
+  silently rewritten. The command ships as a manual-only thin alias (`disable-model-invocation`),
+  while "show the roadmap" / "roadmap status" / "where do things stand" also trigger the parent
+  skill. This brings the suite to **17 slash commands**.
 
 Behavioral + format guidance, no document migration — existing `CLAUDE.md` files keep working and
 can be slimmed on demand.

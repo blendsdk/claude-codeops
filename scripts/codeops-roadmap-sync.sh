@@ -2,7 +2,7 @@
 #
 # codeops-roadmap-sync.sh — deterministic roadmap counter/cascade recomputation.
 #
-# CodeOps Skills Version: 3.7.0
+# CodeOps Skills Version: 3.8.0
 #
 # The roadmap skill owns stage JUDGMENT; this script owns the ARITHMETIC (the prose-vs-script
 # division, same as codeops-migrate.sh). It recomputes, from disk:

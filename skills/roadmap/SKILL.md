@@ -4,19 +4,20 @@ description: >-
   Tracks features across their lifecycle in a live, per-repo roadmap — every RD, plan, and task and
   the lifecycle stage each is in. Layout-aware: a single plans/00-roadmap.md in flat layout, or a
   two-tier per-feature + portfolio roadmap under codeops/ in nested layout. Use when the user says
-  "roadmap", "make_roadmap", "update_roadmap", "review_roadmap", "archive_roadmap", or
-  "compact_roadmap". Covers five actions: make_roadmap (create the roadmap and seed rows from disk),
+  "roadmap", "make_roadmap", "update_roadmap", "review_roadmap", "show_roadmap", "archive_roadmap", or
+  "compact_roadmap". Covers six actions: make_roadmap (create + seed rows from disk),
   update_roadmap (re-infer stages, sync to disk, cascade to the portfolio), review_roadmap
-  (read-only health check for drift and broken links), archive_roadmap (move a completed feature to
-  the archive), and compact_roadmap (slim a bloated roadmap: strip the legacy Notes log and trim fat
-  cells). Detects the action from the user's phrasing or arguments and branches. The roadmap is the
-  cross-session source of truth at the RD/plan altitude, above any single execution plan.
-argument-hint: "[make | update | review | archive | compact]"
+  (read-only health check for drift/broken links), show_roadmap (read-only status overview —
+  progress, stages, and next steps), archive_roadmap (move a completed feature to the archive), and
+  compact_roadmap (slim a bloated roadmap: strip the legacy Notes log and trim fat cells). Detects
+  the action from the user's phrasing or arguments and branches. The roadmap is the cross-session
+  source of truth at the RD/plan altitude, above any single execution plan.
+argument-hint: "[make | update | review | show | archive | compact]"
 ---
 
 # roadmap — Live Feature-Set Roadmap Keeper
 
-> **CodeOps Skills Version**: 3.7.0
+> **CodeOps Skills Version**: 3.8.0
 
 ## Resolve paths first (layout-aware)
 
@@ -46,6 +47,7 @@ Detect the action from the user's phrasing or argument and branch:
 | `make_roadmap`, "create the roadmap", "start a roadmap" | **make** — create + seed |
 | `update_roadmap`, "sync the roadmap", "update the roadmap" | **update** — re-infer + sync |
 | `review_roadmap`, "check the roadmap", "is the roadmap healthy" | **review** — read-only health check |
+| `show_roadmap`, "show the roadmap", "roadmap status", "where do things stand", "what's the progress on <feature>" | **show** — read-only status overview |
 | `archive_roadmap`, "archive the feature-set", "archive the roadmap" | **archive** — move to `_archive` |
 | `compact_roadmap`, "compact the roadmap", "clean up / slim the roadmap" | **compact** — strip the legacy Notes log + trim fat cells |
 
@@ -235,6 +237,42 @@ Run a health check and report findings; change nothing on disk.
   Summary phrasing matches the feature's rolled-up state.
 - **If the roadmap is missing:** return the error below.
 
+## show — present a status overview
+
+Render a human-facing snapshot of where a feature (or the whole repo) stands: overall progress, the
+per-item stage table, and the concrete next steps. **Read-only — this action never writes to disk.**
+It is the presentation counterpart to `review`: `review` audits the roadmap for drift and broken
+links, `show` simply *displays* it. Do not run the sync engine in write mode or edit any file here.
+
+**Resolve the target (layout-aware):**
+
+- **Flat layout** → present the single `plans/00-roadmap.md`.
+- **Nested + a feature argument** (`show_roadmap <feature>`) → present that feature's
+  `codeops/features/<f>/00-roadmap.md`, including its `T-NN` task rows and any `## Open follow-ons`.
+- **Nested + no argument** → present the **portfolio** `codeops/00-roadmap.md` (one row per feature)
+  as the overview, then offer to drill into a named feature. If the target feature is ambiguous, ask
+  — never guess (same rule as the other actions).
+
+**What to present** (adapt the depth to the roadmap's size; keep it scannable):
+
+1. **A one-line header** — which roadmap you are reading (its resolved path) and its recorded
+   `Last Updated`.
+2. **An overall progress line** — the header `Progress` fraction/percent (portfolio: the `Features`
+   count), plus a short phrase on what most recently landed and what is in flight. **Report the
+   recorded counters as-is; do not silently recompute or mutate them.** If a row's `Stage` or a
+   counter looks stale versus disk (apply the stage-inference artifacts read-only), note the
+   suspected drift in one line and suggest `update_roadmap` — never edit to "fix" it here.
+3. **The tracker as a table** — the roadmap's rows with their `ID`, `Title`, `Stage`, `Status`
+   emoji, `Plan` (✔ / —), and `Depends-on / Blocker`, in dependency order, with the legend beneath.
+   Preserve `↳ DEF-n` sub-rows nested under the row they block.
+4. **"Where you stand right now"** — a few grounded bullets: what just shipped, what is in flight,
+   anything `Blocked` (name the `DEF-n` it waits on), and how much backlog remains.
+5. **"Natural next steps"** — 1–3 concrete, state-grounded suggestions (e.g. preflight the created
+   plan, execute it, unblock a `DEF-n`, or draft the next backlog RD). Lead with the single most
+   obvious continuation; the user decides.
+
+**If the roadmap is missing:** return the same error as `review` (below) — never fabricate one.
+
 ## archive — archive a completed feature
 
 **Flat layout** (membership is **explicit** — move only the rows listed in the roadmap):
@@ -292,7 +330,7 @@ engine; the judgment (rewriting a fat cell down to a terse phrase) is yours.
 
 | Error case | Handling |
 |------------|----------|
-| **review** / **archive** when roadmap missing | Return `**Error:** No roadmap found at <resolved roadmap path>. Run make_roadmap first.` (path per the convention doc — `plans/00-roadmap.md` flat, `codeops/00-roadmap.md` or the feature roadmap nested) |
+| **review** / **show** / **archive** when roadmap missing | Return `**Error:** No roadmap found at <resolved roadmap path>. Run make_roadmap first.` (path per the convention doc — `plans/00-roadmap.md` flat, `codeops/00-roadmap.md` or the feature roadmap nested) |
 | **update** when roadmap missing | Fall back to **make** (ask-if-missing, then create) |
 | **make** when roadmap already exists | Do NOT ask; sync from disk state (the update action) |
 | Nested: per-feature transition but portfolio row stale | Cascade is mandatory + immediate; `review` flags the drift (AR #8) |
