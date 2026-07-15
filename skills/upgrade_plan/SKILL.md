@@ -21,7 +21,7 @@ arguments: feature
 
 # upgrade_plan — Upgrade a Plan or Requirements Set
 
-> **CodeOps Skills Version**: 3.7.0
+> **CodeOps Skills Version**: 3.8.0
 
 Plans and requirements are living documents. As CodeOps standards evolve, older artifacts drift
 out of date. This skill **detects** staleness, **assesses** gaps against current standards,
@@ -63,7 +63,7 @@ branches share the same 4-phase flow; the per-document checklists differ and liv
 | Stamp = `3.0.0`, `3.1.0`, `3.2.0`, `3.3.0`, `3.3.1`, or `3.3.2` | Current | Report "No upgrade needed" — already compatible (behavioral, no-migration bumps since 3.0.0) |
 | Stamp < `3.0.0` | Outdated | Upgrade recommended — re-evaluate against current standards |
 
-After a successful upgrade, every stamped document carries `> **CodeOps Skills Version**: 3.7.0`.
+After a successful upgrade, every stamped document carries `> **CodeOps Skills Version**: 3.8.0`.
 
 ## The 4 phases (overview)
 
@@ -171,7 +171,7 @@ checklists in [upgrade-checklists.md](upgrade-checklists.md) (separate checklist
 
 1. ✅ Confirm all documents updated.
 2. ✅ No user content lost (compare document count, task/RD count, technical specs, acceptance criteria).
-3. ✅ Version stamps now read `> **CodeOps Skills Version**: 3.7.0`.
+3. ✅ Version stamps now read `> **CodeOps Skills Version**: 3.8.0`.
 4. ✅ Ambiguity Register complete — every entry resolved.
 5. ✅ Zero vague language remaining in any document.
 6. ✅ `AR #` back-references present for every content gap resolved during the upgrade.

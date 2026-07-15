@@ -2,7 +2,7 @@
 
 > Shared reference for the **Grounded Options & Recommendations** directive
 > (`standards/coding-standards.md` → Working style). Linked by the recommendation-producing skills.
-> **CodeOps Skills Version**: 3.7.0
+> **CodeOps Skills Version**: 3.8.0
 
 This protocol makes recommendations trustworthy on the **first** pass. It is the standing answer to
 the question *"are these your best possible recommendations?"* — asked and answered **before** you

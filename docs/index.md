@@ -3,7 +3,7 @@ layout: home
 hero:
   name: CodeOps
   text: AI-development workflow for Claude Code
-  tagline: 11 skills + 16 commands + always-on coding standards, packaged as an installable plugin.
+  tagline: 11 skills + 17 commands + always-on coding standards, packaged as an installable plugin.
   actions:
     - theme: brand
       text: Get started
