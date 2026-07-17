@@ -149,6 +149,8 @@ codeops-skills/                # repo root == plugin root
 │   ├── gitcm.md / gitcmp.md   #   commit (and push) with a Conventional Commit message
 │   ├── analyze_project.md     #   generate/refresh this project's CLAUDE.md (+ --compact leaning mode)
 │   ├── migrate_clinerules.md  #   convert a legacy .clinerules/project.md → CLAUDE.md
+│   ├── gh_issues.md           #   adaptive GitHub issues table (repo's own labels/types/fields)
+│   ├── gh_close.md            #   guarded close/reopen of issues by number (native close reasons)
 │   └── …                      #   + thin alias commands that delegate to a parent skill
 ├── hooks/hooks.json           # SessionStart hook → injects the standards every session
 ├── standards/coding-standards.md  # always-on coding/testing/working-style standards (single source)
@@ -178,6 +180,8 @@ codeops-skills/                # repo root == plugin root
 | `/gitcm` / `/gitcmp` | Commit (and push) with a detailed Conventional Commit message |
 | `/analyze_project` | Generate/refresh this project's `CLAUDE.md`; `--compact` slims an over-grown one (preview-first) |
 | `/migrate_clinerules` | Convert a legacy `.clinerules/project.md` into `CLAUDE.md` |
+| `/gh_issues [--filters]` | Tabular overview of a repo's GitHub issues — type/priority/effort columns resolved through the repo's **own** labels, issue types, and project fields (read-only) |
+| `/gh_close <n…> [--wontfix\|--duplicate #N\|--reopen]` | Close or reopen issues by number with GitHub's native close reasons — echoes each title first, pauses when open dependents exist (manual-only) |
 
 The consolidated skills cover several verbs each, and thin **alias commands** make each verb directly
 typeable (they delegate to the parent skill in the right mode): `/add_requirement`,

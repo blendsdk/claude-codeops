@@ -20,8 +20,8 @@ So the MCP machinery is gone and only the knowledge remains.
   [`roadmap`](/skills/roadmap), [`upgrade_plan`](/skills/upgrade_plan),
   [`setup_codeops`](/skills/setup_codeops), and [`setup_routing`](/skills/setup_routing).
 - **19 slash commands** — including [`/gitcm` / `/gitcmp`](/skills/commands) for Conventional-Commit
-  flows, `/analyze_project`, `/migrate_clinerules`, and thin alias commands that delegate to the
-  parent skills.
+  flows, `/analyze_project`, `/migrate_clinerules`, the GitHub issue pair `/gh_issues` /
+  `/gh_close`, and thin alias commands that delegate to the parent skills.
 - **Always-on coding standards** — a single source of universal coding, testing, and working-style
   standards, injected into every session by a `SessionStart` hook with **zero setup**.
 

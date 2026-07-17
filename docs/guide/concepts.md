@@ -7,8 +7,9 @@ A few ideas explain how CodeOps behaves. Understanding them makes the skills pre
 - **Skills** are multi-step protocols Claude runs on request. They **auto-trigger** from natural
   language (e.g. "make a plan") *and* can be invoked explicitly as `/codeops:<name>`.
 - **Commands** are slash commands. The core ones (`/gitcm`, `/gitcmp`, `/analyze_project`,
-  `/migrate_clinerules`) do focused jobs; the rest are **thin alias commands** that delegate to a
-  parent skill in a specific mode. Aliases are manual-only — only the parent skills auto-trigger.
+  `/migrate_clinerules`, `/clean_jsdoc`, `/gh_issues`, `/gh_close`) do focused jobs; the rest are
+  **thin alias commands** that delegate to a parent skill in a specific mode. Aliases are
+  manual-only — only the parent skills auto-trigger.
 
 See the [Skills overview](/skills/) and the [Commands page](/skills/commands).
 

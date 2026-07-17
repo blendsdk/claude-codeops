@@ -24,6 +24,8 @@ codeops-skills/                # repo root == plugin root
 │   ├── analyze_project.md     #   generate/refresh this project's CLAUDE.md (+ --compact leaning mode)
 │   ├── migrate_clinerules.md  #   convert a legacy .clinerules/project.md → CLAUDE.md
 │   ├── clean_jsdoc.md         #   retrofit JSDoc/comments to the doc standard (strip plan refs)
+│   ├── gh_issues.md           #   adaptive GitHub issues table (repo's own labels/types/fields)
+│   ├── gh_close.md            #   guarded close/reopen of issues by number (native close reasons)
 │   └── …                      #   + thin alias commands that delegate to a parent skill
 ├── _shared/                   # shared reference docs (layout convention, gates, hardening)
 ├── agents/                    # plugin-shipped executor subagents (plan-task-executor*)
