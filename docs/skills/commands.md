@@ -1,6 +1,6 @@
 # Commands
 
-CodeOps ships **17 slash commands**. Under the plugin they are namespaced as `/codeops:<name>`; with
+CodeOps ships **19 slash commands**. Under the plugin they are namespaced as `/codeops:<name>`; with
 the dev installer they get short names (`/<name>`).
 
 ## Core commands
@@ -14,6 +14,8 @@ These do focused jobs of their own:
 | `/analyze_project` | Scan the project's manifests and structure and generate/refresh its `CLAUDE.md` (toolchain, commands, structure, conventions). Merges non-destructively. Add `--compact` (with `--dry-run`) to slim an already-bloated `CLAUDE.md`, preview-first. |
 | `/migrate_clinerules` | Convert a legacy `codeops-mcp` `.clinerules/project.md` into this project's `CLAUDE.md`, preserving hand-authored content. |
 | `/clean_jsdoc` | Retrofit an existing project's JSDoc and code comments to the CodeOps documentation standard — strip references to ephemeral planning artifacts (`plans/`, `requirements/`, RD/AR IDs), document non-trivial entities, and add `@example` to public API. Detection-first, comments-only; `--dry-run` / `--refs-only`. |
+| `/gh_issues` | Tabular overview of a GitHub repo's issues — number, title, type, priority, effort, dependencies, assignee — with the semantic columns resolved through the repo's **own** label scheme, native issue types, and project fields (discovered per run, never imposed). Read-only; never mutates issues. |
+| `/gh_close` | Close one or more GitHub issues by number with GitHub's native close reasons — completed (default), not planned (`--wontfix`), or duplicate (`--duplicate <#N>`) — or reopen with `--reopen`. Echoes each issue's title before acting and pauses when other open issues depend on the one being closed. **Manual-only** — never fires on the model's own initiative. |
 
 ## Alias commands
 

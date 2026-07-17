@@ -17,7 +17,7 @@ from natural language and can also be invoked explicitly as `/codeops:<name>`.
 | [setup_routing](/skills/setup_routing) | Wire per-project model & effort routing (Opus/Sonnet by task tag) into `CLAUDE.md` + `.claude/agents/` |
 | [setup_codeops](/skills/setup_codeops) | Scaffold or auto-migrate a repo into the nested `codeops/` layout (one confirmation, `git mv`) |
 
-See also the [Commands page](/skills/commands) for the 17 slash commands.
+See also the [Commands page](/skills/commands) for the 19 slash commands.
 
 ## How they compose
 

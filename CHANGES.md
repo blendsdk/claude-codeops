@@ -2,6 +2,31 @@
 
 ## Changelog
 
+### 3.9.0 — GitHub issue commands: `/gh_issues` + `/gh_close` (2026-07-17)
+
+Additive — no document migration; existing workflows untouched.
+
+- **New `/gh_issues` command.** Read-only tabular overview of a GitHub repo's issues
+  (`# · Title · Type · Priority · Effort · Deps · Assignee`) whose semantic columns are resolved
+  through the repo's **own** scheme — labels, native issue types, project fields — discovered per
+  run, never imposed. Native filters (`--state --label --mine --author --milestone --search
+  --limit --repo`), semantic filters through the discovered scheme (`--type`, `--priority`,
+  with mapping notices like `--priority high → P1`), client-side `--sort`, and dependency
+  detection from sub-issue relations plus body markers (`Depends on #N`, `Blocked by #N` —
+  open dependencies only), skippable via `--no-deps`. Honest empty states: notices for absent
+  label families, a truncation footer instead of silent caps. Model-invocable — "list the
+  github issues", "issues table", "what's open in this repo".
+- **New `/gh_close` command.** Close one or more issues by number with GitHub's native close
+  reasons — completed (default), not planned (`--not-planned` / `--wontfix`), or duplicate
+  (`--duplicate <#N>`, emulated as a `Duplicate of #N` comment + not-planned close) — or reopen
+  with `--reopen`; `--comment` rides along. Echoes each issue's title before acting, skips
+  already-closed/already-open no-ops, continues past nonexistent numbers with a per-issue
+  outcome summary, and **pauses for confirmation when other open issues depend on the target**.
+  Manual-only — fires only when typed.
+- Command count 17 → 19 across the guarded prose surface; release stamped 3.9.0.
+- Dev-installer users: re-run `./install.sh` — new command files need fresh symlinks
+  (`install.sh` links per file).
+
 ### 3.8.0 — `show_roadmap`, a read-only roadmap status view (2026-07-15)
 
 Additive — no document migration; existing roadmaps and workflows are untouched.
@@ -15,7 +40,7 @@ Additive — no document migration; existing roadmaps and workflows are untouche
   dashboard. Stale counters or stages are noted with a suggestion to run `update_roadmap`, never
   silently rewritten. The command ships as a manual-only thin alias (`disable-model-invocation`),
   while "show the roadmap" / "roadmap status" / "where do things stand" also trigger the parent
-  skill. This brings the suite to **17 slash commands**.
+  skill. This brings the suite to **19 slash commands**.
 
 Behavioral + format guidance, no document migration — existing `CLAUDE.md` files keep working and
 can be slimmed on demand.

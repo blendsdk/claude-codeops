@@ -1,6 +1,6 @@
 # CodeOps for Claude Code
 
-The CodeOps AI-development workflow — **11 skills + 17 slash commands + always-on coding
+The CodeOps AI-development workflow — **11 skills + 19 slash commands + always-on coding
 standards** — packaged as an installable [Claude Code plugin](https://code.claude.com/docs/en/plugins).
 
 Ported from the original [`codeops-mcp`](https://github.com/blendsdk/codeops-mcp) server (built for
@@ -145,7 +145,7 @@ codeops-skills/                # repo root == plugin root
 │   ├── upgrade_plan/          #   upgrade outdated plans/requirements
 │   ├── setup_routing/         #   per-project model & effort routing (Opus/Sonnet by tag)
 │   └── setup_codeops/         #   scaffold / migrate a repo into the nested codeops/ layout
-├── commands/                  # 17 slash commands → /codeops:<name>
+├── commands/                  # 19 slash commands → /codeops:<name>
 │   ├── gitcm.md / gitcmp.md   #   commit (and push) with a Conventional Commit message
 │   ├── analyze_project.md     #   generate/refresh this project's CLAUDE.md (+ --compact leaning mode)
 │   ├── migrate_clinerules.md  #   convert a legacy .clinerules/project.md → CLAUDE.md
