@@ -41,6 +41,7 @@
 - `docs/` — VitePress documentation site (`.vitepress/config.ts`, guide/skills/tutorials/reference).
 - `.github/workflows/docs.yml` — builds + deploys the docs site to GitHub Pages.
 - `plans/` — internal CodeOps planning docs (git-ignored via `/plans/`, not distributed).
+- `requirements/` — internal RD docs for developing the plugin itself (git-ignored via `/requirements/`, not distributed).
 - `install.sh` / `uninstall.sh` — optional dev installer (symlinks skills/commands into `~/.claude/`).
 - Loader reads only `skills/`, `commands/`, `hooks/`, `.claude-plugin/`; `docs/`, `package.json`, `.github/` are inert to the installed plugin.
 
@@ -74,7 +75,7 @@
 - Before pushing changes that touch the plugin, run `./scripts/validate.sh`; for docs changes also
   run `npm run docs:build && ./scripts/docs-check.sh`.
 
-<!-- analyze_project: refreshed Overview/Toolchain/Commands/Project structure — 11 skills, 19 commands, added migration-check.sh + codeops-migrate.sh + _shared/ (plugin root) (2026-06-29) -->
+<!-- analyze_project: refreshed Project structure (added requirements/) — 11 skills, 19 commands, release 3.9.0 with /gh_issues + /gh_close (2026-07-17) -->
 
 <!-- CODEOPS-ROUTING:START -->
 ## Model & effort routing (Balanced — fallback profile)
