@@ -26,13 +26,21 @@ codeops-skills/                # repo root == plugin root
 │   ├── clean_jsdoc.md         #   retrofit JSDoc/comments to the doc standard (strip plan refs)
 │   ├── gh_issues.md           #   adaptive GitHub issues table (repo's own labels/types/fields)
 │   ├── gh_close.md            #   guarded close/reopen of issues by number (native close reasons)
+│   ├── codeops_stats.md       #   relay the telemetry tables (stats/gaps)
+│   ├── codeops_retro.md       #   quality retrospective (thresholds + two-bucket verdicts)
 │   └── …                      #   + thin alias commands that delegate to a parent skill
-├── _shared/                   # shared reference docs (layout convention, gates, hardening)
-├── agents/                    # plugin-shipped executor subagents (plan-task-executor*)
-├── hooks/hooks.json           # SessionStart standards hook + PreToolUse marker guard
+├── _shared/                   # shared reference docs (layout convention, gates, hardening,
+│                              #   quality-profile.md — the quality-loop convention)
+├── agents/                    # plugin-shipped subagents: 2 executors + 7 quality agents
+│                              #   (phase-reviewer, spec-test-author, security-auditor,
+│                              #   preflight-auditor, design-challenger, perf-auditor,
+│                              #   codebase-scout)
+├── hooks/hooks.json           # SessionStart standards + PreToolUse marker guard
+│                              #   + PostToolUse telemetry hook
 ├── standards/coding-standards.md  # always-on standards (single source)
 ├── scripts/                   # validate.sh, docs-check.sh, migration-check.sh,
-│                              #   codeops-migrate.sh, codeops-roadmap-sync.sh, fixtures/
+│                              #   codeops-migrate.sh, codeops-roadmap-sync.sh,
+│                              #   codeops-events.sh (telemetry), telemetry-check.sh, fixtures/
 ├── docs/                      # this VitePress documentation website
 ├── install.sh / uninstall.sh  # optional in-repo dev installer (symlink loop)
 ├── LICENSE                    # MIT

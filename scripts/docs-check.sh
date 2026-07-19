@@ -23,9 +23,9 @@ BASE_PATH="/claude-codeops/"
 # The 11 skills that MUST each have a docs page (ST-4).
 SKILLS=(make_plan exec_plan make_requirements retro_requirements grill_me preflight techdocs roadmap upgrade_plan setup_routing setup_codeops)
 # Required pages per section (ST-4b).
-GUIDE_PAGES=(introduction install verify update concepts)
+GUIDE_PAGES=(introduction install verify update concepts quality-profile telemetry)
 TUTORIAL_PAGES=(index first-plan full-pipeline reverse-engineer)
-REFERENCE_PAGES=(standards repo-map troubleshooting)
+REFERENCE_PAGES=(standards repo-map agents troubleshooting)
 # The five mandatory headings on every skill page (impl check — see 03-02).
 SKILL_HEADINGS=("## What it does" "## When to use it" "## Trigger phrases" "## Worked example" "## Related skills")
 
