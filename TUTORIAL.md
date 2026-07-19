@@ -70,6 +70,16 @@ implement it:
 This walks the plan task-by-task (spec tests → red → implement → green), updating the execution plan
 as it goes.
 
+### Optional: switch on the quality loop
+
+Run `/codeops:setup_routing` in your project and confirm its proposal — it writes a routing block
+AND a quality-profile block into the project's `CLAUDE.md`. From then on `exec_plan` ends each
+phase with a review by dedicated agents (critical/major findings pause for your ruling in every
+commit mode), and local, metadata-only telemetry accrues under `~/.claude/codeops-telemetry/`.
+Inspect it any time with `/codeops:codeops_stats`; judge the loop periodically with
+`/codeops:codeops_retro`. Removing the block — or setting `review_hook: off` inside it — switches
+the loop off again.
+
 ---
 
 ## 5. Update later
