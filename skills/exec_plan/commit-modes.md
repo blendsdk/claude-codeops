@@ -29,6 +29,12 @@ The commit step is only triggered when ALL of these are true:
 **Never commit** when verification is failing, a task is still `[~]` (implemented but not
 verified), or the mode is `--no-commit`.
 
+**Quality-loop interaction (profile-gated).** When the repo's quality profile activates the
+post-phase quality step (see [execution-protocol.md](execution-protocol.md)), fixes accepted
+from review findings are committed as **follow-up commits** under the same rules as task
+commits. A 🔴 CRITICAL / 🟠 MAJOR finding pauses execution for the user's ruling in EVERY
+mode — auto-commit automates the git operation, never the ruling.
+
 ---
 
 ## Ask-commit mode (default) — prompt protocol
@@ -77,7 +83,8 @@ When `--no-commit` is specified:
 When `--auto-commit` is specified:
 
 - ✅ After each verified task, automatically commit + push via `/gitcmp`.
-- ✅ No prompts — fully automated.
+- ✅ No prompts — fully automated. **Exception:** a quality-gate pause (🔴/🟠 finding from the
+  post-phase quality step) still stops for the user's ruling; auto-commit resumes after it.
 - ✅ Follow the commit message format below.
 - ✅ End-of-plan: changes are already committed per-task — no additional commit action needed.
 
