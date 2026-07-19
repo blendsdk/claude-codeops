@@ -1534,11 +1534,11 @@ if [[ "$HAVE_PY3" -eq 1 ]]; then
     [[ -n "$atools" ]] || { fail "$afile: missing tools"; a_ok=0; }
     case "$amodel" in
       sonnet|opus|haiku|fable|inherit) : ;;
-      *) fail "$afile: model '\''${amodel:-<missing>}'\'' not in sonnet|opus|haiku|fable|inherit"; a_ok=0 ;;
+      *) fail "$afile: model '${amodel:-<missing>}' not in sonnet|opus|haiku|fable|inherit"; a_ok=0 ;;
     esac
     case "$aeffort" in
       low|medium|high) : ;;
-      *) fail "$afile: effort '\''${aeffort:-<missing>}'\'' not in low|medium|high"; a_ok=0 ;;
+      *) fail "$afile: effort '${aeffort:-<missing>}' not in low|medium|high"; a_ok=0 ;;
     esac
     if [[ -z "$adesclen" || "$adesclen" -eq 0 ]]; then
       fail "$afile: missing description"; a_ok=0
