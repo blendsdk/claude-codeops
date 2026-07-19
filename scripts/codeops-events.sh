@@ -366,14 +366,168 @@ emit_from_stdin() {
 }
 
 # ---------------------------------------------------------------------------
-# stats / gaps — implemented with the aggregation step.
+# stats / gaps — the only readers of the events file. Both pre-aggregate so
+# consumers relay a small table instead of re-reading raw events.
 # ---------------------------------------------------------------------------
+
+parse_since() { # "14d" or "14" → the day count, empty output if unusable
+  local s="$1"
+  s="${s%d}"
+  [[ "$s" =~ ^[0-9]+$ ]] && printf '%s' "$s"
+}
+
+# read_events <since_days> <project> — filtered events, one JSON object per line.
+# Corrupt lines are skipped rather than fatal.
+read_events() {
+  local since_days="$1" project="$2" cutoff=""
+  [[ -f "$EVENTS_FILE" ]] || return 0
+  if [[ -n "$since_days" ]]; then
+    cutoff="$(date -u -d "$since_days days ago" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
+      || date -u -v -"${since_days}d" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)"
+  fi
+  jq -cR --arg cutoff "$cutoff" --arg project "$project" \
+    'fromjson? // empty
+     | select(($cutoff == "" or .ts >= $cutoff) and ($project == "" or .project == $project))' \
+    "$EVENTS_FILE" 2>/dev/null || true
+}
+
+format_table() { # tab-separated rows → aligned columns
+  awk -F'\t' '{ printf "%-24s", $1; for (i = 2; i <= NF; i++) printf " %9s", $i; printf "\n" }'
+}
+
+stats_by_agent() {
+  jq -rs '
+    def pct(a; r): if r == 0 then "n/a" else ((((a / r) * 100) + 0.5) | floor | tostring) + "%" end;
+    . as $ev
+    | ([ $ev[] | select(.event == "agent_completed" and .agent != null) | .agent ]
+       + [ $ev[] | select(.event == "finding_decided" and .agent != null) | .agent ] | unique) as $agents
+    | if ($agents | length) == 0 then "no agent activity in range"
+      else
+        (["agent", "runs", "avg_s", "ruled", "accepted", "acceptance"] | @tsv),
+        ($agents[] as $a
+         | [ $ev[] | select(.event == "agent_completed" and .agent == $a) ] as $ac
+         | [ $ev[] | select(.event == "finding_decided" and .agent == $a) ] as $fd
+         | ($fd | map(select(.decision == "accepted" or .decision == "rejected")) | length) as $ruled
+         | ($fd | map(select(.decision == "accepted")) | length) as $acc
+         | [ $ac[] | .duration_s // empty ] as $durs
+         | [ $a, ($ac | length),
+             (if ($durs | length) == 0 then "-" else ((($durs | add) / ($durs | length) + 0.5) | floor) end),
+             $ruled, $acc, pct($acc; $ruled) ]
+         | @tsv)
+      end' | format_table
+}
+
+stats_by_lens() {
+  jq -rs '
+    def pct(a; r): if r == 0 then "n/a" else ((((a / r) * 100) + 0.5) | floor | tostring) + "%" end;
+    . as $ev
+    | ([ $ev[] | select(.event == "review_run") | (.lenses // [])[] ]
+       + [ $ev[] | select(.event == "finding_decided" and .lens != null) | .lens ] | unique) as $ls
+    | if ($ls | length) == 0 then "no lens activity in range"
+      else
+        (["lens", "reviews", "ruled", "accepted", "acceptance"] | @tsv),
+        ($ls[] as $l
+         | ([ $ev[] | select(.event == "review_run" and ((.lenses // []) | index($l)) != null) ] | length) as $runs
+         | [ $ev[] | select(.event == "finding_decided" and .lens == $l) ] as $fd
+         | ($fd | map(select(.decision == "accepted" or .decision == "rejected")) | length) as $ruled
+         | ($fd | map(select(.decision == "accepted")) | length) as $acc
+         | [ $l, $runs, $ruled, $acc, pct($acc; $ruled) ]
+         | @tsv)
+      end' | format_table
+}
+
+stats_by_event() {
+  jq -rs '
+    (["event", "count"] | @tsv),
+    (group_by(.event) | sort_by(-length)[] | [ .[0].event, length ] | @tsv)' | format_table
+}
+
+stats_by_project() {
+  jq -rs '
+    (["project", "count"] | @tsv),
+    (group_by(.project) | sort_by(-length)[] | [ .[0].project, length ] | @tsv)' | format_table
+}
+
+stats_overview() {
+  jq -rs '
+    . as $ev
+    | (["events total", ($ev | length)] | @tsv),
+      (["src skill", ([ $ev[] | select(.src == "skill") ] | length)] | @tsv),
+      (["src hook", ([ $ev[] | select(.src == "hook") ] | length)] | @tsv),
+      (["projects", ([ $ev[] | .project ] | unique | join(","))] | @tsv),
+      "",
+      (["event", "count"] | @tsv),
+      ($ev | group_by(.event) | sort_by(-length)[] | [ .[0].event, length ] | @tsv)' | format_table
+}
+
 cmd_stats() {
-  warn "stats not yet available"
+  local since="" by="" project="" events
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --since)
+        [[ $# -ge 2 ]] || { warn "--since needs a value"; return; }
+        since="$(parse_since "$2" || true)"
+        [[ -n "$since" ]] || { warn "unusable --since value '$2' (want e.g. 14d)"; return; }
+        shift 2 ;;
+      --project)
+        [[ $# -ge 2 ]] || { warn "--project needs a value"; return; }
+        project="$2"; shift 2 ;;
+      --by)
+        [[ $# -ge 2 ]] || { warn "--by needs a value"; return; }
+        by="$2"
+        in_list "$by" "agent lens project event" || { warn "unusable --by value '$by'"; return; }
+        shift 2 ;;
+      *) warn "unknown stats option '$1'"; return ;;
+    esac
+  done
+  events="$(read_events "$since" "$project")"
+  if [[ -z "$events" ]]; then
+    printf 'no events recorded%s\n' "${since:+ in the last ${since}d}"
+    return
+  fi
+  case "$by" in
+    agent)   stats_by_agent   <<<"$events" ;;
+    lens)    stats_by_lens    <<<"$events" ;;
+    event)   stats_by_event   <<<"$events" ;;
+    project) stats_by_project <<<"$events" ;;
+    *)       stats_overview   <<<"$events" ;;
+  esac | head -n 40
 }
 
 cmd_gaps() {
-  warn "gaps not yet available"
+  local since="" events
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --since)
+        [[ $# -ge 2 ]] || { warn "--since needs a value"; return; }
+        since="$(parse_since "$2" || true)"
+        [[ -n "$since" ]] || { warn "unusable --since value '$2' (want e.g. 14d)"; return; }
+        shift 2 ;;
+      *) warn "unknown gaps option '$1'"; return ;;
+    esac
+  done
+  events="$(read_events "$since" "")"
+  if [[ -z "$events" ]]; then
+    printf 'no events recorded%s\n' "${since:+ in the last ${since}d}"
+    return
+  fi
+  jq -rs --arg agents "$REVIEWER_AGENTS" '
+    def key: "\(.project)|\(.feature // "?")|\(.phase // "?")";
+    ($agents | split(" ")) as $rset
+    | . as $ev
+    | [ $ev[] | select(.event == "agent_completed")
+              | select((.agent // "") as $a | ($rset | index($a)) != null) ] as $done
+    | ([ $ev[] | select(.event == "review_run" or .event == "finding_decided") | key ] | unique) as $covered
+    | ($done | length) as $total
+    | ([ $done[] | select(key as $k | ($covered | index($k)) != null) ] | length) as $ok
+    | if $total == 0 then "no reviewer/auditor completions in range"
+      else
+        ($total - $ok) as $gap
+        | (((($gap / $total) * 100) + 0.5) | floor) as $pct
+        | "reviewer/auditor completions: \($total)",
+          "with downstream ruling:       \($ok)",
+          "gaps:                         \($gap) (\($pct)%)"
+      end' <<<"$events"
 }
 
 # ---------------------------------------------------------------------------
