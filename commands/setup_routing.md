@@ -1,5 +1,5 @@
 ---
-description: Configure per-project model & effort routing — analyze the repo, classify its sensitivity profile, and (on confirmation) write a routing policy into CLAUDE.md plus pinned-model executor subagents. Typeable alias for the setup_routing skill.
+description: Configure per-project model & effort routing — analyze the repo, classify its sensitivity profile, and (on confirmation) write a routing policy plus a quality-profile block (review lenses, security profiles, telemetry) into CLAUDE.md, with pinned-model executor subagents. Typeable alias for the setup_routing skill.
 disable-model-invocation: true
 argument-hint: "[short description of the project]"
 ---

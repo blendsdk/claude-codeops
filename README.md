@@ -1,6 +1,6 @@
 # CodeOps for Claude Code
 
-The CodeOps AI-development workflow — **11 skills + 19 slash commands + always-on coding
+The CodeOps AI-development workflow — **11 skills + 21 slash commands + always-on coding
 standards** — packaged as an installable [Claude Code plugin](https://code.claude.com/docs/en/plugins).
 
 Ported from the original [`codeops-mcp`](https://github.com/blendsdk/codeops-mcp) server (built for
@@ -145,16 +145,22 @@ codeops-skills/                # repo root == plugin root
 │   ├── upgrade_plan/          #   upgrade outdated plans/requirements
 │   ├── setup_routing/         #   per-project model & effort routing (Opus/Sonnet by tag)
 │   └── setup_codeops/         #   scaffold / migrate a repo into the nested codeops/ layout
-├── commands/                  # 19 slash commands → /codeops:<name>
+├── commands/                  # 21 slash commands → /codeops:<name>
 │   ├── gitcm.md / gitcmp.md   #   commit (and push) with a Conventional Commit message
 │   ├── analyze_project.md     #   generate/refresh this project's CLAUDE.md (+ --compact leaning mode)
 │   ├── migrate_clinerules.md  #   convert a legacy .clinerules/project.md → CLAUDE.md
 │   ├── gh_issues.md           #   adaptive GitHub issues table (repo's own labels/types/fields)
 │   ├── gh_close.md            #   guarded close/reopen of issues by number (native close reasons)
+│   ├── codeops_stats.md       #   relay the local telemetry tables (metadata-only)
+│   ├── codeops_retro.md       #   quality retrospective (thresholds → tuning recommendations)
 │   └── …                      #   + thin alias commands that delegate to a parent skill
-├── hooks/hooks.json           # SessionStart hook → injects the standards every session
+├── agents/                    # 9 subagents: 2 plan-task executors + 7 quality agents
+│                              #   (phase-reviewer, spec-test-author, security-auditor,
+│                              #   preflight-auditor, design-challenger, perf-auditor, codebase-scout)
+├── _shared/                   # shared conventions (gates, hardening, quality-profile.md)
+├── hooks/hooks.json           # SessionStart standards + PreToolUse guard + PostToolUse telemetry
 ├── standards/coding-standards.md  # always-on coding/testing/working-style standards (single source)
-├── scripts/validate.sh        # pre-push validation guard
+├── scripts/                   # validate.sh + the Bash spec suites + codeops-events.sh (telemetry)
 ├── bin/codeops-worktree       # CLI: git worktrees for parallel agents (dev installer → PATH)
 ├── install.sh / uninstall.sh  # optional in-repo dev installer (symlink loop)
 ├── LICENSE                    # MIT
@@ -175,13 +181,15 @@ codeops-skills/                # repo root == plugin root
 | `make_techdocs` / `review_techdocs` | Create/maintain VitePress architecture docs + ADRs |
 | `make_roadmap` / `update_roadmap` / … | Track a whole feature-set across its lifecycle |
 | `upgrade_plan <feature>` / `upgrade_requirements` | Bring an outdated artifact to current standards |
-| `setup_routing` / `/setup_routing` | Analyze the repo, then wire per-project model & effort routing (Opus/Sonnet by task tag) into `CLAUDE.md` + `.claude/agents/` |
+| `setup_routing` / `/setup_routing` | Analyze the repo, then wire per-project model & effort routing (Opus/Sonnet by task tag) plus a quality-profile block (review lenses, security profiles, telemetry) into `CLAUDE.md` |
 | `setup_codeops` / `/setup_codeops` | Scaffold a fresh `codeops/` skeleton, or auto-migrate an existing flat `requirements/` + `plans/` layout into the nested layout (preview → one confirmation → `git mv`) |
 | `/gitcm` / `/gitcmp` | Commit (and push) with a detailed Conventional Commit message |
 | `/analyze_project` | Generate/refresh this project's `CLAUDE.md`; `--compact` slims an over-grown one (preview-first) |
 | `/migrate_clinerules` | Convert a legacy `.clinerules/project.md` into `CLAUDE.md` |
 | `/gh_issues [--filters]` | Tabular overview of a repo's GitHub issues — type/priority/effort columns resolved through the repo's **own** labels, issue types, and project fields (read-only) |
 | `/gh_close <n…> [--wontfix\|--duplicate #N\|--reopen]` | Close or reopen issues by number with GitHub's native close reasons — echoes each title first, pauses when open dependents exist (manual-only) |
+| `/codeops_stats [--since Nd] [--by …]` | Relay the local telemetry tables — per-agent acceptance rates, durations, emission gaps (metadata-only, never uploaded) |
+| `/codeops_retro [--since Nd]` | Quality retrospective: applies the thresholds and sorts verdicts into plugin-tuning vs profile-tuning recommendations |
 
 The consolidated skills cover several verbs each, and thin **alias commands** make each verb directly
 typeable (they delegate to the parent skill in the right mode): `/add_requirement`,
@@ -194,6 +202,21 @@ language.
 The skills compose into the original CodeOps pipelines, e.g.
 `grill_me → make_requirements → preflight → make_plan → preflight → exec_plan`, with `roadmap`
 tracking it all and `techdocs` keeping architecture docs current.
+
+## Quality loop & telemetry
+
+Opt a repo in by letting `/setup_routing` write a **quality-profile** block into its `CLAUDE.md`
+(no block = nothing changes). With the profile active, `exec_plan` ends every phase with a
+parallel review by dedicated read-only agents — a phase reviewer plus security/perf auditors when
+the profile activates them — and 🔴/🟠 findings pause for your ruling in **every** commit mode.
+`preflight` fans its 13-dimension scan out to clustered preflight-auditor agents, and spec tests
+can be authored implementation-blind by the spec-test-author agent.
+
+A PostToolUse hook plus skill-side emissions record **metadata-only** telemetry (enums, counts,
+ids, 8-hex hashes — never content) to `~/.claude/codeops-telemetry/events.jsonl`, local only.
+Read it with `/codeops_stats`; judge the loop periodically with `/codeops_retro`. Kill switches:
+`CODEOPS_TELEMETRY=0`, `telemetry: off` in the profile, or simply not having `jq`. Full detail on
+the docs site: Guide → Quality profile / Telemetry, Reference → Agents.
 
 ## License
 

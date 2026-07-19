@@ -9,7 +9,7 @@ argument-hint: "[short description of the project]"
 
 # Model & Effort Routing Setup (`setup_routing`)
 
-> **CodeOps Skills Version**: 3.9.0
+> **CodeOps Skills Version**: 3.10.0
 
 Configure **per-project model and effort routing** for the project the user is currently in, so
 that expensive reasoning (Opus, high/xhigh thinking) is spent only where it changes output
@@ -146,29 +146,42 @@ Pick a profile and **state the evidence** ("I see `parser/`, `ir/`, and `codegen
 as Opus-dominant"). Then present, in full and exactly as it will be written:
 - the chosen profile and its default tag + escalation rule;
 - the complete routing block (from [templates.md](templates.md), filled in);
+- the complete **quality-profile block** (templates.md section 4; canonical semantics in
+  `_shared/quality-profile.md`) — lens add-ons, `security_profile`, and `perf_critical` inferred
+  from the same repo evidence under the same independent-analysis rule: propose from what the
+  code shows, never from the user's description alone;
 - a note that the referenced executors ship with the plugin, plus the OPTIONAL override: offer to
   copy them into `.claude/agents/` for per-project prompt customization.
 
 ### Phase 3 — Confirmation gate (HARD STOP)
-Ask the user to **confirm**, **adjust** (override the profile or individual tag mappings), or
-**cancel**. Do not write anything until explicit approval. Honor adjustments before writing.
+Ask the user to **confirm**, **adjust** (override the profile, individual tag mappings, or any
+quality-block value), or **cancel**. ONE gate covers both blocks — routing and quality. Do not
+write anything until explicit approval. Honor adjustments before writing.
 
 ### Phase 4 — Write
 Apply the writes from [templates.md](templates.md):
-1. **Routing block (the default — usually the only write).** Apply the sentinel merge to the
-   project `CLAUDE.md` (replace between markers / append / refuse-on-corruption — see
-   templates.md). The executors it references ship with the plugin; nothing else to write.
-2. **Executor overrides (ONLY if the user opted in at Phase 3).** Copy the plugin's executor
+1. **Routing block.** Apply the sentinel merge to the project `CLAUDE.md` (replace between
+   markers / append / refuse-on-corruption — see templates.md). The executors it references
+   ship with the plugin; nothing else to write.
+2. **Quality-profile block.** Apply the identical sentinel merge for the
+   `<!-- CODEOPS-QUALITY -->` markers (templates.md section 4) — a separate managed region;
+   each write touches only its own block.
+3. **Executor overrides (ONLY if the user opted in at Phase 3).** Copy the plugin's executor
    files into `.claude/agents/` for customization — each only if absent; on a name collision,
    **report and skip**, or offer a suffixed name — never overwrite a user's file.
-Never touch content outside the managed block or pre-existing executor files.
+Never touch content outside the managed blocks or pre-existing executor files.
 
 ### Phase 5 — Verify & report
 Summarize exactly what was written and where. Tell the user how to confirm:
 - run `/agents` to see the executors (plugin-shipped, plus any project overrides — a project
   agent of the same name shadows the plugin one);
-- inspect the `<!-- CODEOPS-ROUTING -->` block in `CLAUDE.md`;
+- inspect the `<!-- CODEOPS-ROUTING -->` **and** `<!-- CODEOPS-QUALITY -->` blocks in `CLAUDE.md`;
 - (recommended) run one `exec_plan` task and confirm the Sonnet executor is actually selected.
+
+**Quality-block consumer note:** the quality loop activates on the next `exec_plan` run
+(activation rules in `_shared/quality-profile.md`), and a quality agent whose pinned model is
+unavailable on the user's account (for example, absent from an org allowlist) **silently runs on
+the session model** — mention it so surprising review quality is traceable.
 
 **Flag the real-world validation explicitly:** whether their Claude Code version honors
 delegation-by-name reliably, and that they should watch their **rework rate** for a week before

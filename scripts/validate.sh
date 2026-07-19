@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.9.0"
+CODEOPS_VERSION="3.10.0"
 
 FAILURES=0
 
@@ -1518,6 +1518,232 @@ if grep -qiF 'replace-in-place' "$AP" \
   pass "documents a single replace-in-place refresh comment"
 else
   fail "analyze_project must document replacing the refresh comment in place (a single comment, not an appended stack)"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-68 — every agents/*.md has complete frontmatter: name, description, tools,
+# model (sonnet|opus|haiku|fable|inherit), effort (low|medium|high); description
+# within the listing budget.
+# -----------------------------------------------------------------------------
+section "ST-68: agent frontmatter complete and within budgets"
+if [[ "$HAVE_PY3" -eq 1 ]]; then
+  while IFS=$'\t' read -r afile aname amodel aeffort adesclen atools; do
+    [[ -z "$afile" ]] && continue
+    a_ok=1
+    [[ -n "$aname" ]] || { fail "$afile: missing name"; a_ok=0; }
+    [[ -n "$atools" ]] || { fail "$afile: missing tools"; a_ok=0; }
+    case "$amodel" in
+      sonnet|opus|haiku|fable|inherit) : ;;
+      *) fail "$afile: model '${amodel:-<missing>}' not in sonnet|opus|haiku|fable|inherit"; a_ok=0 ;;
+    esac
+    case "$aeffort" in
+      low|medium|high) : ;;
+      *) fail "$afile: effort '${aeffort:-<missing>}' not in low|medium|high"; a_ok=0 ;;
+    esac
+    if [[ -z "$adesclen" || "$adesclen" -eq 0 ]]; then
+      fail "$afile: missing description"; a_ok=0
+    elif [[ "$adesclen" -gt "$DESC_LIMIT" ]]; then
+      fail "$afile: description = $adesclen chars (> $DESC_LIMIT)"; a_ok=0
+    fi
+    [[ "$a_ok" -eq 1 ]] && pass "$afile frontmatter complete (model=$amodel effort=$aeffort desc=${adesclen}c)"
+  done < <(
+    python3 <<'PY'
+import glob
+
+def frontmatter(text):
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return []
+    out = []
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        out.append(line)
+    return out
+
+def scalar(fm, key):
+    for i, line in enumerate(fm):
+        stripped = line.strip()
+        if stripped.startswith(key + ":"):
+            rest = stripped[len(key) + 1:].strip()
+            if rest and rest[0] in "|>":
+                base_indent = len(line) - len(line.lstrip())
+                parts = []
+                for cont in fm[i + 1:]:
+                    if not cont.strip():
+                        parts.append("")
+                        continue
+                    indent = len(cont) - len(cont.lstrip())
+                    if indent <= base_indent:
+                        break
+                    parts.append(cont.strip())
+                return " ".join(p for p in parts if p)
+            return rest.strip().strip('"').strip("'")
+    return ""
+
+for path in sorted(glob.glob("agents/*.md")):
+    with open(path) as fh:
+        fm = frontmatter(fh.read())
+    print("\t".join([
+        path,
+        scalar(fm, "name"),
+        scalar(fm, "model"),
+        scalar(fm, "effort"),
+        str(len(scalar(fm, "description"))),
+        scalar(fm, "tools"),
+    ]))
+PY
+  )
+else
+  fail "python3 unavailable — cannot parse agent frontmatter reliably"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-69 — roster drift guard: exactly the 9 expected agent files (2 executors +
+# 7 quality agents), no strays.
+# -----------------------------------------------------------------------------
+section "ST-69: agent roster is exactly the 9 expected files"
+EXPECTED_AGENTS=(codebase-scout design-challenger perf-auditor phase-reviewer
+  plan-task-executor plan-task-executor-opus preflight-auditor security-auditor
+  spec-test-author)
+roster_ok=1
+for a in "${EXPECTED_AGENTS[@]}"; do
+  if [[ ! -f "agents/$a.md" ]]; then
+    fail "agents/$a.md missing from the roster"
+    roster_ok=0
+  fi
+done
+actual_agents="$(ls agents/*.md 2>/dev/null | wc -l | tr -d ' ')"
+if [[ "$actual_agents" != "9" ]]; then
+  fail "agents/ holds $actual_agents .md files; expected exactly 9"
+  roster_ok=0
+fi
+[[ "$roster_ok" -eq 1 ]] && pass "all 9 expected agent files present, no strays"
+
+# -----------------------------------------------------------------------------
+# ST-70 — _shared/quality-profile.md: present, non-empty, stamped, carries the
+# CODEOPS-QUALITY sentinel pair and the full lens (7) + security_profile (5) enums.
+# -----------------------------------------------------------------------------
+section "ST-70: quality-profile.md present with sentinels and full enums"
+QP="_shared/quality-profile.md"
+if [[ -s "$QP" ]]; then
+  pass "$QP exists and is non-empty"
+  grep -q "CodeOps Skills Version" "$QP" && pass "carries a version stamp" || fail "missing the version stamp"
+  if grep -q "CODEOPS-QUALITY:START" "$QP" && grep -q "CODEOPS-QUALITY:END" "$QP"; then
+    pass "CODEOPS-QUALITY sentinel pair present"
+  else
+    fail "CODEOPS-QUALITY sentinel pair missing/incomplete"
+  fi
+  QP_LENSES="$(sed -n '/^### Lens enum/,/^### security_profile/p' "$QP" | grep -oE '^\| `[a-z-]+`' | sed 's/[|` ]//g')"
+  QP_SECS="$(sed -n '/^### security_profile/,/^### Severity/p' "$QP" | grep -oE '^\| `[a-z-]+`' | sed 's/[|` ]//g')"
+  lens_n="$(printf '%s\n' $QP_LENSES | grep -c . || true)"
+  sec_n="$(printf '%s\n' $QP_SECS | grep -c . || true)"
+  if [[ "$lens_n" -eq 7 ]]; then
+    pass "lens enum table lists 7 values"
+  else
+    fail "lens enum table lists $lens_n values; expected 7"
+  fi
+  if [[ "$sec_n" -eq 5 ]]; then
+    pass "security_profile enum table lists 5 values"
+  else
+    fail "security_profile enum table lists $sec_n values; expected 5"
+  fi
+else
+  fail "$QP missing or empty"
+  QP_LENSES=""
+  QP_SECS=""
+fi
+
+# -----------------------------------------------------------------------------
+# ST-71 — taxonomy-drift guard: concrete lens / security_profile values referenced
+# by the skills, agents, and the retro command must be members of the
+# quality-profile.md enums (the enums are read FROM that file — adding a value
+# there legalizes it everywhere).
+# -----------------------------------------------------------------------------
+section "ST-71: lens/security_profile references match the enums"
+qp_lenses_flat=" $(printf '%s ' $QP_LENSES)"
+qp_secs_flat=" $(printf '%s ' $QP_SECS)"
+st71_bad=0
+for f in skills/*/SKILL.md agents/*.md commands/codeops_retro.md; do
+  [[ -f "$f" ]] || continue
+  while read -r tok; do
+    [[ -z "$tok" || "$tok" == *"<"* ]] && continue
+    if [[ "$qp_lenses_flat" != *" $tok "* ]]; then
+      fail "$f references lens '$tok' — not in the quality-profile.md enum"
+      st71_bad=1
+    fi
+  done < <({ grep -ohE 'lenses: \[[^]]*\]' "$f" 2>/dev/null | sed 's/lenses: \[//; s/\]//' | tr ',' '\n' | tr -d ' `'; grep -ohE 'lens=[a-z-]+' "$f" 2>/dev/null | cut -d= -f2; } | grep . || true)
+  while read -r tok; do
+    [[ -z "$tok" || "$tok" == *"<"* ]] && continue
+    if [[ "$qp_secs_flat" != *" $tok "* ]]; then
+      fail "$f references security profile '$tok' — not in the quality-profile.md enum"
+      st71_bad=1
+    fi
+  done < <(grep -ohE 'security_profile: \[[^]]*\]' "$f" 2>/dev/null | sed 's/security_profile: \[//; s/\]//' | tr ',' '\n' | tr -d ' `' | grep . || true)
+done
+[[ "$st71_bad" -eq 0 ]] && pass "no lens/security_profile reference falls outside the enums"
+
+# -----------------------------------------------------------------------------
+# ST-72 — hooks.json registers the PostToolUse telemetry hook referencing
+# codeops-events.sh (structural, no execution; grep fallback without python3).
+# -----------------------------------------------------------------------------
+section "ST-72: hooks.json registers the PostToolUse telemetry hook"
+if is_valid_json "$HOOKS"; then
+  if [[ "$HAVE_PY3" -eq 1 ]]; then
+    has_posttooluse="$(json_get "$HOOKS" '"yes" if "PostToolUse" in data.get("hooks", {}) else None')"
+  else
+    has_posttooluse="$(grep -o '"PostToolUse"' "$HOOKS" | head -1)"
+  fi
+  if [[ -n "$has_posttooluse" ]]; then
+    pass "PostToolUse hook registered"
+  else
+    fail "no PostToolUse hook in $HOOKS"
+  fi
+  if grep -q "codeops-events.sh" "$HOOKS"; then
+    pass "hook references codeops-events.sh"
+  else
+    fail "hook does not reference codeops-events.sh"
+  fi
+else
+  fail "$HOOKS is missing or not valid JSON"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-73 — telemetry surface intact: utility + spec suite present, executable,
+# stamped; every event/field/enum token named in emission prose exists in the
+# utility's vocabulary; the utility accepts all 7 lens values (catalog drift).
+# -----------------------------------------------------------------------------
+section "ST-73: telemetry utility/suite present; no catalog drift"
+EV_UTIL="scripts/codeops-events.sh"
+EV_SUITE="scripts/telemetry-check.sh"
+for f in "$EV_UTIL" "$EV_SUITE"; do
+  if [[ -x "$f" ]]; then
+    pass "$f present and executable"
+  else
+    fail "$f missing or not executable"
+  fi
+  grep -q "CodeOps Skills Version" "$f" 2>/dev/null && pass "$f carries a version stamp" || fail "$f missing the version stamp"
+done
+if [[ -f "$EV_UTIL" ]]; then
+  st73_bad=0
+  while read -r tok; do
+    [[ -z "$tok" ]] && continue
+    [[ -d "skills/$tok" ]] && continue
+    if ! grep -q "$tok" "$EV_UTIL"; then
+      fail "emission prose names '$tok' — unknown to $EV_UTIL"
+      st73_bad=1
+    fi
+  done < <(grep -rhiE 'emit' skills commands _shared 2>/dev/null \
+    | grep -oE '`[a-z]+(_[a-z]+)+`' | tr -d '`' | sort -u || true)
+  [[ "$st73_bad" -eq 0 ]] && pass "every emission-prose token exists in the utility's vocabulary"
+  lens_drift=0
+  for l in $QP_LENSES; do
+    if ! grep -q "$l" "$EV_UTIL"; then
+      fail "lens '$l' from quality-profile.md is not accepted by $EV_UTIL"
+      lens_drift=1
+    fi
+  done
+  [[ "$lens_drift" -eq 0 && -n "$QP_LENSES" ]] && pass "utility accepts all lens enum values"
 fi
 
 # -----------------------------------------------------------------------------

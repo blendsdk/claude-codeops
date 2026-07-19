@@ -82,5 +82,36 @@ The markers are exactly `<!-- CODEOPS-ROUTING:START -->` and `<!-- CODEOPS-ROUTI
 - **Exactly one marker present (corrupted state):** do **not** guess. Report it and ask the user
   how to proceed.
 
-Never disturb user-authored or `analyze_project`-authored sections. The block is the only region
-this skill owns.
+Never disturb user-authored or `analyze_project`-authored sections. The managed blocks are the
+only regions this skill owns.
+
+---
+
+## 4. The CLAUDE.md quality-profile block
+
+The canonical definition — fields, enums, defaults, activation, supersession — is
+**`_shared/quality-profile.md`**; this template is only the write shape. Every key is optional
+with meaningful defaults, so propose concrete values only where the repo evidence supports them.
+
+```markdown
+## Quality profile (CodeOps)
+<!-- CODEOPS-QUALITY:START -->
+lenses: [<ADD-ON LENSES>]
+security_profile: [<SECURITY PROFILES>]
+perf_critical: <true|false>
+review_hook: on
+telemetry: on
+agent_models: {}
+<!-- CODEOPS-QUALITY:END -->
+```
+
+Evidence → proposal hints: web request handlers → `owasp-web`; auth/session/token code →
+`auth-protocol`; payment or ledger flows → `financial-integrity`; a multi-tenant schema →
+`tenant-isolation`; MCP or agent integrations → `mcp-agent`; measured hot paths or latency
+targets → `perf_critical: true`; concurrency-heavy code → the `concurrency` lens; a public
+SDK surface → `api-surface`. `standards` is base-only — never propose it as an add-on.
+
+**Merge rules:** identical to section 3, applied to the markers
+`<!-- CODEOPS-QUALITY:START -->` / `<!-- CODEOPS-QUALITY:END -->` — replace between markers,
+append when absent, refuse and ask on a corrupted single-marker state. The quality block and
+the routing block are separate managed regions; each write touches only its own.

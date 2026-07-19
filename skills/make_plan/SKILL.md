@@ -11,7 +11,7 @@ argument-hint: "[feature-name or description]"
 
 Create a detailed, multi-document implementation plan for a software feature or task. This skill covers plan **creation** only. To **execute** a finished plan, use the **exec_plan skill**.
 
-> **CodeOps Skills Version**: 3.9.0
+> **CodeOps Skills Version**: 3.10.0
 
 ## What you produce
 
@@ -42,7 +42,7 @@ Determine the layout via **[../../_shared/layout-convention.md](../../_shared/la
 Not every change is a feature. Ad-hoc work (a bugfix, chore, small change) is a **task** (`T-NN`), and a *non-trivial* task gets a **single mini-plan**, not the full multi-document set. When the work is a task (see the routing rule in **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**):
 
 - Write **only** the mini-plan at the resolved task path (flat: `plans/<task-slug>/99-execution-plan.md`; nested: `codeops/features/<f>/plans/<task-slug>/99-execution-plan.md`) — an execution doc with an **Objective**, a short **task checklist**, and a **Verify** line. **No** `00–07` docs, **no** RD, **no** Zero-Ambiguity Gate.
-- Stamp it `> **Type**: Task (lightweight) · **Feature**: <f> · **CodeOps Skills Version**: 3.9.0` and a `> **Progress**:` line (in flat layout drop the `**Feature**:` part).
+- Stamp it `> **Type**: Task (lightweight) · **Feature**: <f> · **CodeOps Skills Version**: 3.10.0` and a `> **Progress**:` line (in flat layout drop the `**Feature**:` part).
 - Specification-first ordering still applies *when the task warrants tests* (e.g. a bugfix gets a regression test first); a trivial doc/config tweak may not.
 - A **trivial** task needs no plan at all — it is just a roadmap row + the commit (point the user to the roadmap skill, then do the work).
 
@@ -51,7 +51,7 @@ Mini-plan shape:
 ```markdown
 # Task T-05: Debounce the search input
 
-> **Type**: Task (lightweight) · **Feature**: search · **CodeOps Skills Version**: 3.9.0
+> **Type**: Task (lightweight) · **Feature**: search · **CodeOps Skills Version**: 3.10.0
 > **Progress**: 0/3 tasks (0%)
 
 ## Objective
@@ -113,6 +113,8 @@ Before writing documents (and again before each execution phase), re-check: Comp
 
 The mechanism is the **Ambiguity Register** (`00-ambiguity-register.md`): a numbered inventory of every gap, ambiguity, unstated assumption, and open question, hunted systematically across all 12 categories. The full category checklist, register template, gate-enforcement rules, no-deferral policy, traceability requirement, surface-during-authoring rule, and interactions with the grill_me / upgrade_plan skills are in **[zero-ambiguity-gate.md](zero-ambiguity-gate.md)** — **read it now, before Phase 2.**
 
+**Telemetry (profile-gated):** when the repo has an active quality profile, emit `gate_summary` once at the moment this gate PASSES — gate `zero_ambiguity`, with rounds/questions/decisions/deferrals counts and the feature slug (one `codeops-events.sh emit` call; an emission failure never blocks the gate).
+
 Gate opens ONLY when: every row Status = `✅ Resolved` with the user's explicit decision, the user has confirmed the complete register, zero items deferred, and the header reads `✅ GATE PASSED`. If zero ambiguities are found, still create the register file proving the review ran. You may recommend an option, but you may never decide for the user.
 
 > **Grounded Options & Recommendations (coding standards → Working style) apply here.** Before presenting options/findings/recommendations: filter out non-viable ones (no strawmen; ≥2 only when ≥2 are genuinely viable, else present the single viable path and name what was rejected), second-guess each, verify any code-modifying option against the actual current code (cite `file:line`), and lead with a recommendation backed by grounded reasoning. Match ceremony to stakes — the user decides. **Recommendation hardening:** apply `_shared/recommendation-hardening.md` — for **high-stakes** Phase 1C gate decisions (complex/sensitive-tagged) spawn one independent challenger and reconcile *before* presenting; for all consequential decisions run the in-context layers and close with the `Confidence:` / `Hardening:` disclosure.
@@ -122,7 +124,7 @@ Gate opens ONLY when: every row Status = `✅ Resolved` with the user's explicit
 ## Phase 2 — Create Plan Documents
 
 1. Create the plan folder (`plans/<feature-name>/` flat, or `codeops/features/<f>/plans/<plan>/` nested — resolve via the convention doc).
-2. Write each document using the templates in **[templates.md](templates.md)** — including its **Reference, don't restate** rule (one owning doc per fact; everything else cites ST-# / 03-doc § / AR-# with at most a one-line gloss). Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.9.0`.
+2. Write each document using the templates in **[templates.md](templates.md)** — including its **Reference, don't restate** rule (one owning doc per fact; everything else cites ST-# / 03-doc § / AR-# with at most a one-line gloss). Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.10.0`.
 3. Every design decision, scope decision, and error-handling strategy must carry an `AR #` back-reference to the register (only exceptions: universally obvious facts and zero-semantic-impact formatting).
 4. `07-testing-strategy.md` must contain concrete **Specification Test Cases (ST-*)** with input→expected-output pairs, each traced to a requirement / spec doc / AR entry. Expectations come from the SPEC, never from imagined implementation behavior.
 4b. **Confirm the verify command once.** The command that fills every Verify line comes from the

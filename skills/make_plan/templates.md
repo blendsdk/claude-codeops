@@ -1,6 +1,6 @@
 # Plan Document Templates
 
-Read this when writing the Phase 2 documents. Create files in `plans/<feature-name>/`. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.9.0`. Every `[Date]` / `[YYYY-MM-DD HH:MM]` placeholder is filled from `date '+%Y-%m-%d %H:%M'` — never an invented timestamp.
+Read this when writing the Phase 2 documents. Create files in `plans/<feature-name>/`. Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.10.0`. Every `[Date]` / `[YYYY-MM-DD HH:MM]` placeholder is filled from `date '+%Y-%m-%d %H:%M'` — never an invented timestamp.
 
 Folder layout:
 
@@ -46,7 +46,7 @@ excerpt at dispatch time — excerpting for a handoff packet is not restatement)
 > **Status**: Planning Complete
 > **Created**: [Date]
 > **Implements**: RD-NN   (only if based on a requirements document; omit otherwise)
-> **CodeOps Skills Version**: 3.9.0
+> **CodeOps Skills Version**: 3.10.0
 
 ## Overview
 
@@ -323,6 +323,10 @@ With no RD upstream, `01-requirements.md` IS the owning requirements doc:
 > imagine or infer what the implementation will produce. If the expected output cannot be
 > determined from the spec, that is an ambiguity — add it to the Ambiguity Register and
 > resolve it with the user before defining the test case.
+>
+> In a repo with an active quality profile these ST-case rows are excerpted **verbatim** into
+> the spec-test-author agent's packet — excerpting is packeting, not restatement, so keep each
+> row self-contained.
 
 ## Test Categories
 
@@ -388,7 +392,7 @@ once in the document), and MUST structure feature phases with the specification-
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: [YYYY-MM-DD HH:MM]
 > **Progress**: 0/X tasks (0%)
-> **CodeOps Skills Version**: 3.9.0
+> **CodeOps Skills Version**: 3.10.0
 
 ## Overview
 
@@ -429,13 +433,22 @@ task-size criteria in [quality-checklist.md](quality-checklist.md))
 
 ## Phase 1: [Phase Name]
 
+> **Phase ref**: _(recorded by the exec_plan skill at phase start — `git rev-parse HEAD`)_
+> **Lenses**: [add-on lenses — include this line only when the target repo carries a quality
+> profile; informational: activation stays profile-driven]
+
 ### Step 1.1: [Step Objective]
 
 **Reference**: [Governing 03-doc §section] · [AR #s]
 **Objective**: [What this step achieves]
 
-- [ ] 1.1.1 [Task description] — `path/to/file`
+- [ ] 1.1.1 [spec-author] Write specification tests from the 07 ST-cases — `[feature].spec.test.[ext]`
 - [ ] 1.1.2 [Task description] — `path/to/file`
+
+> Mark spec-test tasks with `[spec-author]`: in a repo with an active quality profile, the
+> exec_plan skill dispatches the spec-test-author agent for them (packet per
+> `_shared/quality-profile.md`); without a profile the marker is inert and the session writes
+> the tests itself.
 
 **Deliverables**:
 - [ ] Deliverable 1

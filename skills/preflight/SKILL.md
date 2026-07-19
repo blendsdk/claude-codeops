@@ -21,7 +21,7 @@ arguments: artifact
 
 # preflight — Multi-Dimensional, Codebase-Grounded Quality Audit
 
-> **CodeOps Skills Version**: 3.9.0
+> **CodeOps Skills Version**: 3.10.0
 
 Run a rigorous quality audit of the artifact named in `$ARGUMENTS`, **grounded in the actual
 codebase**. Find every issue, ambiguity, contradiction, gap, and risk; verify every claim and
@@ -144,13 +144,25 @@ Save the report as a permanent file alongside the artifact:
 The report is separate from the Ambiguity Register (decisions made during creation) — see
 [report-format.md](report-format.md) for the relationship and cross-referencing.
 
-## Parallelizing the scan (optional)
+## Parallelizing the scan (clustered fan-out)
 
-The scan MAY fan out to subagents when the session supports them — recon reads to read-only
-explore agents, and the document-only dimension group (1, 3, 7, 9, 10, 12) as one parallel
-batch while the lead context runs the code-grounded dimensions (2, 4, 5, 6, 11, 13). The lead
-context always merges, dedupes, and renumbers the findings (`PF-NNN` stays a single sequence)
-and owns every user interaction. Sequential scanning remains the default and is always correct.
+When the session supports subagents, the 13-dimension scan fans out as **~5 parallel
+preflight-auditor dispatches** — one per dimension cluster, an exact partition defined in
+**[../../_shared/quality-profile.md](../../_shared/quality-profile.md)** (① document soundness ·
+② grounding · ③ delivery · ④ risk · ⑤ fit). Each dispatch carries the header + packet from that
+doc (the artifact, ONE cluster, and the codebase context its dimensions need). `--thorough`
+expands the fan-out to one dispatch per dimension. Recon reads may still go to read-only explore
+agents, and the codebase-scout may ground individual claim-checks (≤3 scout dispatches per run).
+
+The lead context always merges the returned PA-NNN findings into the single `PF-NNN` sequence
+(dedupe across clusters, renumber, keep severities honest), runs the verdict synthesis, and owns
+every user interaction — auditors never talk to the user. Sequential scanning remains correct
+when subagents are unavailable.
+
+**Telemetry:** with an active quality profile, emit `preflight_run` when the report is compiled,
+`finding_decided` per finding immediately after each ruling batch, and `gate_summary`
+(gate `preflight_gate`) at the verdict step (one `codeops-events.sh emit` call each; failures
+never block the scan).
 
 ## Iterative re-scanning
 

@@ -17,7 +17,7 @@ argument-hint: "[idea or brain dump]"
 
 # Requirements Gathering & Documentation
 
-> **CodeOps Skills Version**: 3.9.0
+> **CodeOps Skills Version**: 3.10.0
 
 Transform a rough project idea into a structured, complete set of formal
 **requirement documents (RDs)**. This skill is upstream of, and independent
@@ -136,6 +136,11 @@ Throughout discovery, compile the **Ambiguity Register**. It is formally enforce
 at Phase 2B before any RD is written — see **`zero-ambiguity-gate.md`**. The
 register is saved permanently at **`requirements/00-ambiguity-register.md`** and
 every decision in every RD back-references its AR # entry.
+
+**Telemetry (profile-gated):** when the repo has an active quality profile, emit
+`gate_summary` once at the moment the Phase 2B gate PASSES — gate `zero_ambiguity`,
+with rounds/questions/decisions/deferrals counts (one `codeops-events.sh emit` call;
+an emission failure never blocks the gate).
 
 ---
 

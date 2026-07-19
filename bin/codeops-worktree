@@ -3,7 +3,7 @@
 # codeops-worktree — spin up / tear down git worktrees for running parallel
 # Claude Code agents on separate feature branches, one worktree per agent.
 #
-# CodeOps Skills Version: 3.9.0
+# CodeOps Skills Version: 3.10.0
 #
 # A worktree is a second working folder that shares the ONE .git of the repo, so
 # every branch/commit is visible everywhere and you never re-clone. The number of

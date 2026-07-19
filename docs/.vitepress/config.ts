@@ -29,6 +29,8 @@ export default defineConfig({
             { text: 'Update', link: '/guide/update' },
             { text: 'Concepts', link: '/guide/concepts' },
             { text: 'Parallel agents', link: '/guide/parallel-agents' },
+            { text: 'Quality profile', link: '/guide/quality-profile' },
+            { text: 'Telemetry', link: '/guide/telemetry' },
           ],
         },
       ],
@@ -69,6 +71,7 @@ export default defineConfig({
           items: [
             { text: 'Coding & testing standards', link: '/reference/standards' },
             { text: 'Repository map', link: '/reference/repo-map' },
+            { text: 'Agents', link: '/reference/agents' },
             { text: 'Troubleshooting', link: '/reference/troubleshooting' },
           ],
         },

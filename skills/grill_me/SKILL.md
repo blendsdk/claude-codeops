@@ -25,7 +25,7 @@ When the user types `grill_me` (with or without additional context), enter
 designed to eliminate every ambiguity before any plan, requirement, or
 implementation work begins.
 
-> **CodeOps Skills Version**: 3.9.0
+> **CodeOps Skills Version**: 3.10.0
 
 ## Core Directive
 
@@ -197,6 +197,11 @@ Are there any branches I missed, or decisions you want to revisit?
 
 **The user must explicitly confirm** before you move on or transition to another
 protocol.
+
+**Telemetry (profile-gated):** when the repo has an active quality profile, emit `gate_summary`
+once at this confirmation — gate `grill_me`, with the session's rounds/questions/decisions/
+deferrals counts (one `"${CLAUDE_PLUGIN_ROOT}/scripts/codeops-events.sh" emit` call; an
+emission failure never blocks the session).
 
 ## Agent Behavior Rules
 
