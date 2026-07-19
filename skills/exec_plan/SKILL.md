@@ -8,6 +8,9 @@ description: >-
   or --auto-commit (commit + push after each verified task). Reads plans/<feature>/99-execution-plan.md,
   finds the next incomplete task, and runs the per-task loop (implement -> update the execution
   plan immediately -> verify -> commit per mode) following specification-first task ordering.
+  When the repo's CLAUDE.md carries a CodeOps quality-profile block, a profile-gated quality loop
+  reviews each executed phase (reviewer + auditor agents); critical/major findings pause for a
+  user ruling in every commit mode.
 when_to_use: >-
   Use for plan EXECUTION only. Plan CREATION lives in the make_plan skill — point the user there
   instead of duplicating it. Trigger on /exec_plan or any request to run, execute, implement, or
@@ -132,6 +135,27 @@ For each task, in order:
 
 To resume in a later session, just run `/exec_plan $ARGUMENTS` again — the execution plan is the
 source of truth and tells the skill where to pick up.
+
+## Quality loop (profile-gated)
+
+When the repo's `CLAUDE.md` carries a quality-profile block, every executed phase (and task
+mini-plan) ends with a post-phase quality review; without the block this loop is **fully
+dormant**. Activation rules, lenses, supersession, dispatch packets, and budget caps are defined
+once in **[../../_shared/quality-profile.md](../../_shared/quality-profile.md)** — this skill
+links to them, never restates them.
+
+The flow: the protocol records a phase-start ref when the phase begins; after the phase's last
+task verifies, the phase-reviewer and any active auditors are dispatched **in parallel** on the
+phase diff, their findings are merged and presented in severity-grouped batches, and each ruling
+is emitted to telemetry.
+
+> **🚨 Finding gate (load-bearing).** 🔴 CRITICAL and 🟠 MAJOR findings PAUSE execution for the
+> user's ruling in ALL commit modes — auto-commit never bypasses the pause. 🟡 MINOR findings are
+> report-only. Accepted fixes are implemented, verified, follow-up-committed per the commit mode,
+> and (after 🔴/🟠 fixes) re-reviewed ONCE on the fix diff — never a third time.
+
+Step-by-step mechanics — the phase-start ref, spec-author dispatch, the post-phase quality step,
+and emission points — live in [execution-protocol.md](execution-protocol.md).
 
 ## Roadmap sync
 
