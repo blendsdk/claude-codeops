@@ -23,6 +23,10 @@ features:
     details: A SessionStart hook injects the CodeOps coding, testing, and working-style standards into every session — zero setup, nothing to merge into your CLAUDE.md.
   - title: Docs, roadmaps & upgrades
     details: techdocs maintains VitePress architecture docs + ADRs, roadmap tracks a whole feature-set across its lifecycle, and upgrade_plan brings older artifacts up to current standards.
+  - title: A quality loop with teeth
+    details: Opt a repo in with a per-repo quality profile and every executed phase ends with dedicated read-only reviewer and auditor agents on the diff — critical/major findings pause commits in every mode.
+  - title: Local, metadata-only telemetry
+    details: Acceptance rates, durations, and emission gaps accrue locally (never content, never uploaded); /codeops_stats reads them and /codeops_retro turns them into tuning recommendations.
 ---
 
 ## What is CodeOps?

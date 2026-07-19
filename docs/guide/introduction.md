@@ -21,9 +21,15 @@ So the MCP machinery is gone and only the knowledge remains.
   [`setup_codeops`](/skills/setup_codeops), and [`setup_routing`](/skills/setup_routing).
 - **21 slash commands** — including [`/gitcm` / `/gitcmp`](/skills/commands) for Conventional-Commit
   flows, `/analyze_project`, `/migrate_clinerules`, the GitHub issue pair `/gh_issues` /
-  `/gh_close`, and thin alias commands that delegate to the parent skills.
+  `/gh_close`, the telemetry pair `/codeops_stats` / `/codeops_retro`, and thin alias commands
+  that delegate to the parent skills.
 - **Always-on coding standards** — a single source of universal coding, testing, and working-style
   standards, injected into every session by a `SessionStart` hook with **zero setup**.
+- **A profile-gated quality loop** — seven dedicated agents (phase reviewer, security/perf/preflight
+  auditors, spec-test author, design challenger, codebase scout) that review every executed phase
+  when a repo opts in via its [quality profile](/guide/quality-profile); critical/major findings
+  pause commits in every mode. Local, metadata-only [telemetry](/guide/telemetry) shows whether
+  the loop earns its keep.
 
 ## How it fits together
 

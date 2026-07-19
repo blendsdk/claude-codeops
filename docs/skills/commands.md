@@ -16,6 +16,8 @@ These do focused jobs of their own:
 | `/clean_jsdoc` | Retrofit an existing project's JSDoc and code comments to the CodeOps documentation standard — strip references to ephemeral planning artifacts (`plans/`, `requirements/`, RD/AR IDs), document non-trivial entities, and add `@example` to public API. Detection-first, comments-only; `--dry-run` / `--refs-only`. |
 | `/gh_issues` | Tabular overview of a GitHub repo's issues — number, title, type, priority, effort, dependencies, assignee — with the semantic columns resolved through the repo's **own** label scheme, native issue types, and project fields (discovered per run, never imposed). Read-only; never mutates issues. |
 | `/gh_close` | Close one or more GitHub issues by number with GitHub's native close reasons — completed (default), not planned (`--wontfix`), or duplicate (`--duplicate <#N>`) — or reopen with `--reopen`. Echoes each issue's title before acting and pauses when other open issues depend on the one being closed. **Manual-only** — never fires on the model's own initiative. |
+| `/codeops_stats` | Relay the local telemetry tables — event counts, per-agent runs and acceptance rates, durations, emission gaps (`--since <Nd>`, `--project <p>`, `--by agent\|lens\|project\|event`, `gaps`). Metadata-only and local; the raw events file is never read into context. See [Telemetry](/guide/telemetry). |
+| `/codeops_retro` | Quality retrospective over the telemetry: applies the thresholds (acceptance, gap rate, blocker categories, dead lenses) and sorts what triggers into **plugin-tuning** vs **profile-tuning** recommendations. Terminal-only; recommends, never applies. See [Telemetry](/guide/telemetry). |
 
 ## Alias commands
 

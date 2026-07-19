@@ -16,7 +16,8 @@
 - **Framework(s):** Claude Code plugin system; VitePress (docs site)
 - **Package manager:** npm (dev-only; for the docs build)
 - **Test framework:** none formal — Bash spec suites (`scripts/validate.sh`, `scripts/docs-check.sh`,
-  `scripts/migration-check.sh`) plus the VitePress build's dead-link check
+  `scripts/migration-check.sh`, `scripts/compact-check.sh`, `scripts/roadmap-sync-check.sh`,
+  `scripts/telemetry-check.sh`) plus the VitePress build's dead-link check
 
 ## Commands
 - **Build (docs):** `npm run docs:build`
@@ -76,7 +77,7 @@
 - Before pushing changes that touch the plugin, run `./scripts/validate.sh`; for docs changes also
   run `npm run docs:build && ./scripts/docs-check.sh`.
 
-<!-- analyze_project: refreshed Project structure (added requirements/) — 11 skills, 19 commands, release 3.9.0 with /gh_issues + /gh_close (2026-07-17) -->
+<!-- analyze_project: refreshed Toolchain + Commands + Project structure — 11 skills, 21 commands, 9 agents, release 3.10.0 with the quality loop (quality-profile block, 7 quality agents, telemetry via codeops-events.sh + /codeops_stats + /codeops_retro) (2026-07-19) -->
 
 <!-- CODEOPS-ROUTING:START -->
 ## Model & effort routing (Balanced — fallback profile)

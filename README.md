@@ -151,10 +151,16 @@ codeops-skills/                # repo root == plugin root
 │   ├── migrate_clinerules.md  #   convert a legacy .clinerules/project.md → CLAUDE.md
 │   ├── gh_issues.md           #   adaptive GitHub issues table (repo's own labels/types/fields)
 │   ├── gh_close.md            #   guarded close/reopen of issues by number (native close reasons)
+│   ├── codeops_stats.md       #   relay the local telemetry tables (metadata-only)
+│   ├── codeops_retro.md       #   quality retrospective (thresholds → tuning recommendations)
 │   └── …                      #   + thin alias commands that delegate to a parent skill
-├── hooks/hooks.json           # SessionStart hook → injects the standards every session
+├── agents/                    # 9 subagents: 2 plan-task executors + 7 quality agents
+│                              #   (phase-reviewer, spec-test-author, security-auditor,
+│                              #   preflight-auditor, design-challenger, perf-auditor, codebase-scout)
+├── _shared/                   # shared conventions (gates, hardening, quality-profile.md)
+├── hooks/hooks.json           # SessionStart standards + PreToolUse guard + PostToolUse telemetry
 ├── standards/coding-standards.md  # always-on coding/testing/working-style standards (single source)
-├── scripts/validate.sh        # pre-push validation guard
+├── scripts/                   # validate.sh + the Bash spec suites + codeops-events.sh (telemetry)
 ├── bin/codeops-worktree       # CLI: git worktrees for parallel agents (dev installer → PATH)
 ├── install.sh / uninstall.sh  # optional in-repo dev installer (symlink loop)
 ├── LICENSE                    # MIT
