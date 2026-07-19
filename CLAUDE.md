@@ -5,7 +5,7 @@
 
 ## Overview
 - **Type:** Claude Code plugin (skills + commands library) with a VitePress documentation site
-- **Description:** The CodeOps AI-development workflow — 11 skills + 19 slash commands + always-on
+- **Description:** The CodeOps AI-development workflow — 11 skills + 21 slash commands + always-on
   coding standards — packaged as an installable Claude Code plugin (the repo root **is** the plugin
   root). Ported from `codeops-mcp`. A user-facing docs site lives under `docs/` and deploys to
   GitHub Pages.
@@ -23,20 +23,21 @@
 - **Dev (docs preview):** `npm run docs:dev` → http://localhost:5173/claude-codeops/
 - **Test:** `./scripts/validate.sh` (plugin guard), `./scripts/docs-check.sh` (docs structure/CI),
   `./scripts/migration-check.sh` (flat→nested migration engine, against `scripts/fixtures/flat-repo/`),
-  `./scripts/compact-check.sh` (roadmap compact engine, against `scripts/fixtures/bloated-repo/`), and
-  `./scripts/roadmap-sync-check.sh` (roadmap sync engine, against `scripts/fixtures/roadmap-repo/`)
-- **Verify (run before every commit):** `./scripts/validate.sh && npm run docs:build && ./scripts/docs-check.sh && ./scripts/migration-check.sh && ./scripts/compact-check.sh && ./scripts/roadmap-sync-check.sh`
+  `./scripts/compact-check.sh` (roadmap compact engine, against `scripts/fixtures/bloated-repo/`),
+  `./scripts/roadmap-sync-check.sh` (roadmap sync engine, against `scripts/fixtures/roadmap-repo/`), and
+  `./scripts/telemetry-check.sh` (telemetry utility spec suite, against `scripts/fixtures/telemetry-events/`, sandbox HOME)
+- **Verify (run before every commit):** `./scripts/validate.sh && npm run docs:build && ./scripts/docs-check.sh && ./scripts/migration-check.sh && ./scripts/compact-check.sh && ./scripts/roadmap-sync-check.sh && ./scripts/telemetry-check.sh`
 - **Clean:** `rm -rf node_modules docs/.vitepress/dist docs/.vitepress/cache`
 
 ## Project structure
 - `.claude-plugin/` — `marketplace.json` (`source: "."`) + `plugin.json` (version tracks the release).
 - `skills/<name>/SKILL.md` — the 11 skills; every `skills/<dir>` needs a `SKILL.md` (loader requirement).
-- `_shared/` — reference docs linked by skills (layout-convention, zero-ambiguity-gate, spec-first-ordering, recommendation-hardening); at the plugin root, not under `skills/`, linked as `../../_shared/…`.
-- `commands/*.md` — the 19 slash commands (frontmatter `description`).
-- `agents/` — plugin-shipped executor subagents (`plan-task-executor`, `plan-task-executor-opus`).
-- `hooks/hooks.json` — SessionStart standards hook + PreToolUse `.codeops.yml` marker guard.
+- `_shared/` — reference docs linked by skills (layout-convention, zero-ambiguity-gate, spec-first-ordering, recommendation-hardening, quality-profile); at the plugin root, not under `skills/`, linked as `../../_shared/…`.
+- `commands/*.md` — the 21 slash commands (frontmatter `description`), incl. `/codeops_stats` + `/codeops_retro` (telemetry consumers).
+- `agents/` — plugin-shipped subagents: 2 executors (`plan-task-executor`, `plan-task-executor-opus`) + 7 quality agents (`phase-reviewer`, `spec-test-author`, `security-auditor`, `preflight-auditor`, `design-challenger`, `perf-auditor`, `codebase-scout`).
+- `hooks/hooks.json` — SessionStart standards hook + PreToolUse `.codeops.yml` marker guard + PostToolUse telemetry hook (`Skill|Task|Agent` → `codeops-events.sh`).
 - `standards/coding-standards.md` — always-on injected core (≤50 lines); full text in `coding-standards-full.md`.
-- `scripts/` — Bash spec suites + engines: `validate.sh`, `docs-check.sh`, `migration-check.sh`, `compact-check.sh`, `codeops-migrate.sh`, `codeops-roadmap-sync.sh`, `codeops-roadmap-compact.sh`, `fixtures/`.
+- `scripts/` — Bash spec suites + engines: `validate.sh`, `docs-check.sh`, `migration-check.sh`, `compact-check.sh`, `telemetry-check.sh`, `codeops-migrate.sh`, `codeops-roadmap-sync.sh`, `codeops-roadmap-compact.sh`, `codeops-events.sh` (telemetry utility — sole reader/writer of `~/.claude/codeops-telemetry/events.jsonl`), `fixtures/`.
 - `bin/codeops-worktree` — user-facing worktree CLI (installed by the dev installer, not the marketplace plugin); carries a version stamp watched by `validate.sh`.
 - `docs/` — VitePress documentation site (`.vitepress/config.ts`, guide/skills/tutorials/reference).
 - `.github/workflows/docs.yml` — builds + deploys the docs site to GitHub Pages.
