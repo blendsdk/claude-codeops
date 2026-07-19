@@ -159,9 +159,10 @@ The lead context always merges the returned PA-NNN findings into the single `PF-
 every user interaction — auditors never talk to the user. Sequential scanning remains correct
 when subagents are unavailable.
 
-**Telemetry:** with an active quality profile, emit `preflight_run` when the report is compiled
-and `finding_decided` per finding immediately after each ruling batch (one
-`codeops-events.sh emit` call each; failures never block the scan).
+**Telemetry:** with an active quality profile, emit `preflight_run` when the report is compiled,
+`finding_decided` per finding immediately after each ruling batch, and `gate_summary`
+(gate `preflight_gate`) at the verdict step (one `codeops-events.sh emit` call each; failures
+never block the scan).
 
 ## Iterative re-scanning
 
