@@ -433,6 +433,85 @@ else
   fail "rc=$RC lines=$(count_lines "$h15/$EVENTS_REL") warn='${ERR:0:60}'"
 fi
 
+# =============================================================================
+# Edge cases (implementation tests — internals + boundaries, written after green).
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Edge: stats over an empty or absent events file → friendly notice, exit 0.
+# -----------------------------------------------------------------------------
+section "Edge: stats with empty/absent events file"
+he="$(mk_home)"
+run_util "$he" "$WORK" stats
+if [[ "$RC" -eq 0 ]] && grep -qi 'no events' <<<"$OUT"; then
+  pass "absent file → 'no events' notice, exit 0"
+else
+  fail "absent file mishandled (rc=$RC out='${OUT:0:60}')"
+fi
+mkdir -p "$he/.claude/codeops-telemetry"
+: >"$he/$EVENTS_REL"
+run_util "$he" "$WORK" stats --by agent
+if [[ "$RC" -eq 0 ]] && grep -qi 'no events' <<<"$OUT"; then
+  pass "empty file → 'no events' notice, exit 0"
+else
+  fail "empty file mishandled (rc=$RC out='${OUT:0:60}')"
+fi
+
+# -----------------------------------------------------------------------------
+# Edge: --since window filtering and refusal of an unusable --since value.
+# -----------------------------------------------------------------------------
+section "Edge: --since parsing"
+hs="$(mk_home)"
+mkdir -p "$hs/.claude/codeops-telemetry"
+printf '{"v":1,"ts":"2000-01-01T00:00:00Z","codeops":"0.0.0","project":"acme","src":"hook","event":"skill_invoked","skill":"exec_plan"}\n' >"$hs/$EVENTS_REL"
+run_util "$hs" "$WORK" emit task_completed feature=checkout phase=P1 task=1.1.1 verify=pass attempts=1 files_changed=1
+run_util "$hs" "$WORK" stats --since 7d --by event
+if [[ "$RC" -eq 0 ]] && grep -q 'task_completed' <<<"$OUT" && ! grep -q 'skill_invoked' <<<"$OUT"; then
+  pass "--since 7d keeps the fresh event, drops the ancient one"
+else
+  fail "--since window filtering wrong (rc=$RC out='${OUT:0:80}')"
+fi
+run_util "$hs" "$WORK" stats --since banana
+if [[ "$RC" -eq 0 && -z "$OUT" && -n "$ERR" ]]; then
+  pass "unusable --since value → warn, no table, exit 0"
+else
+  fail "unusable --since value mishandled (rc=$RC)"
+fi
+
+# -----------------------------------------------------------------------------
+# Edge: an oversized corrupt line in the events file is skipped, never fatal.
+# -----------------------------------------------------------------------------
+section "Edge: oversized corrupt line skipped by readers"
+hb="$(mk_home)"
+mkdir -p "$hb/.claude/codeops-telemetry"
+{
+  printf '{"v":1,"ts":"2026-07-18T09:00:00Z","codeops":"0.0.0","project":"acme","src":"skill","event":"phase_started","feature":"checkout","phase":"P1","tag":"standard","mode":"inline"}\n'
+  head -c 100000 /dev/zero | tr '\0' 'x'
+  printf '\n'
+  printf '{"v":1,"ts":"2026-07-18T09:10:00Z","codeops":"0.0.0","project":"acme","src":"skill","event":"phase_completed","feature":"checkout","phase":"P1","tag":"standard","mode":"inline"}\n'
+} >"$hb/$EVENTS_REL"
+run_util "$hb" "$WORK" stats --by event
+if [[ "$RC" -eq 0 ]] && grep -q 'phase_started' <<<"$OUT" && grep -q 'phase_completed' <<<"$OUT"; then
+  pass "both valid events aggregated around a 100KB garbage line"
+else
+  fail "oversized corrupt line broke stats (rc=$RC out='${OUT:0:80}')"
+fi
+
+# -----------------------------------------------------------------------------
+# Edge: emit from outside any git repository → project recorded as unknown.
+# -----------------------------------------------------------------------------
+section "Edge: emit outside a git repo → project=unknown"
+hn="$(mk_home)"
+nogit="$(mktemp -d)"
+TMP_DIRS+=("$nogit")
+run_util "$hn" "$nogit" emit skill_invoked skill=exec_plan
+line="$(tail -n1 "$hn/$EVENTS_REL" 2>/dev/null || true)"
+if [[ "$RC" -eq 0 && "$(jget '.project' "$line")" == "unknown" ]]; then
+  pass "non-repo emit accepted with project=unknown"
+else
+  fail "non-repo emit mishandled (rc=$RC project='$(jget '.project' "$line")')"
+fi
+
 # -----------------------------------------------------------------------------
 # SPEC-16 — containment meta-assertion: the whole run wrote nothing to the real home's
 # telemetry file (every invocation above used a sandbox home).
