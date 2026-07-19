@@ -22,7 +22,7 @@ argument-hint: "[--continue]"
 
 # techdocs — Technical Architecture Documentation
 
-> **CodeOps Skills Version**: 3.9.0
+> **CodeOps Skills Version**: 3.10.0
 
 Create and maintain a living, VitePress-compatible technical architecture documentation set in
 the project's `docs/` directory, capturing accumulated design knowledge across requirements and
