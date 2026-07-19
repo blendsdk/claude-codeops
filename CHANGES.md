@@ -2,6 +2,43 @@
 
 ## Changelog
 
+### 3.10.0 — Quality agents, per-repo quality profiles, and telemetry (2026-07-19)
+
+Additive and dormant-by-default — repos without a quality-profile block behave exactly as
+before; no document migration.
+
+- **Seven quality agents** join the two executors in `agents/`: `phase-reviewer` (one phase
+  diff, base + add-on lenses, RV findings), `spec-test-author` (implementation-blind spec tests
+  with a FORBIDDEN-file contract, red-phase confirmation), `security-auditor` (one dispatch per
+  phase with the union of the active checklists — owasp-web, auth-protocol, financial-integrity,
+  tenant-isolation, mcp-agent; SA findings), `preflight-auditor` (one artifact × one dimension
+  cluster, evidence + self-refutation; PA findings), `design-challenger` (blind second opinion
+  for the recommendation-hardening protocol), `perf-auditor` (cost-model-driven; PE findings),
+  and `codebase-scout` (facts with `file:line`, ≤3 dispatches per skill run). All reviewers are
+  read-only and report "no findings" explicitly.
+- **Per-repo quality profile.** A `<!-- CODEOPS-QUALITY -->` sentinel block in the project's
+  `CLAUDE.md` — written by `/setup_routing` alongside the routing block, hand-edits welcome —
+  activates the loop: add-on lenses (7-value grow-only enum; `standards` is base-only),
+  security profiles, `perf_critical`, `review_hook`, `telemetry`, `agent_models` overrides.
+  Canonical definition in `_shared/quality-profile.md`; parsing is lenient per key.
+- **exec_plan quality loop.** Phase-start refs, `[spec-author]` task dispatch, and a post-phase
+  quality step: reviewer + active auditors in parallel on the phase diff, severity-grouped
+  rulings — 🔴/🟠 findings pause execution in **every** commit mode (auto-commit automates git,
+  never the ruling), one fix-diff re-review, follow-up commits. `preflight` fans out as five
+  clustered preflight-auditor dispatches (`--thorough` → per-dimension).
+- **Metadata-only telemetry.** `scripts/codeops-events.sh` appends enum/count/id/hash events —
+  never content — to a local `~/.claude/codeops-telemetry/events.jsonl`; a PostToolUse hook
+  (matcher `Skill|Task|Agent`) records skill and subagent completions deterministically; skills
+  emit workflow events only where a profile is active. Strict whole-line refusal protects the
+  dataset; kill switches: `CODEOPS_TELEMETRY=0`, `telemetry: off`, missing `jq`. New commands:
+  **`/codeops_stats`** (relay the aggregated tables) and **`/codeops_retro`** (thresholds +
+  plugin-bucket vs profile-bucket verdicts) — the suite reaches **21 slash commands**.
+- **Guards + spec suite.** `telemetry-check.sh` (16 spec cases, written red-first, plus edge
+  cases) joins the verify chain; validate.sh gains ST-68…ST-73 (agent frontmatter, roster,
+  quality-profile enums, taxonomy drift, hook registration, catalog drift), mutation-verified.
+- Docs: new Guide pages (Quality profile, Telemetry) + Reference page (Agents); README/TUTORIAL
+  sections. Dev-installer users: re-run `./install.sh` for the new command symlinks.
+
 ### 3.9.0 — GitHub issue commands: `/gh_issues` + `/gh_close` (2026-07-17)
 
 Additive — no document migration; existing workflows untouched.
@@ -40,7 +77,7 @@ Additive — no document migration; existing roadmaps and workflows are untouche
   dashboard. Stale counters or stages are noted with a suggestion to run `update_roadmap`, never
   silently rewritten. The command ships as a manual-only thin alias (`disable-model-invocation`),
   while "show the roadmap" / "roadmap status" / "where do things stand" also trigger the parent
-  skill. This grew the command suite from 17 to 19.
+  skill. This brought the suite to nineteen slash commands.
 
 Behavioral + format guidance, no document migration — existing `CLAUDE.md` files keep working and
 can be slimmed on demand.
