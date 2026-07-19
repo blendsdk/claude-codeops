@@ -297,11 +297,72 @@ finish_line() {
 }
 
 # ---------------------------------------------------------------------------
-# emit --stdin (hook mode) — implemented with the hook wiring.
+# emit --stdin (hook mode) — reads one PostToolUse payload from stdin.
+#
+# Skill tool          → skill_invoked  (skill name from the tool input)
+# Agent tool          → agent_completed; when line 1 of the prompt is a dispatch header
+#                       of the form [codeops-dispatch agent=<a> feature=<f> phase=<p>]
+#                       those fields are populated — absent or malformed headers still
+#                       emit the event with the fields omitted, so the gap is measurable.
+# Task tool           → same as Agent (legacy alias of the subagent tool).
+# Anything else       → silently ignored (the hook matcher should not send it).
 # ---------------------------------------------------------------------------
 emit_from_stdin() {
-  cat >/dev/null 2>&1 || true
-  warn "hook mode not yet available — refused"
+  local src="$1" payload tool session ms first_line inner tokpair k v skill event=""
+  payload="$(cat 2>/dev/null || true)"
+  if ! jq -e . >/dev/null 2>&1 <<<"$payload"; then
+    warn "malformed hook payload JSON — refused"
+    return
+  fi
+  tool="$(jq -r '.tool_name // ""' <<<"$payload")"
+  session="$(jq -r '.session_id // ""' <<<"$payload")"
+  ms="$(jq -r '.duration.elapsed_milliseconds // .tool_response.totalDurationMs // ""' <<<"$payload")"
+  ms="${ms%%.*}"
+
+  B_KEYS=()
+  B_VALS=()
+  case "$tool" in
+    Skill)
+      event="skill_invoked"
+      skill="$(jq -r '.tool_input.skill // ""' <<<"$payload")"
+      if ! validate_value "$event" "skill" "$skill"; then
+        warn "hook payload lacks a usable skill name — refused"
+        return
+      fi
+      B_KEYS+=("skill")
+      B_VALS+=("$skill")
+      ;;
+    Agent|Task)
+      event="agent_completed"
+      first_line="$(jq -r '.tool_input.prompt // "" | split("\n")[0]' <<<"$payload")"
+      if [[ "$first_line" == "[codeops-dispatch "*"]" ]]; then
+        inner="${first_line#\[codeops-dispatch }"
+        inner="${inner%]}"
+        for tokpair in $inner; do
+          [[ "$tokpair" == *=* ]] || continue
+          k="${tokpair%%=*}"
+          v="${tokpair#*=}"
+          case "$k" in
+            agent|feature|phase)
+              if validate_value "$event" "$k" "$v"; then
+                B_KEYS+=("$k")
+                B_VALS+=("$v")
+              fi
+              ;;
+          esac
+        done
+      fi
+      if [[ -n "$ms" && "$ms" =~ ^[0-9]+$ ]]; then
+        B_KEYS+=("duration_s")
+        B_VALS+=("$((ms / 1000))")
+      fi
+      ;;
+    *)
+      return
+      ;;
+  esac
+
+  build_and_append "$event" "$src" "$session" 0
 }
 
 # ---------------------------------------------------------------------------
