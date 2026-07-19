@@ -40,7 +40,7 @@ Additive — no document migration; existing roadmaps and workflows are untouche
   dashboard. Stale counters or stages are noted with a suggestion to run `update_roadmap`, never
   silently rewritten. The command ships as a manual-only thin alias (`disable-model-invocation`),
   while "show the roadmap" / "roadmap status" / "where do things stand" also trigger the parent
-  skill. This brings the suite to **19 slash commands**.
+  skill. This grew the command suite from 17 to 19.
 
 Behavioral + format guidance, no document migration — existing `CLAUDE.md` files keep working and
 can be slimmed on demand.
