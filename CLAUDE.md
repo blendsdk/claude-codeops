@@ -36,8 +36,9 @@
 - `_shared/` — reference docs linked by skills (layout-convention, zero-ambiguity-gate, spec-first-ordering, recommendation-hardening, quality-profile); at the plugin root, not under `skills/`, linked as `../../_shared/…`.
 - `commands/*.md` — the 21 slash commands (frontmatter `description`), incl. `/codeops_stats` + `/codeops_retro` (telemetry consumers).
 - `agents/` — plugin-shipped subagents: 2 executors (`plan-task-executor`, `plan-task-executor-opus`) + 7 quality agents (`phase-reviewer`, `spec-test-author`, `security-auditor`, `preflight-auditor`, `design-challenger`, `perf-auditor`, `codebase-scout`).
-- `hooks/hooks.json` — SessionStart standards hook + PreToolUse `.codeops.yml` marker guard + PostToolUse telemetry hook (`Skill|Task|Agent` → `codeops-events.sh`).
+- `hooks/hooks.json` — SessionStart standards + output-style hooks + PreToolUse `.codeops.yml` marker guard + PostToolUse telemetry hook (`Skill|Task|Agent` → `codeops-events.sh`).
 - `standards/coding-standards.md` — always-on injected core (≤50 lines); full text in `coding-standards-full.md`.
+- `standards/output-style.md` — always-on injected reporting rules; the two injected files are capped together at 65 lines (ST-74).
 - `scripts/` — Bash spec suites + engines: `validate.sh`, `docs-check.sh`, `migration-check.sh`, `compact-check.sh`, `telemetry-check.sh`, `codeops-migrate.sh`, `codeops-roadmap-sync.sh`, `codeops-roadmap-compact.sh`, `codeops-events.sh` (telemetry utility — sole reader/writer of `~/.claude/codeops-telemetry/events.jsonl`), `fixtures/`.
 - `bin/codeops-worktree` — user-facing worktree CLI (installed by the dev installer, not the marketplace plugin); carries a version stamp watched by `validate.sh`.
 - `docs/` — VitePress documentation site (`.vitepress/config.ts`, guide/skills/tutorials/reference).

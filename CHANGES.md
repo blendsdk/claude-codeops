@@ -2,6 +2,23 @@
 
 ## Changelog
 
+### 3.11.0 — Always-on output style (2026-07-20)
+
+Feature. No configuration change, no document migration; the new rules apply from the next session.
+
+- **A second injected file: `standards/output-style.md`.** The `SessionStart` hook now `cat`s it
+  alongside the coding standards. It governs how Claude reports back — short and tabular, an
+  effort recommendation before starting a task, `/compact` advice at clean boundaries, and a
+  closing **Next steps** section preceded by roadmap progress where a roadmap exists.
+- **Why a separate file.** Interaction style and code-quality standards are different concerns,
+  and the standards core had no headroom left under its 50-line diet. Splitting keeps each
+  document single-purpose rather than displacing security or testing rules to buy room.
+- **The budget guard got stronger, not weaker.** `validate.sh` still caps the standards core at
+  50 lines and now also caps the two injected files *together* at 65 (ST-74), so a split can
+  never become a quiet way to grow what every session pays for. ST-74 also pins each of the four
+  rules by sentinel, so a rewording cannot silently drop one.
+- **To turn it off**, disable the plugin — same as the standards hook. There is no separate toggle.
+
 ### 3.10.1 — Telemetry attributes agents from `subagent_type` (2026-07-20)
 
 Fix. No configuration change, no document migration; existing events are untouched.
