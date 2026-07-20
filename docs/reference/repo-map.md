@@ -38,6 +38,7 @@ codeops-skills/                # repo root == plugin root
 ├── hooks/hooks.json           # SessionStart standards + PreToolUse marker guard
 │                              #   + PostToolUse telemetry hook
 ├── standards/coding-standards.md  # always-on standards (single source)
+├── standards/output-style.md      # always-on reporting rules (injected beside the standards)
 ├── scripts/                   # validate.sh, docs-check.sh, migration-check.sh,
 │                              #   codeops-migrate.sh, codeops-roadmap-sync.sh,
 │                              #   codeops-events.sh (telemetry), telemetry-check.sh, fixtures/

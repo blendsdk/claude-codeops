@@ -3,7 +3,7 @@
 These are the always-on standards the plugin injects into every session via the `SessionStart` hook.
 The canonical, full text lives in
 [`standards/coding-standards.md`](https://github.com/blendsdk/claude-codeops/blob/master/standards/coding-standards.md)
-in the repo — this page is a summary. A project's own `CLAUDE.md` may override specific points.
+and `standards/output-style.md` in the repo — this page is a summary. A project's own `CLAUDE.md` may override specific points.
 
 ## Quality & structure
 
@@ -64,3 +64,15 @@ in the repo — this page is a summary. A project's own `CLAUDE.md` may override
   prompts + a definition-of-done rubric and close with a `Confidence:` / `Hardening:` disclosure; for
   high-stakes decisions an independent challenger is spawned and reconciled. See
   [Concepts → Recommendation hardening](/guide/concepts#recommendation-hardening).
+
+## Output style
+
+Injected from `standards/output-style.md`, a second always-on file. It governs how Claude reports
+back, not how it writes code.
+
+| Rule | What it means in practice |
+|------|---------------------------|
+| **Short and tabular** | Findings, comparisons, status and file lists go in a table; prose only where a table can't carry the reasoning. No narrating work already visible in the transcript. |
+| **Effort recommendation first** | Before the first tool call of a task: the recommended level, the reason, and a reminder that `/effort` can change it. |
+| **`/compact` advice** | Offered at clean boundaries — after a phase verifies, before `preflight` or `make_plan`, on a project switch — never mid-task. |
+| **Next steps** | Every answer with a follow-on action ends with a small table of what to do and who owns it, preceded by roadmap progress (done / total + remaining items) when the repo has a roadmap. |

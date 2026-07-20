@@ -1,6 +1,6 @@
 # Preflight — Report Format, Presentation & Persistence (detail)
 
-> **CodeOps Skills Version**: 3.10.1
+> **CodeOps Skills Version**: 3.11.0
 
 Covers Steps 4-8 of the protocol: compiling the report, presenting findings and collecting
 decisions, pass/fail determination, applying fixes, and roadmap sync — plus iterative re-scan

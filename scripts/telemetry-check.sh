@@ -14,7 +14,7 @@
 # It NEVER mutates a committed fixture — fixtures are copied into temp dirs first, and
 # every utility invocation runs with an overridden HOME inside the sandbox.
 #
-# CodeOps Skills Version: 3.10.1
+# CodeOps Skills Version: 3.11.0
 #
 # Usage:  ./scripts/telemetry-check.sh
 # Exit:   0 = all checks pass (green); non-zero = at least one check failed (red).

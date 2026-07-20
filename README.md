@@ -81,9 +81,12 @@ behind in your `~/.claude/CLAUDE.md` to clean up (because the plugin never edite
 ## Always-on standards
 
 The plugin bundles a single source of truth for the universal coding/testing/working-style
-standards: [`standards/coding-standards.md`](standards/coding-standards.md). A `SessionStart`
-hook ([`hooks/hooks.json`](hooks/hooks.json)) `cat`s that file into the context of every new
-session, so the standards are always present with **zero setup**.
+standards: [`standards/coding-standards.md`](standards/coding-standards.md). Beside it,
+[`standards/output-style.md`](standards/output-style.md) carries the reporting rules — short and
+tabular, an effort recommendation before each task, `/compact` advice at clean boundaries, and a
+closing **Next steps** section with roadmap progress. A `SessionStart` hook
+([`hooks/hooks.json`](hooks/hooks.json)) `cat`s both files into the context of every new session,
+so they are always present with **zero setup**.
 
 - This fires on every session start (including after `/clear` and context compaction).
 - It is read-only — the hook only reads a file shipped inside the plugin; it never writes anything.
@@ -160,6 +163,7 @@ codeops-skills/                # repo root == plugin root
 ├── _shared/                   # shared conventions (gates, hardening, quality-profile.md)
 ├── hooks/hooks.json           # SessionStart standards + PreToolUse guard + PostToolUse telemetry
 ├── standards/coding-standards.md  # always-on coding/testing/working-style standards (single source)
+├── standards/output-style.md      # always-on reporting rules (terse/tabular, Next steps, effort)
 ├── scripts/                   # validate.sh + the Bash spec suites + codeops-events.sh (telemetry)
 ├── bin/codeops-worktree       # CLI: git worktrees for parallel agents (dev installer → PATH)
 ├── install.sh / uninstall.sh  # optional in-repo dev installer (symlink loop)

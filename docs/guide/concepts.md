@@ -49,6 +49,12 @@ new session, so the standards are always present with **zero setup**.
 
 See the summarized standards in the [Reference](/reference/standards).
 
+Since 3.11.0 a second file is injected alongside it: `standards/output-style.md`, holding the
+reporting rules — keep answers short and tabular, recommend an effort level before starting a
+task, advise `/compact` at clean boundaries, and close with **Next steps** plus roadmap progress.
+It is separate because interaction style and code quality are different concerns; `validate.sh`
+caps the two files together, so splitting them cannot quietly grow what every session pays for.
+
 Since 3.2.0 the injected text is a compact core (~50 lines); the complete standards live in the
 plugin's `standards/coding-standards-full.md`, which Claude reads on demand. Don't duplicate the
 standards in your own `~/.claude/CLAUDE.md` — you'd pay the tokens twice every session. A second

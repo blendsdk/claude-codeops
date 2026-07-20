@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.10.1"
+CODEOPS_VERSION="3.11.0"
 
 FAILURES=0
 
@@ -1744,6 +1744,47 @@ if [[ -f "$EV_UTIL" ]]; then
     fi
   done
   [[ "$lens_drift" -eq 0 && -n "$QP_LENSES" ]] && pass "utility accepts all lens enum values"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-74 — the output-style rules ship as their own injected file.
+#
+# Interaction style and code-quality standards are separate concerns, so they live in
+# separate documents; both are injected at SessionStart, which makes the meaningful budget
+# the SUM of the two, not either one alone. ST-35 keeps guarding the standards core; this
+# check guards the combined injected volume so splitting the file cannot become a way to
+# grow it unnoticed. Sentinels are quoted so a rewording can't silently drop a rule.
+# -----------------------------------------------------------------------------
+section "ST-74: output-style rules are injected and the combined budget holds"
+OUTPUT_STYLE="standards/output-style.md"
+if [[ -s "$OUTPUT_STYLE" ]]; then
+  pass "$OUTPUT_STYLE exists and is non-empty"
+else
+  fail "$OUTPUT_STYLE is missing or empty"
+fi
+style_lines="$(wc -l <"$OUTPUT_STYLE" 2>/dev/null | tr -d ' ')"
+if [[ -z "$style_lines" ]]; then
+  fail "cannot measure the combined injected budget — $OUTPUT_STYLE is unreadable"
+else
+  combined_lines=$(( core_lines + style_lines ))
+  if [[ "$combined_lines" -le 65 ]]; then
+    pass "combined injected standards are slim ($combined_lines lines <= 65)"
+  else
+    fail "combined injected standards are $combined_lines lines (> 65)"
+  fi
+fi
+# Each of the four user-facing behaviours the file exists to guarantee.
+for sentinel in "tabular" "Next steps" "effort" "/compact"; do
+  if grep -qiF "$sentinel" "$OUTPUT_STYLE" 2>/dev/null; then
+    pass "$OUTPUT_STYLE carries the \"$sentinel\" rule"
+  else
+    fail "$OUTPUT_STYLE lost the \"$sentinel\" rule"
+  fi
+done
+if is_valid_json "$HOOKS" && grep -qF 'standards/output-style.md' "$HOOKS" 2>/dev/null; then
+  pass "hooks.json injects $OUTPUT_STYLE at SessionStart"
+else
+  fail "hooks.json does not inject $OUTPUT_STYLE at SessionStart"
 fi
 
 # -----------------------------------------------------------------------------
