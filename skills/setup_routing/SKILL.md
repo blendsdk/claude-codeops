@@ -9,7 +9,7 @@ argument-hint: "[short description of the project]"
 
 # Model & Effort Routing Setup (`setup_routing`)
 
-> **CodeOps Skills Version**: 3.10.0
+> **CodeOps Skills Version**: 3.10.1
 
 Configure **per-project model and effort routing** for the project the user is currently in, so
 that expensive reasoning (Opus, high/xhigh thinking) is spent only where it changes output

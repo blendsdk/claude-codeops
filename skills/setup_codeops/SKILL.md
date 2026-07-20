@@ -9,7 +9,7 @@ argument-hint: "[--dry-run | --yes]"
 
 # CodeOps Layout Setup (`setup_codeops`)
 
-> **CodeOps Skills Version**: 3.10.0
+> **CodeOps Skills Version**: 3.10.1
 
 Set up the CodeOps **nested `codeops/` layout** for the git repo the user is currently in. Run as
 `/codeops:setup_codeops` or the typeable alias `/setup_codeops`. This is the one skill that

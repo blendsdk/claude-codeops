@@ -22,7 +22,7 @@
 # fields ever land in the file — never free text. Free text goes through --hash-text,
 # which stores the first 8 hex of its SHA-256 and discards the text.
 #
-# CodeOps Skills Version: 3.10.0
+# CodeOps Skills Version: 3.10.1
 
 set -uo pipefail
 
@@ -296,6 +296,26 @@ finish_line() {
   append_line "$json"
 }
 
+# codeops_agent_from_subagent_type <subagent_type> — print the CodeOps agent name, or nothing.
+#
+# A dispatch belongs to CodeOps when the tool's subagent_type is "codeops:<name>", or a bare
+# "<name>" matching a definition in the plugin's own agents/ directory. Resolving against that
+# directory keeps a single source of truth — adding or renaming an agent needs no edit here — and
+# it still attributes a project-local override in .claude/agents/, which arrives without the
+# prefix. Anything else (Explore, general-purpose, a user's own agent) is not a CodeOps dispatch
+# and yields nothing, so ordinary agent use never pollutes per-agent statistics.
+codeops_agent_from_subagent_type() {
+  local raw="$1" name agents_dir
+  [[ -n "$raw" ]] || return 0
+  name="${raw#codeops:}"
+  # A plain agent name only — this value reaches a filesystem path, so anything containing a
+  # separator or traversal is refused rather than canonicalized.
+  [[ "$name" =~ ^[A-Za-z0-9_-]+$ ]] || return 0
+  agents_dir="$(cd -- "$(dirname -- "$SELF")/../agents" 2>/dev/null && pwd)" || return 0
+  [[ -f "$agents_dir/$name.md" ]] && printf '%s' "$name"
+  return 0
+}
+
 # ---------------------------------------------------------------------------
 # emit --stdin (hook mode) — reads one PostToolUse payload from stdin.
 #
@@ -308,7 +328,7 @@ finish_line() {
 # Anything else       → silently ignored (the hook matcher should not send it).
 # ---------------------------------------------------------------------------
 emit_from_stdin() {
-  local src="$1" payload tool session ms first_line inner tokpair k v skill event=""
+  local src="$1" payload tool session ms first_line inner tokpair k v skill event="" dispatched_agent=""
   payload="$(cat 2>/dev/null || true)"
   if ! jq -e . >/dev/null 2>&1 <<<"$payload"; then
     warn "malformed hook payload JSON — refused"
@@ -334,6 +354,10 @@ emit_from_stdin() {
       ;;
     Agent|Task)
       event="agent_completed"
+      # The tool's own subagent_type is what actually ran, so it outranks the prose header —
+      # which only some dispatch paths require and which can go stale when copy-pasted.
+      dispatched_agent="$(codeops_agent_from_subagent_type \
+        "$(jq -r '.tool_input.subagent_type // ""' <<<"$payload")")"
       first_line="$(jq -r '.tool_input.prompt // "" | split("\n")[0]' <<<"$payload")"
       if [[ "$first_line" == "[codeops-dispatch "*"]" ]]; then
         inner="${first_line#\[codeops-dispatch }"
@@ -343,7 +367,17 @@ emit_from_stdin() {
           k="${tokpair%%=*}"
           v="${tokpair#*=}"
           case "$k" in
-            agent|feature|phase)
+            agent)
+              # Only a fallback: when subagent_type identified the agent, the header's claim is
+              # ignored, since a copy-pasted header can name an agent that never ran.
+              [[ -n "$dispatched_agent" ]] && continue
+              if validate_value "$event" "$k" "$v"; then
+                B_KEYS+=("$k")
+                B_VALS+=("$v")
+              fi
+              ;;
+            feature|phase)
+              # Not derivable from the payload, so the header remains their sole source.
               if validate_value "$event" "$k" "$v"; then
                 B_KEYS+=("$k")
                 B_VALS+=("$v")
@@ -351,6 +385,10 @@ emit_from_stdin() {
               ;;
           esac
         done
+      fi
+      if [[ -n "$dispatched_agent" ]]; then
+        B_KEYS+=("agent")
+        B_VALS+=("$dispatched_agent")
       fi
       if [[ -n "$ms" && "$ms" =~ ^[0-9]+$ ]]; then
         B_KEYS+=("duration_s")

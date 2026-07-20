@@ -14,7 +14,7 @@
 # It NEVER mutates a committed fixture — fixtures are copied into temp dirs first, and
 # every utility invocation runs with an overridden HOME inside the sandbox.
 #
-# CodeOps Skills Version: 3.10.0
+# CodeOps Skills Version: 3.10.1
 #
 # Usage:  ./scripts/telemetry-check.sh
 # Exit:   0 = all checks pass (green); non-zero = at least one check failed (red).
@@ -232,6 +232,74 @@ if [[ "$(jget '.event' "$l3")" == "agent_completed" && "$(jget '.agent' "$l3")" 
   pass "legacy Task tool name accepted as alias"
 else
   fail "legacy Task payload mishandled"
+fi
+
+# -----------------------------------------------------------------------------
+# SPEC-6B — agent attribution comes from the payload's subagent_type, not the prose header.
+# A CodeOps dispatch is one whose subagent_type is "codeops:<name>" OR a bare "<name>" that
+# matches a file in the plugin's own agents/ directory. Anything else is not a CodeOps dispatch
+# and carries no agent field. The header remains the fallback source of agent when subagent_type
+# is absent, and the sole source of feature/phase in every case.
+# -----------------------------------------------------------------------------
+section "SPEC-6B: agent attribution from subagent_type"
+h6b="$(mk_home)"
+ev6b="$h6b/$EVENTS_REL"
+run_util "$h6b" "$WORK" emit --src hook --stdin <"$FIXTURES/hook-payloads/agent-bare-name.json"
+rc_d=$RC
+run_util "$h6b" "$WORK" emit --src hook --stdin <"$FIXTURES/hook-payloads/agent-unknown-type.json"
+rc_e=$RC
+run_util "$h6b" "$WORK" emit --src hook --stdin <"$FIXTURES/hook-payloads/agent-no-subagent-type.json"
+rc_f=$RC
+run_util "$h6b" "$WORK" emit --src hook --stdin <"$FIXTURES/hook-payloads/agent-conflict.json"
+rc_g=$RC
+if [[ "$rc_d" -eq 0 && "$rc_e" -eq 0 && "$rc_f" -eq 0 && "$rc_g" -eq 0 && "$(count_lines "$ev6b")" == "4" ]]; then
+  pass "four lines appended, all exit 0"
+else
+  fail "rc=$rc_d/$rc_e/$rc_f/$rc_g lines=$(count_lines "$ev6b")"
+fi
+m1="$(sed -n 1p "$ev6b" 2>/dev/null || true)"
+m2="$(sed -n 2p "$ev6b" 2>/dev/null || true)"
+m3="$(sed -n 3p "$ev6b" 2>/dev/null || true)"
+m4="$(sed -n 4p "$ev6b" 2>/dev/null || true)"
+
+# A bare name matching agents/codebase-scout.md is a CodeOps dispatch even with no header at all.
+if [[ "$(jget '.event' "$m1")" == "agent_completed" && "$(jget '.agent' "$m1")" == "codebase-scout" ]]; then
+  pass "bare subagent_type matching agents/ → attributed"
+else
+  fail "bare name not attributed: $(jget '.agent' "$m1")"
+fi
+# No header on that payload, so feature/phase stay absent — attribution must not invent them.
+if [[ "$(jget 'has("feature")' "$m1")" == "false" && "$(jget 'has("phase")' "$m1")" == "false" ]]; then
+  pass "bare name without header → feature/phase omitted"
+else
+  fail "feature/phase invented: $(jget '{feature,phase}' "$m1")"
+fi
+# general-purpose is not a CodeOps agent; the event is kept but must carry no agent field,
+# otherwise ordinary agent use pollutes per-agent stats.
+if [[ "$(jget '.event' "$m2")" == "agent_completed" && "$(jget 'has("agent")' "$m2")" == "false" ]]; then
+  pass "unknown subagent_type → event kept, agent omitted"
+else
+  fail "non-CodeOps agent attributed: $(jget '.agent' "$m2")"
+fi
+# Absent subagent_type falls back to the header, so no dispatch that works today regresses.
+if [[ "$(jget '.agent' "$m3")" == "perf-auditor" && "$(jget '.feature' "$m3")" == "billing" \
+   && "$(jget '.phase' "$m3")" == "P7" ]]; then
+  pass "no subagent_type → header fallback populates agent/feature/phase"
+else
+  fail "header fallback failed: $(jget '{agent,feature,phase}' "$m3")"
+fi
+# When the two disagree the payload wins: subagent_type is what the tool actually ran,
+# the header is prose that can go stale.
+if [[ "$(jget '.agent' "$m4")" == "security-auditor" ]]; then
+  pass "subagent_type wins over a conflicting header agent"
+else
+  fail "conflict resolved wrongly: $(jget '.agent' "$m4")"
+fi
+# feature/phase still come from the header even when its agent field was overridden.
+if [[ "$(jget '.feature' "$m4")" == "checkout" && "$(jget '.phase' "$m4")" == "P4" ]]; then
+  pass "header still owns feature/phase on conflict"
+else
+  fail "feature/phase lost on conflict: $(jget '{feature,phase}' "$m4")"
 fi
 
 # -----------------------------------------------------------------------------

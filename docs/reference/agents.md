@@ -27,6 +27,14 @@ spec-test-author gets spec excerpts, planned interfaces, and a FORBIDDEN impleme
 list it must never open; the challenger gets the problem and options without the dispatcher's
 preference. The canonical packet definitions live in the plugin's `_shared/quality-profile.md`.
 
+For telemetry, the agent is identified from the dispatch tool's own `subagent_type`, not from that
+header — so a run is attributed even on the dispatch paths that do not carry one. A dispatch counts
+as CodeOps when its `subagent_type` is `codeops:<name>` or a bare `<name>` matching an agent the
+plugin ships, which also attributes project-local overrides in `.claude/agents/`. Ordinary agent
+use (`Explore`, `general-purpose`, your own agents) is recorded without an agent name, so it never
+appears in per-agent statistics. The header remains the only source of `feature` and `phase`, and
+is still read as a fallback when `subagent_type` is absent.
+
 All finding-producing agents are read-only — they never edit, fix, or commit — and report
 "no findings" explicitly rather than returning empty output.
 
