@@ -315,7 +315,7 @@ cat > codeops/00-roadmap.md <<PORTFOLIO || fail_apply "write codeops/00-roadmap.
 > **Status**: Active
 > **Last Updated**: $today
 > **Features**: 0 / 1 done
-> **CodeOps Skills Version**: 3.10.0
+> **CodeOps Skills Version**: 3.10.1
 
 ## Legend
 
