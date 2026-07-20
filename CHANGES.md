@@ -2,6 +2,28 @@
 
 ## Changelog
 
+### 3.10.1 — Telemetry attributes agents from `subagent_type` (2026-07-20)
+
+Fix. No configuration change, no document migration; existing events are untouched.
+
+- **Agent attribution no longer depends on the dispatch header.** The
+  `[codeops-dispatch agent=… feature=… phase=…]` header is only required on the post-phase
+  quality-loop path, so `codebase-scout`, `design-challenger`, `spec-test-author` and both
+  executors never appeared in `/codeops_stats --by agent` — the telemetry was blind to five of
+  the nine agents. `scripts/codeops-events.sh` now identifies the agent from the dispatch tool's
+  own `subagent_type`.
+- **What counts as a CodeOps dispatch.** A `subagent_type` carrying the `codeops:` prefix, or a
+  bare name matching an agent the plugin ships — so project-local overrides in `.claude/agents/`
+  attribute correctly too. Resolving against the shipped `agents/` directory keeps one source of
+  truth: adding or renaming an agent needs no change to the utility.
+- **Ordinary agent use stays out of the per-agent view.** Spawns such as `Explore` or
+  `general-purpose` are still recorded, but without an agent name, so they cannot skew per-agent
+  statistics.
+- **Nothing regresses.** The header remains the sole source of `feature` and `phase`, which are
+  not derivable from the payload, and is still read as a fallback for the agent when
+  `subagent_type` is absent. Where the two disagree, the payload wins — a copy-pasted header can
+  name an agent that never ran.
+
 ### 3.10.0 — Quality agents, per-repo quality profiles, and telemetry (2026-07-19)
 
 Additive and dormant-by-default — repos without a quality-profile block behave exactly as

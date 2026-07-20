@@ -19,7 +19,10 @@ ever. The `scripts/codeops-events.sh` utility is the file's only reader and writ
 ## How events flow
 
 - A **PostToolUse hook** records skill invocations and quality-agent completions
-  automatically (deterministic, no model involvement).
+  automatically (deterministic, no model involvement). Which agent ran is read from the dispatch
+  tool's own `subagent_type`, so every agent is attributed regardless of the path that dispatched
+  it — including project-local overrides in `.claude/agents/`. Agent use that is not part of
+  CodeOps is still recorded, but without an agent name, so it never skews per-agent statistics.
 - The **skills emit** workflow events — phases, task completions, review findings and rulings,
   gate summaries — but only in repos whose quality profile is active. A repo without a profile
   block emits nothing from the skills.
