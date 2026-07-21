@@ -9,7 +9,7 @@ argument-hint: "[short description of the project]"
 
 # Model & Effort Routing Setup (`setup_routing`)
 
-> **CodeOps Skills Version**: 3.11.0
+> **CodeOps Skills Version**: 3.12.0
 
 Configure **per-project model and effort routing** for the project the user is currently in, so
 that expensive reasoning (Opus, high/xhigh thinking) is spent only where it changes output
@@ -166,16 +166,29 @@ Apply the writes from [templates.md](templates.md):
 2. **Quality-profile block.** Apply the identical sentinel merge for the
    `<!-- CODEOPS-QUALITY -->` markers (templates.md section 4) — a separate managed region;
    each write touches only its own block.
-3. **Executor overrides (ONLY if the user opted in at Phase 3).** Copy the plugin's executor
-   files into `.claude/agents/` for customization — each only if absent; on a name collision,
-   **report and skip**, or offer a suffixed name — never overwrite a user's file.
-Never touch content outside the managed blocks or pre-existing executor files.
+3. **Generated agent overrides.** Whenever a quality block exists, run
+   `"${CLAUDE_PLUGIN_ROOT}/scripts/codeops-agents-sync.sh"` from the project root — **always**,
+   not only when `agent_models` carries an `effort`. It writes the `.claude/agents/` files the
+   effort overrides need (plugin body verbatim, frontmatter rewritten, marker-stamped) **and
+   prunes generated files a withdrawn override left behind** — so skipping the run when the map
+   has no effort is exactly the case that would strand a dead pin in force. It is a no-op when
+   there is nothing to do. **Never hand-write an agent file to change a model or an effort**;
+   report the engine's output verbatim rather than paraphrasing what it did.
+   If it reports `SKIPPED`, say so prominently: a hand-authored agent of that name shadows the
+   plugin's, so the profile's override for it **is not in effect** until the user removes the
+   file. Never delete it for them.
+4. **Customized prompt bodies (ONLY if the user opted in at Phase 3).** Copy the plugin's agent
+   files into `.claude/agents/` for prompt customization — each only if absent; on a name
+   collision, **report and skip**, or offer a suffixed name — never overwrite a user's file.
+Never touch content outside the managed blocks or pre-existing agent files.
 
 ### Phase 5 — Verify & report
 Summarize exactly what was written and where. Tell the user how to confirm:
 - run `/agents` to see the executors (plugin-shipped, plus any project overrides — a project
   agent of the same name shadows the plugin one);
 - inspect the `<!-- CODEOPS-ROUTING -->` **and** `<!-- CODEOPS-QUALITY -->` blocks in `CLAUDE.md`;
+- re-run `"${CLAUDE_PLUGIN_ROOT}/scripts/codeops-agents-sync.sh" --check` any time (exit 1 means a generated agent is
+  missing or stale against the installed plugin) — the check to reach for after a plugin upgrade;
 - (recommended) run one `exec_plan` task and confirm the Sonnet executor is actually selected.
 
 **Quality-block consumer note:** the quality loop activates on the next `exec_plan` run
@@ -186,7 +199,9 @@ the session model** — mention it so surprising review quality is traceable.
 **Flag the real-world validation explicitly:** whether their Claude Code version honors
 delegation-by-name reliably, and that they should watch their **rework rate** for a week before
 trusting Sonnet on borderline tasks. Also confirm the generated `model:`/`effort:` shorthand is
-valid for their installed Claude Code version (see templates.md). Note that the pinned `model:` and
+valid for their installed Claude Code version (see templates.md). If any generated agents were
+written, say that they are regenerated — not hand-maintained — so a plugin upgrade reaches them via
+`codeops-agents-sync.sh` rather than being silently missed. Note that the pinned `model:` and
 `effort:` win over any model/effort they already set in `settings.json` or env — **except** if they
 have set `CLAUDE_CODE_SUBAGENT_MODEL`, which overrides every subagent's pinned model.
 

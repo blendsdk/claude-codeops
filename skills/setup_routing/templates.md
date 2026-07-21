@@ -10,11 +10,20 @@ the two executor subagents, the sentinel routing block, and the merge rules. Fil
 
 Since v3.2.0 both executors ship with the plugin in its `agents/` directory
 (`agents/plan-task-executor.md`, `agents/plan-task-executor-opus.md`) — the routing block works
-on every install with NO per-project agent writes. Write copies into the TARGET project's
-`.claude/agents/` ONLY when the user opted in at Phase 3 (customized prompts; a project agent of
-the same name shadows the plugin one). For an override: start from the plugin file's current
-content, create each only if it does not already exist, and never overwrite a user's file of the
-same name — report the collision and skip, or offer a suffixed name.
+on every install with NO per-project agent writes.
+
+**Do not hand-copy an agent file to change its model or effort.** Since v3.12.0 that is what
+`agent_models` is for: a model override applies at dispatch time, and an effort override is
+materialized by `"${CLAUDE_PLUGIN_ROOT}/scripts/codeops-agents-sync.sh"`, which copies the plugin's body byte-for-byte and
+rewrites only the frontmatter. A hand copy is a permanent silent fork — it freezes the prompt at
+today's release and never receives another improvement. See `../../_shared/quality-profile.md`.
+
+Write a hand-authored copy into the TARGET project's `.claude/agents/` ONLY when the user wants a
+**customized prompt body** and opted in at Phase 3 (a project agent of the same name shadows the
+plugin one). Start from the plugin file's current content, create each only if it does not already
+exist, and never overwrite a user's file of the same name — report the collision and skip, or offer
+a suffixed name. Such a file carries no `CODEOPS-GENERATED` marker, so the sync engine leaves it
+alone permanently.
 
 > **`model:` field syntax.** These templates use the `sonnet` / `opus` shorthand (also valid:
 > `haiku`, `fable`, `inherit`, or a full model id). Confirm the shorthand is valid for the user's
@@ -28,8 +37,9 @@ same name — report the collision and skip, or offer a suffixed name.
 > of what model or effort the user has already configured** in their CC config. Pinning effort is
 > what makes the Sonnet executor actually run cheap even if the user's session effort is high/xhigh.
 > Effort levels: `low | medium | high | xhigh | max` (available levels depend on the model — Sonnet
-> does not expose `xhigh`). The policy reserves `xhigh`/`max` for planning skills, so the executors
-> cap at `high`.
+> does not expose `xhigh`). The policy reserves `xhigh`/`max` for planning skills, so the **shipped**
+> executors cap at `high`; a repo that genuinely needs more raises it per-repo through
+> `agent_models`, which is a deployment choice rather than a change to what the plugin ships.
 >
 > **The one override that beats these pins:** the `CLAUDE_CODE_SUBAGENT_MODEL` env var sits *above*
 > subagent frontmatter in the precedence order, so a user who sets it forces every subagent onto
@@ -101,9 +111,15 @@ security_profile: [<SECURITY PROFILES>]
 perf_critical: <true|false>
 review_hook: on
 telemetry: on
-agent_models: {}
+agent_models: <AGENT OVERRIDES, or {} >
 <!-- CODEOPS-QUALITY:END -->
 ```
+
+`agent_models` carries per-repo model **and** effort overrides — `{name: model}`,
+`{name: {effort: E}}`, or `{name: {model: M, effort: E}}` (canonical forms and resolution order in
+`_shared/quality-profile.md`). Default to `{}`: propose an entry only where the repo evidence
+justifies it, and say which evidence. Any entry carrying `effort` is materialized as a generated
+file by `"${CLAUDE_PLUGIN_ROOT}/scripts/codeops-agents-sync.sh"` in Phase 4 — never write that file by hand.
 
 Evidence → proposal hints: web request handlers → `owasp-web`; auth/session/token code →
 `auth-protocol`; payment or ledger flows → `financial-integrity`; a multi-tenant schema →

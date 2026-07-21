@@ -17,7 +17,7 @@
 - **Package manager:** npm (dev-only; for the docs build)
 - **Test framework:** none formal — Bash spec suites (`scripts/validate.sh`, `scripts/docs-check.sh`,
   `scripts/migration-check.sh`, `scripts/compact-check.sh`, `scripts/roadmap-sync-check.sh`,
-  `scripts/telemetry-check.sh`) plus the VitePress build's dead-link check
+  `scripts/telemetry-check.sh`, `scripts/agents-sync-check.sh`) plus the VitePress build's dead-link check
 
 ## Commands
 - **Build (docs):** `npm run docs:build`
@@ -25,9 +25,10 @@
 - **Test:** `./scripts/validate.sh` (plugin guard), `./scripts/docs-check.sh` (docs structure/CI),
   `./scripts/migration-check.sh` (flat→nested migration engine, against `scripts/fixtures/flat-repo/`),
   `./scripts/compact-check.sh` (roadmap compact engine, against `scripts/fixtures/bloated-repo/`),
-  `./scripts/roadmap-sync-check.sh` (roadmap sync engine, against `scripts/fixtures/roadmap-repo/`), and
-  `./scripts/telemetry-check.sh` (telemetry utility spec suite, against `scripts/fixtures/telemetry-events/`, sandbox HOME)
-- **Verify (run before every commit):** `./scripts/validate.sh && npm run docs:build && ./scripts/docs-check.sh && ./scripts/migration-check.sh && ./scripts/compact-check.sh && ./scripts/roadmap-sync-check.sh && ./scripts/telemetry-check.sh`
+  `./scripts/roadmap-sync-check.sh` (roadmap sync engine, against `scripts/fixtures/roadmap-repo/`),
+  `./scripts/telemetry-check.sh` (telemetry utility spec suite, against `scripts/fixtures/telemetry-events/`, sandbox HOME), and
+  `./scripts/agents-sync-check.sh` (agent-sync engine spec suite, temp repos against this plugin root)
+- **Verify (run before every commit):** `./scripts/validate.sh && npm run docs:build && ./scripts/docs-check.sh && ./scripts/migration-check.sh && ./scripts/compact-check.sh && ./scripts/roadmap-sync-check.sh && ./scripts/telemetry-check.sh && ./scripts/agents-sync-check.sh`
 - **Clean:** `rm -rf node_modules docs/.vitepress/dist docs/.vitepress/cache`
 
 ## Project structure
@@ -39,7 +40,7 @@
 - `hooks/hooks.json` — SessionStart standards + output-style hooks + PreToolUse `.codeops.yml` marker guard + PostToolUse telemetry hook (`Skill|Task|Agent` → `codeops-events.sh`).
 - `standards/coding-standards.md` — always-on injected core (≤50 lines); full text in `coding-standards-full.md`.
 - `standards/output-style.md` — always-on injected reporting rules; the two injected files are capped together at 65 lines (ST-74).
-- `scripts/` — Bash spec suites + engines: `validate.sh`, `docs-check.sh`, `migration-check.sh`, `compact-check.sh`, `telemetry-check.sh`, `codeops-migrate.sh`, `codeops-roadmap-sync.sh`, `codeops-roadmap-compact.sh`, `codeops-events.sh` (telemetry utility — sole reader/writer of `~/.claude/codeops-telemetry/events.jsonl`), `fixtures/`.
+- `scripts/` — Bash spec suites + engines: `validate.sh`, `docs-check.sh`, `migration-check.sh`, `compact-check.sh`, `telemetry-check.sh`, `codeops-migrate.sh`, `codeops-roadmap-sync.sh`, `codeops-roadmap-compact.sh`, `codeops-agents-sync.sh` (materializes per-repo agent effort overrides from `agent_models`; sole owner of `CODEOPS-GENERATED` files), `codeops-events.sh` (telemetry utility — sole reader/writer of `~/.claude/codeops-telemetry/events.jsonl`), `fixtures/`.
 - `bin/codeops-worktree` — user-facing worktree CLI (installed by the dev installer, not the marketplace plugin); carries a version stamp watched by `validate.sh`.
 - `docs/` — VitePress documentation site (`.vitepress/config.ts`, guide/skills/tutorials/reference).
 - `.github/workflows/docs.yml` — builds + deploys the docs site to GitHub Pages.

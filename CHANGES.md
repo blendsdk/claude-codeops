@@ -2,6 +2,38 @@
 
 ## Changelog
 
+### 3.12.0 — Per-repo effort overrides without forking a prompt (2026-07-21)
+
+Feature. Backward compatible: an `agent_models` map of plain model names keeps working unchanged,
+and repos with no effort override get no new files.
+
+- **`agent_models` now carries effort, not just model.** Three value forms: `name: model` (as
+  before), `name: {effort: E}`, and `name: {model: M, effort: E}`. Efforts are `low`, `medium`,
+  `high`, `xhigh`, `max` — availability still depends on the model.
+- **Why this needed building.** Claude Code can redirect a subagent's model at dispatch time but
+  reads effort only from the agent's own frontmatter — no dispatch parameter, env var, or
+  settings key. So the only way to raise one reviewer to `xhigh` was to copy the plugin's whole
+  agent file into `.claude/agents/`, which shadows it permanently. That copy freezes the prompt
+  at the release it was taken from: every later improvement the plugin ships silently never
+  arrives, and nothing warns. Repos that customized a few agents ended up with several frozen
+  prompt files differing from upstream by one frontmatter line.
+- **`scripts/codeops-agents-sync.sh` generates those files instead.** Body copied byte-for-byte
+  from the plugin, only `model:`/`effort:` rewritten, and a `CODEOPS-GENERATED` marker recording
+  the plugin version that produced it. Regeneration is a no-op when nothing changed, a stale
+  stamp is detectable (`--check` exits 1 — the check to run after a plugin upgrade), and
+  withdrawing an override prunes its file instead of leaving a dead pin in force.
+- **The marker is the ownership boundary.** The engine owns files carrying it and nothing else.
+  An agent file without one is hand-authored: reported, never overwritten, never pruned. Forking
+  a prompt deliberately stays fully supported — it just stops being the only way to change one
+  frontmatter line.
+- **`/setup_routing` runs the engine** in its write phase and no longer tells anyone to hand-copy
+  an agent to retune it. `scripts/agents-sync-check.sh` is the engine's specification suite
+  (ST-1…ST-14, including body fidelity, idempotency, and never executing profile data);
+  `validate.sh` ST-75 pins the engine, the convention, and the skill together so none can drift.
+- **Upstream.** The generation step exists only because effort has no configuration surface;
+  `anthropics/claude-code#79866` proposes one. If it lands, these generated files become
+  unnecessary and the engine's job reduces to pruning them.
+
 ### 3.11.0 — Always-on output style (2026-07-20)
 
 Feature. No configuration change, no document migration; the new rules apply from the next session.
