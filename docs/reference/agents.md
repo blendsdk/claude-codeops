@@ -42,5 +42,20 @@ All finding-producing agents are read-only — they never edit, fix, or commit �
 
 A pinned model that is unavailable on your account (for example, absent from an organization's
 model allowlist) **silently falls back to the session model**. There is no error and no warning
-— if review quality seems off on a restricted account, check this first. Per-repo overrides go
-through the quality profile's `agent_models` map (see [Quality profile](/guide/quality-profile)).
+— if review quality seems off on a restricted account, check this first. The same is true of an
+effort level the model does not offer.
+
+## Customizing an agent for one repo
+
+Per-repo model **and** effort overrides go through the quality profile's `agent_models` map (see
+[Quality profile](/guide/quality-profile#per-repo-model-and-effort-overrides)) — for example
+`{phase-reviewer: {effort: xhigh}}`.
+
+**Do not copy an agent file into `.claude/agents/` to change its model or effort.** A copy
+shadows the plugin's agent permanently and freezes its prompt at the release you copied from, so
+every later improvement silently passes the repo by. Overrides carrying an effort are generated
+and version-stamped for you by `"${CLAUDE_PLUGIN_ROOT}/scripts/codeops-agents-sync.sh"`, which `/setup_routing` runs;
+`--check` afterwards tells you whether anything has gone stale.
+
+Copying an agent file is still the right move when you want a genuinely different **prompt**. Such
+a file carries no `CODEOPS-GENERATED` marker, and the sync engine leaves it alone permanently.

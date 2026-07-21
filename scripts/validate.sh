@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.11.0"
+CODEOPS_VERSION="3.12.0"
 
 FAILURES=0
 
@@ -1785,6 +1785,67 @@ if is_valid_json "$HOOKS" && grep -qF 'standards/output-style.md' "$HOOKS" 2>/de
   pass "hooks.json injects $OUTPUT_STYLE at SessionStart"
 else
   fail "hooks.json does not inject $OUTPUT_STYLE at SessionStart"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-75 — the agent-sync surface is intact: engine + spec suite present, executable,
+# stamped; the convention documents the value forms and the generated-file marker; and
+# setup_routing points at the engine instead of telling anyone to hand-copy an agent.
+#
+# The whole point of the engine is that a per-repo effort override stops being a silent
+# fork of the plugin's prompt. That guarantee lives in three places at once — the engine,
+# the convention, and the skill that invokes it — so this check pins all three together:
+# any one of them drifting re-opens the hole. Sentinels are quoted so a rewording cannot
+# quietly break the contract without the author seeing which one they broke.
+# -----------------------------------------------------------------------------
+section "ST-75: agent-sync engine, suite, and convention agree"
+AS_UTIL="scripts/codeops-agents-sync.sh"
+AS_SUITE="scripts/agents-sync-check.sh"
+SR="skills/setup_routing/SKILL.md"
+for f in "$AS_UTIL" "$AS_SUITE"; do
+  if [[ -x "$f" ]]; then
+    pass "$f present and executable"
+  else
+    fail "$f missing or not executable"
+  fi
+  grep -q "CodeOps Skills Version" "$f" 2>/dev/null && pass "$f carries a version stamp" \
+    || fail "$f missing the version stamp"
+done
+# The marker is the ownership boundary — without it the engine cannot tell its own output
+# from a user's deliberate fork, and "never overwrite a hand-authored agent" stops holding.
+for f in "$AS_UTIL" "$QP"; do
+  grep -qF 'CODEOPS-GENERATED' "$f" 2>/dev/null && pass "$f names the CODEOPS-GENERATED marker" \
+    || fail "$f does not name the CODEOPS-GENERATED marker"
+done
+# The engine's effort enum and the convention's must not drift apart: an effort the docs
+# advertise but the engine rejects is a per-repo override that silently never materializes.
+as_efforts="$(grep -m1 'VALID_EFFORT' "$AS_UTIL" 2>/dev/null || true)"
+for e in low medium high xhigh max; do
+  if grep -qF "\"$e\"" <<<"$as_efforts"; then
+    pass "engine accepts effort '$e'"
+  else
+    fail "effort '$e' is missing from $AS_UTIL's VALID_EFFORT enum"
+  fi
+  if grep -qF "\`$e\`" "$QP" 2>/dev/null; then
+    pass "quality-profile.md documents effort '$e'"
+  else
+    fail "effort '$e' is accepted by the engine but undocumented in $QP"
+  fi
+done
+if grep -qF 'agent_models' "$AS_UTIL" 2>/dev/null; then
+  pass "engine reads agent_models from the quality profile"
+else
+  fail "$AS_UTIL does not read agent_models"
+fi
+if grep -qiE 'effort' "$QP" && grep -qF 'codeops-agents-sync.sh' "$QP"; then
+  pass "quality-profile.md documents effort overrides and names the engine"
+else
+  fail "quality-profile.md must document effort overrides and name $AS_UTIL"
+fi
+if grep -qF 'codeops-agents-sync.sh' "$SR" 2>/dev/null; then
+  pass "setup_routing invokes the sync engine"
+else
+  fail "setup_routing must invoke $AS_UTIL rather than hand-copying agents"
 fi
 
 # -----------------------------------------------------------------------------
