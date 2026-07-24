@@ -74,6 +74,13 @@ net** — fresh eyes that catch what those gates missed and what evolved since.
    Summary**. This is what separates a real preflight from a document-correction exercise. Full
    what/why/how table, recon depth by artifact type, and the summary template are in
    [dimensions.md](dimensions.md).
+2b. **Classify the domains** — before the scan, classify the system the artifact targets using
+   **[../../references/domains/selection.md](../../references/domains/selection.md)**, using the
+   recon from Step 2 as its evidence. Present the selection with that evidence and let the user
+   amend it. The audit then inherits the selected domains' question sets: their checklists become
+   additional things the artifact must have answered, and an unanswered one is a finding like any
+   other. Domains add to the 13 dimensions; they never narrow them. This runs with or without a
+   quality profile — it dispatches no agent and emits nothing.
 3. **13-dimension scan** — review the artifact across all 13 dimensions (below), every check
    informed by Step 2. Depth adapts by artifact type. Full detail in [dimensions.md](dimensions.md).
 4. **Compile the Preflight Report** — every finding gets a numbered `PF-NNN` entry with severity.

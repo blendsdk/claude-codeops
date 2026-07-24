@@ -33,6 +33,7 @@ Every key is optional; a missing key takes its default. `[]` is a valid, meaning
 
 | Key | Values | Default | Effect |
 |-----|--------|---------|--------|
+| `domains` | list of domain names (see the enum below) | *(absent — detect)* | **Pins** the domain selection for a repo whose domains are stable, skipping detection. It can only pin, never disable: classification always runs |
 | `lenses` | list of **add-on** lens names (see the enum below) | `[]` | Extra review lenses for the phase reviewer, beyond the always-on base |
 | `security_profile` | list of security-profile names (see the enum below) | `[]` | Non-empty list activates the security auditor with the **union** of the named checklists in ONE dispatch per phase |
 | `perf_critical` | `true` \| `false` | `false` | `true` activates the perf auditor on code-touching phases |
@@ -45,6 +46,10 @@ Every key is optional; a missing key takes its default. `[]` is a valid, meaning
 - **Absence rule.** No block in the repo's `CLAUDE.md` → the quality loop is **fully dormant**:
   no agents dispatch, no skill-side events emit, behavior is exactly as before the loop existed.
   Repos opt in via `/setup_routing`, which proposes and writes the block.
+- **Domain classification is outside the absence rule**, because it dispatches no agent and emits
+  no event — the two things that rule governs. It is prompt guidance inside skills that already run
+  regardless of the profile, so gating it would deny it to every repo that never opts in. The
+  `domains` key tunes classification; it does not switch it on.
 - **Parsing rule — lenient per key.** An unknown key, or a key with an unusable value, is warned
   about once in-session and treated as absent; the remaining keys still apply. Reading the
   profile must never block work. (Emit-side telemetry validation is the opposite — strict — but
@@ -59,6 +64,25 @@ Every key is optional; a missing key takes its default. `[]` is a valid, meaning
   So is a value the enums do not recognize — the entry drops, the rest of the map still applies.
 
 ## Taxonomies
+
+### Domain enum (5 — grow-only; renaming or repurposing an existing value is forbidden)
+
+| Domain | Selected when the system… |
+|--------|---------------------------|
+| `compiler-and-language` | Has formal transformation semantics: grammar, parser, IR, type checker, query planner, protocol codec |
+| `financial-system` | Records, calculates, authorizes, transfers, reconciles, reports, or audits monetary value |
+| `web-application` | Serves a browser UI, HTTP API, or mobile backend, with sessions, roles, or tenant resources |
+| `distributed-and-concurrent` | Runs across threads, workers, queues, replicas, or nodes, or integrates asynchronously |
+| `data-and-migration` | Owns a persistent schema or serialized format, migrates it, or must keep an existing artifact working |
+
+Domains classify **what is being built**, so the right questions get asked before requirements
+discovery. The per-domain question sets live in `references/domains/`; this table is the naming
+authority and the structural guards read the enum from here.
+
+> **Domains are not lenses.** A domain selects *which questions to ask about the system* and is
+> chosen from repository evidence, unconditionally, by four skills. A lens (below) selects *which
+> concerns a phase reviewer applies to a diff* and is opt-in through this profile. The words are
+> not interchangeable, and no file under `references/domains/` may use "lens" for this concept.
 
 ### Lens enum (7 — grow-only; renaming or repurposing an existing value is forbidden)
 

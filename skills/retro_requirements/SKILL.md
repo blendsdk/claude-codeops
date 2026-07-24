@@ -89,6 +89,21 @@ conventions) for project-specific context before analyzing.
 
 ---
 
+## Classify the domains first
+
+Before Phase 0 reconnaissance begins, classify the system using
+**[../../references/domains/selection.md](../../references/domains/selection.md)**. Manifests,
+directory names, and dependency lists are exactly the evidence its table reads, so this costs one
+pass over material the pipeline reads anyway. Present the selection with its evidence and let the
+user amend it.
+
+The selected domains shape what archaeology asks of the code: reconstructing a ledger without
+asking about rounding order and reversal semantics produces a brief that looks complete and is
+not. Record the selection in `00-project-profile.md`, and re-evaluate as later phases expose
+evidence the manifests did not — surfacing the change rather than folding it in.
+
+This runs regardless of the quality profile: it dispatches no agent and emits no telemetry.
+
 ## The 9-Phase Pipeline
 
 Full per-phase instructions and the output-document templates live in
