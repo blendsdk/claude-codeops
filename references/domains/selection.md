@@ -1,6 +1,6 @@
 # Domain selection
 
-> **CodeOps Skills Version**: 3.13.0
+> **CodeOps Skills Version**: 3.14.0
 
 Before requirements discovery, specification preflight, design interrogation, or archaeology,
 classify the system from repository evidence and stated intent. Select **every** domain whose

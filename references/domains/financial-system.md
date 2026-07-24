@@ -1,6 +1,6 @@
 # Financial system
 
-> **CodeOps Skills Version**: 3.13.0
+> **CodeOps Skills Version**: 3.14.0
 
 Select this domain whenever the system records, calculates, authorizes, transfers, reconciles,
 reports, or audits monetary value or financially consequential state.

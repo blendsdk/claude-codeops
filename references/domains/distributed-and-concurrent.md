@@ -1,6 +1,6 @@
 # Distributed and concurrent
 
-> **CodeOps Skills Version**: 3.13.0
+> **CodeOps Skills Version**: 3.14.0
 
 Select this domain for multiple threads, processes, or nodes; queues, actors, workflows, replicated
 state, caches, background jobs, and asynchronous integrations.

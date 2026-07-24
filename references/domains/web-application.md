@@ -1,6 +1,6 @@
 # Web application
 
-> **CodeOps Skills Version**: 3.13.0
+> **CodeOps Skills Version**: 3.14.0
 
 Select this domain for browser applications, HTTP APIs, mobile backends, and user-facing network
 services.

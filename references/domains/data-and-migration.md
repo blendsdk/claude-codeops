@@ -1,6 +1,6 @@
 # Data and migration
 
-> **CodeOps Skills Version**: 3.13.0
+> **CodeOps Skills Version**: 3.14.0
 
 Select this domain for persistent schemas, imports and exports, migrations, indexing, backfills,
 retention, and data-model changes — and whenever an existing artifact must keep working across a

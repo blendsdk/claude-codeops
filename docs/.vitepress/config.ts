@@ -28,6 +28,7 @@ export default defineConfig({
             { text: 'Verify', link: '/guide/verify' },
             { text: 'Update', link: '/guide/update' },
             { text: 'Concepts', link: '/guide/concepts' },
+            { text: 'Domains', link: '/guide/domains' },
             { text: 'Parallel agents', link: '/guide/parallel-agents' },
             { text: 'Quality profile', link: '/guide/quality-profile' },
             { text: 'Telemetry', link: '/guide/telemetry' },
