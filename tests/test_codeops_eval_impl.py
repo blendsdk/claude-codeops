@@ -59,6 +59,43 @@ def test_should_produce_a_payload_the_cli_accepts_from_the_shipped_schema(reques
 
 
 # --------------------------------------------------------------------------------------
+# The command handed to the CLI
+# --------------------------------------------------------------------------------------
+
+def _schema(tmp_path):
+    """A minimal schema file on disk, since the command embeds its contents."""
+    path = tmp_path / "schema.json"
+    path.write_text(json.dumps({"type": "object"}), encoding="utf-8")
+    return path
+
+
+def test_should_grant_read_access_to_the_release_under_measurement(tmp_path):
+    # A run works from the scenario directory, so without an explicit grant the release's own
+    # reference files are unreadable. The run still returns a plausible-looking answer, produced
+    # without the material being measured — the worst kind of failure for a measurement.
+    plugin = tmp_path / "release"
+    plugin.mkdir()
+    command = ev.invocation_command(plugin, _schema(tmp_path), "prompt")
+    assert "--add-dir" in command
+    assert str(plugin.resolve()) in command
+
+
+def test_should_select_the_release_by_path(tmp_path):
+    plugin = tmp_path / "release"
+    plugin.mkdir()
+    command = ev.invocation_command(plugin, _schema(tmp_path), "prompt")
+    assert command[command.index("--plugin-dir") + 1] == str(plugin.resolve())
+
+
+def test_should_keep_the_run_read_only(tmp_path):
+    plugin = tmp_path / "release"
+    plugin.mkdir()
+    command = ev.invocation_command(plugin, _schema(tmp_path), "prompt")
+    assert command[command.index("--tools") + 1] == "Read"
+    assert "--no-session-persistence" in command
+
+
+# --------------------------------------------------------------------------------------
 # Retry accounting
 # --------------------------------------------------------------------------------------
 

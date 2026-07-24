@@ -11,7 +11,9 @@
       "effort": "high",
       "runs_per_scenario": 3,
       "scenarios": ["compiler", "financial", "web"],
-      "invocation": "claude -p --no-session-persistence --permission-mode dontAsk --tools Read --plugin-dir <plugin> --effort high --output-format json --json-schema <result.schema.json>",
+      "invocation": "claude -p --no-session-persistence --permission-mode dontAsk --tools Read --plugin-dir <plugin> --add-dir <plugin> --effort high --output-format json --json-schema <result.schema.json>",
+      "recaptured": "2026-07-25",
+      "recapture_reason": "The first capture omitted --add-dir, so a run could not read the release's own reference material from the scenario working directory. It answered from general knowledge and returned a well-formed, plausible result anyway — invented classification ids that match no enum value. Every capture is retaken whenever the rig changes, because a baseline and a candidate measured under different rigs are not comparable.",
       "files": {
         "compiler": "compiler/baseline-3.12.0.json",
         "financial": "financial/baseline-3.12.0.json",

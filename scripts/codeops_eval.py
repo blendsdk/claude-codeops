@@ -307,6 +307,29 @@ def compare(
 # Running a scenario
 # ---------------------------------------------------------------------------------------------
 
+def invocation_command(plugin: Path | str, schema: Path | str, prompt: str) -> list[str]:
+    """Build the read-only CLI invocation that measures one run.
+
+    A run works from the scenario directory, so the release under measurement needs an explicit
+    read grant: without it the release's own reference material is unreadable and the run answers
+    from general knowledge instead. That still produces a well-formed, plausible result, which
+    makes it the most dangerous way for a measurement to be wrong.
+    """
+    plugin = Path(plugin).resolve()
+    return [
+        "claude", "-p",
+        "--no-session-persistence",
+        "--permission-mode", "dontAsk",
+        "--tools", "Read",
+        "--plugin-dir", str(plugin),
+        "--add-dir", str(plugin),
+        "--effort", "high",
+        "--output-format", "json",
+        "--json-schema", json.dumps(schema_payload(schema), separators=(",", ":")),
+        prompt,
+    ]
+
+
 def _invoke_cli(plugin: Path, scenario: Path) -> dict[str, Any]:
     """Measure one run by invoking the CLI read-only against a scenario directory."""
     schema = Path(__file__).resolve().parent.parent / "tests" / "scenarios" / "result.schema.json"
@@ -317,17 +340,7 @@ def _invoke_cli(plugin: Path, scenario: Path) -> dict[str, Any]:
         "enumerate every material unresolved question that blocks an executable plan, explain "
         "its concrete impacts, and set the gate verdict."
     )
-    command = [
-        "claude", "-p",
-        "--no-session-persistence",
-        "--permission-mode", "dontAsk",
-        "--tools", "Read",
-        "--plugin-dir", str(plugin),
-        "--effort", "high",
-        "--output-format", "json",
-        "--json-schema", json.dumps(schema_payload(schema), separators=(",", ":")),
-        prompt,
-    ]
+    command = invocation_command(plugin, schema, prompt)
     completed = subprocess.run(command, cwd=scenario, capture_output=True, text=True)
     if completed.returncode:
         raise InvocationError(completed.stderr.strip() or completed.stdout.strip())

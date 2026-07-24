@@ -54,6 +54,12 @@ python scripts/codeops_eval.py run \
 A candidate can therefore be measured before it is merged, and the installed plugin is never
 mutated to take a reading.
 
+The release directory is also passed as `--add-dir`, because a run works from the scenario
+directory and would otherwise be unable to read the release's own reference material. That failure
+is silent: the run answers from general knowledge and returns a well-formed, plausible result. Any
+change to how a run is invoked invalidates existing captures — re-take the baseline rather than
+comparing across rigs.
+
 ## Scoring
 
 `score` applies four independent checks and reports every failure by name, rather than collapsing
