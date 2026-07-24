@@ -1848,6 +1848,116 @@ else
   fail "setup_routing must invoke $AS_UTIL rather than hand-copying agents"
 fi
 
+# =============================================================================
+# Python toolchain and evaluation harness (ST-76…ST-80)
+#
+# SPECIFICATION tests written from the spec BEFORE the implementation — red on
+# the unmodified repo, green as the harness lands. Same technique as ST-25…ST-40.
+#
+# The repository's engines are Bash entry points with embedded Python; a module
+# with an independent unit-test surface is a standalone .py instead. These checks
+# guard that second class: it must be declared, stamped, spec-tested, free of
+# ephemeral planning references, and invisible to the plugin loader.
+# =============================================================================
+
+# Declared standalone Python modules. Extend this list when a module is added —
+# an undeclared scripts/*.py is a failure, so a new module cannot dodge the
+# checks below by simply never being listed.
+PY_MODULES=(
+  "scripts/codeops_eval.py"
+)
+
+# -----------------------------------------------------------------------------
+# ST-76 — every declared Python module exists and carries a version stamp.
+# ST-24 already checks that a stamp's VALUE matches; this checks it is PRESENT,
+# which ST-24 cannot see (a file with no stamp contributes no line to its sweep).
+# -----------------------------------------------------------------------------
+section "ST-76: declared Python modules exist and are version-stamped"
+for f in "${PY_MODULES[@]}"; do
+  if [[ ! -s "$f" ]]; then
+    fail "$f is missing or empty"
+  elif grep -qE 'CodeOps (Skills )?Version[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' "$f"; then
+    pass "$f present and stamped"
+  else
+    fail "$f has no CodeOps Skills Version stamp"
+  fi
+done
+# An undeclared module would silently escape ST-77 and ST-80.
+while IFS= read -r found; do
+  declared=0
+  for f in "${PY_MODULES[@]}"; do [[ "$found" == "$f" ]] && declared=1; done
+  if [[ "$declared" -eq 1 ]]; then
+    pass "$found is declared in PY_MODULES"
+  else
+    fail "$found is not declared in PY_MODULES (add it, so ST-77/ST-80 cover it)"
+  fi
+done < <(find scripts -maxdepth 1 -name '*.py' 2>/dev/null | sort)
+
+# -----------------------------------------------------------------------------
+# ST-77 — every declared module has a specification test file.
+# Naming is test_<module>_spec.py because pytest's default python_files does not
+# collect a bare <module>_spec.py: such a suite would appear to pass by never
+# running at all, which is the failure this check exists to make impossible.
+# -----------------------------------------------------------------------------
+section "ST-77: declared Python modules have specification tests"
+for f in "${PY_MODULES[@]}"; do
+  base="$(basename "$f" .py)"
+  spec="tests/test_${base}_spec.py"
+  if [[ -s "$spec" ]]; then
+    pass "$spec covers $f"
+  else
+    fail "$f has no specification test at $spec"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-78 — tests/ is inert to the plugin loader.
+# The loader reads skills/, commands/, hooks/ and .claude-plugin/ only; a test
+# tree that reaches an install manifest would ship to every user.
+# -----------------------------------------------------------------------------
+section "ST-78: tests/ is not part of the shipped surface"
+for manifest in ".claude-plugin/plugin.json" ".claude-plugin/marketplace.json" "install.sh"; do
+  if [[ ! -f "$manifest" ]]; then
+    continue
+  elif grep -qE '(^|[^a-zA-Z0-9_/-])tests/' "$manifest"; then
+    fail "$manifest references tests/ — the test tree must not ship"
+  else
+    pass "$manifest does not reference tests/"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-79 — the development dependency is declared and the virtualenv is ignored.
+# pytest is development-only: it is never required to install, load, or run the
+# plugin, so it belongs in a dev manifest rather than any shipped manifest.
+# -----------------------------------------------------------------------------
+section "ST-79: development dependencies declared, virtualenv ignored"
+if [[ -s "requirements-dev.txt" ]] && grep -qiE '^pytest' "requirements-dev.txt"; then
+  pass "requirements-dev.txt declares pytest"
+else
+  fail "requirements-dev.txt missing or does not declare pytest"
+fi
+if grep -qE '^\.venv/?$' ".gitignore" 2>/dev/null; then
+  pass ".gitignore ignores .venv/"
+else
+  fail ".gitignore must ignore .venv/"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-80 — no shipped Python references an ephemeral CodeOps artifact.
+# Planning folders are ephemeral and git-ignored; shipped code must stand alone.
+# The same ban the executor agents already carry, enforced for .py as well.
+# -----------------------------------------------------------------------------
+section "ST-80: shipped Python carries no ephemeral CodeOps reference"
+for f in "${PY_MODULES[@]}"; do
+  [[ -s "$f" ]] || continue
+  if grep -qE '\b(RD|AR|PA|PF|HR|GATE|AC|ST|ADR|DEF)-[0-9]|(codeops|plans|requirements)/' "$f"; then
+    fail "$f references an ephemeral CodeOps artifact (plan/requirement path or id)"
+  else
+    pass "$f is free of ephemeral CodeOps references"
+  fi
+done
+
 # -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
