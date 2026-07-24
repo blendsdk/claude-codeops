@@ -1,0 +1,503 @@
+[
+  {
+    "scenario": "Generic type aliases (`type Pair<T> = (T, T)`) for a compiled language with an incremental compiler: order-independent alias resolution within a module, alias expansion running before type checking, bounded recursive aliases, a name-keyed expansion cache, helpful diagnostics, backward compatibility for previously compiled modules, and lowering of expanded types into the existing typed IR. The prompt is a feature-level capability (not a task-lane fix), so the full discovery + Zero-Ambiguity Gate pipeline applies. As written it is a set of intentions, not semantics: the recursion acceptance rule, the cache key, the compatibility surface, and the IR representation are all undefined, and three statements conflict outright (expansion-before-typechecking vs. alias-accurate diagnostics; name-keyed cache vs. argument-dependent generic expansion; recursive types vs. an unchanged existing IR).",
+    "selected_domains": [
+      "compiler-and-language",
+      "data-and-migration"
+    ],
+    "material_ambiguities": [
+      {
+        "id": "AR-01",
+        "question": "What are the formation rules for a parameterized alias: how many parameters, must every use site be fully applied (is a bare `Pair` ever a legal type, or partially applied `Pair<int>` of a 2-param alias), are parameter bounds/constraints, defaults, variance annotations, or higher-kinded parameters in scope, and what is the defined rejection for wrong arity?",
+        "impact": [
+          "Determines the grammar and AST node shape for alias declarations and alias references, i.e. the parser work in the plan",
+          "Decides whether the expander is a simple substitution pass or must carry a kinding environment, which changes the module structure",
+          "Under- and over-application are exactly the invalid-program class the compiler-and-language gate requires a defined rejection for; without it two implementations diverge on the same source",
+          "Bounds/constraints would place a type-checking obligation *before* expansion, contradicting the stated phase order in line 7"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-02",
+        "question": "How far does order-independent resolution reach: same module only (as stated), or also across imports; may an alias forward-reference a nominal type declared later, may an alias be shadowed by a later declaration, and what happens when a forward reference resolves to a name that does not exist or is not a type?",
+        "impact": [
+          "Sets whether name resolution needs a two-pass (collect-then-resolve) redesign for the whole module, or only for the alias table",
+          "Cross-module forward references would make expansion depend on import order and interact with the incremental cache invalidation in AR-05",
+          "Shadowing rules decide whether an alias name is a distinct namespace or shares the type namespace, which changes existing resolution code",
+          "Unresolved-name behavior is a required diagnostic class (AR-07)"
+        ],
+        "must_block": false
+      },
+      {
+        "id": "AR-03",
+        "question": "Given that expansion runs before type checking, what does the type checker see and report: fully expanded structural types only, or expanded types that retain a back-pointer to the alias and its arguments? Do error messages print `Pair<int>` or `(int, int)`, and which spans are attributed to the alias declaration vs. the use site?",
+        "impact": [
+          "This is the direct conflict between line 7 and line 10 \u2014 pure pre-expansion erases the alias name that helpful diagnostics need",
+          "Decides whether the IR/type representation gains an alias-provenance field, which affects every downstream pass and the serialized form (AR-08)",
+          "Governs the golden-diagnostic test corpus, which cannot be authored until the expected message text is fixed",
+          "Retaining provenance changes type equivalence display but must not change type equivalence itself \u2014 that invariant needs explicit statement"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-04",
+        "question": "What is the exact decidable rule that separates a recursive alias that 'works' from one that must be rejected \u2014 reject all cycles; allow recursion only behind a type constructor / indirection (contractive or productive recursion); allow equi-recursive types with a cycle-detecting representation; or allow expansion up to a fixed depth/fuel budget? And does the rule cover mutual recursion and non-regular / polymorphic recursion such as `type L<T> = L<(T, T)>`, whose expansion is undecidable in general?",
+        "impact": [
+          "This is the single largest hole: it decides whether the expander is a terminating structural rewrite, a cycle-detecting graph builder, or a fuel-limited loop \u2014 three incompatible implementations",
+          "A fuel/depth limit makes acceptance implementation-defined and non-deterministic, which fails the compiler-and-language gate unless the limit is declared part of the language contract with a fixed value",
+          "Determines whether the typed IR needs a cyclic/\u03bc-type node at all (AR-08) and whether type equality becomes coinductive",
+          "Non-regular expansion cannot be decided by depth alone; without a stated rule, the plan cannot bound the expander's termination proof or its test corpus",
+          "Every 'useful recursion' example the user has in mind must be enumerated, since the rule is only complete once minimal accepted/rejected counterexamples distinguish it from the alternatives"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-05",
+        "question": "The cache is stated to key expanded aliases by alias name \u2014 what is the real key and invalidation rule? Specifically: how are type arguments, the defining module/scope, and the transitive set of aliases the expansion depends on represented in the key; what invalidates an entry when a referenced alias changes; is the cache in-memory per compiler run or persisted on disk across runs; and does it have a format version?",
+        "impact": [
+          "Keying by name alone is unsound for a generic alias: `Pair<int>` and `Pair<string>` collide, and an edit to a referenced alias silently serves a stale expansion \u2014 a wrong-code bug, not a performance bug",
+          "Decides whether the plan needs a dependency graph / fingerprint per alias, which is a substantially larger unit of work than a name-keyed map",
+          "A persisted cache makes this a data-and-migration artifact: it needs a format version, an invalidation-on-compiler-upgrade rule, and a corruption/partial-write recovery path",
+          "Cache-hit vs. cold-build must produce identical diagnostics (AR-07); the key design decides whether that is even achievable",
+          "Determines the correctness test surface: incremental-vs-clean differential tests can only be written once the invalidation contract exists"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-06",
+        "question": "What exactly must 'existing modules compiled before this feature' keep doing \u2014 recompile from source to identical output; load previously serialized IR/module-interface artifacts without recompilation; consume an on-disk incremental cache written by the older compiler; or be consumed as dependencies by not-yet-recompiled dependents? What is the supported mixed-version window and the rollback path? Separately, can the new `type NAME<...>` syntax change the parse of any currently valid program (e.g. an existing `type X = A < B`), and was `type` already reserved?",
+        "impact": [
+          "Selects between source compatibility (cheap) and artifact/binary compatibility (requires a versioned serialized format, readers for both shapes, and a migration or invalidation step)",
+          "Decides whether the old on-disk cache must be read, upgraded, or unconditionally discarded on first run of the new compiler",
+          "A grammar ambiguity against existing programs would be a silent breaking change and would force either a disambiguation rule or a syntax change before any parser work starts",
+          "Without the mixed-version window, the plan cannot state migration preconditions, postconditions, or a rollback story, which the data-and-migration gate requires"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-07",
+        "question": "What is the concrete diagnostic contract: for a rejected infinite expansion, is the span the alias declaration, the use site, or the full cycle path with each link; do diagnostics carry stable machine-readable codes; are cascading errors after a failed expansion suppressed or emitted; and must the diagnostic set be byte-identical between a cached and a cold build?",
+        "impact": [
+          "'Helpful' and 'points at the problem' are unmeasurable as acceptance criteria; golden-output tests cannot be authored from them",
+          "Cycle-path reporting requires the expander to retain the traversal chain, a data-structure decision that must be made before the expander is written",
+          "Stable codes are a public contract consumed by editors/LSP and cannot be added compatibly later without churn",
+          "Cascade suppression changes the expected output of every negative test in the corpus"
+        ],
+        "must_block": false
+      },
+      {
+        "id": "AR-08",
+        "question": "How are expanded and recursive alias types represented in the typed IR: fully erased into existing structural nodes, or does the IR gain a cyclic/\u03bc-type node and/or an alias-provenance field? What IR invariants must hold after the new lowering pass, and does the IR's serialized form change?",
+        "impact": [
+          "If the chosen recursion rule (AR-04) admits genuinely cyclic types, the claim in line 12 that lowering targets the *existing* IR may be false \u2014 an IR change is a far larger scope with its own compatibility obligations (AR-06)",
+          "Decides whether every existing IR consumer (optimizer, codegen, debugger, any pass assuming finite type trees) must be audited for cycle-safety and non-termination",
+          "An IR serialization change re-opens the artifact-compatibility question and requires a reader for both formats",
+          "Determines whether type equality/normalization in the checker stays inductive or must become cycle-aware"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-09",
+        "question": "What is in and out of scope: aliases over which type forms (tuples only, functions, generics, user-defined nominals); is this type aliases only, or do value-level or trait/interface aliases follow; and which surfaces must support the feature at delivery \u2014 compiler only, or also language server, formatter, documentation generator, and package/build tooling?",
+        "impact": [
+          "Tooling surfaces are separate deliverables with their own owners; including or excluding them changes plan size and phase count materially",
+          "Restricting the alias body's type forms shrinks both the expander and the counterexample corpus",
+          "An unclear MVP-vs-later split leaves the roadmap and phase ordering unresolvable"
+        ],
+        "must_block": false
+      },
+      {
+        "id": "AR-10",
+        "question": "What evidence closes the feature: which conformance/golden/differential/fuzz suites are mandatory, is there a required corpus of accepted and rejected recursive aliases, and must a clean build and an incremental build be proven to agree on both output and diagnostics?",
+        "impact": [
+          "Without a named verification set there is no definition of done for the phase, and the spec-test oracle cannot be authored ahead of implementation",
+          "A differential clean-vs-incremental suite is the only practical proof that the cache design in AR-05 is sound; deciding it late means retrofitting test infrastructure",
+          "Fuzzing for adversarial cyclic/blow-up inputs is the acceptance evidence for AR-11"
+        ],
+        "must_block": false
+      },
+      {
+        "id": "AR-11",
+        "question": "What bounds apply to expansion cost \u2014 is there a maximum expanded type size or expansion step budget (nested generic aliases can blow up exponentially, e.g. `type P2<T> = Pair<Pair<T>>` chained), what is the compile-time and memory budget for the cache, and does the cache evict?",
+        "impact": [
+          "Without a bound, a small adversarial or accidental source file can hang or OOM the compiler \u2014 a denial-of-service on any build service that compiles untrusted code",
+          "If AR-04 resolves to a fuel limit, the exact numeric limit is part of the observable language contract and must be fixed here, not chosen in implementation",
+          "An unbounded persistent cache needs an eviction and size policy before it ships",
+          "Sets the performance acceptance criteria for the non-functional requirement document"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-12",
+        "question": "Domain confirmation: is the incremental compiler single-threaded, or does it compile modules in parallel / serve a long-running language server with concurrent readers and writers of the expansion cache? (The word 'cache' is the only distributed-and-concurrent evidence present; no workers, queues, or nodes appear.)",
+        "impact": [
+          "If parallel or long-running, `distributed-and-concurrent` joins the selection and adds a whole question set \u2014 cache races, lock strategy, memoization under concurrent expansion of the same alias, and deterministic diagnostics across interleavings \u2014 none of which are currently asked",
+          "Concurrent expansion of a cyclic alias needs an explicit cycle-detection-under-contention rule, on top of AR-04",
+          "Silently guessing single-threaded costs every concurrency question without anyone noticing the omission, which is the failure the detect-present-confirm protocol exists to prevent"
+        ],
+        "must_block": false
+      }
+    ],
+    "gate_verdict": "BLOCK"
+  },
+  {
+    "scenario": "tests/scenarios/compiler/scenario.md \u2014 generic type aliases (`type Pair<T> = (T, T)`) with out-of-order references, pre-type-check expansion, bounded recursion, an incremental cache keyed by alias name, source-level diagnostics, backward compatibility with modules compiled before the feature, and lowering into the existing typed IR.",
+    "selected_domains": [
+      "compiler-and-language",
+      "data-and-migration"
+    ],
+    "material_ambiguities": [
+      {
+        "id": "AR-01",
+        "question": "Are aliases transparent (fully erased into their expansion, so `Pair<Int>` and `(Int, Int)` are the same type everywhere) or nominal/opaque in some positions? Does an alias ever participate in type equivalence, subtyping, or overload/instance selection in its own right?",
+        "impact": [
+          "Decides whether type equivalence is purely structural post-expansion or needs an alias identity carried through checking",
+          "Determines whether the typed IR needs any alias node at all, or only expanded forms",
+          "Changes what every downstream diagnostic and inferred-type rendering can legally say"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-02",
+        "question": "What exactly makes a recursive alias 'useful' versus 'infinite'? Name the acceptance criterion: occurs-check on direct self-reference, productivity/contractiveness behind a named type constructor, an expansion-depth or expansion-size bound, or a cycle-detection pass over the alias dependency graph.",
+        "impact": [
+          "This is the core termination rule of the feature; no expansion algorithm can be written without it",
+          "Decides whether `type L<T> = Option<L<T>>` compiles while `type X = X` is rejected, or both are rejected",
+          "Determines whether rejection is a static graph property (deterministic) or a runtime budget (implementation-defined, and therefore observable divergence between conforming implementations)"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-03",
+        "question": "If a depth/size budget participates in the acceptance rule, is that budget part of the language contract (fixed, specified number) or an implementation limit? Is exceeding it an error, and is it the same error as a cycle?",
+        "impact": [
+          "An unspecified budget lets two conforming implementations accept/reject the same program \u2014 the compiler-and-language semantics gate fails",
+          "Decides whether the limit is configurable per build, and whether changing it invalidates the cache",
+          "Determines whether one or two diagnostic classes are needed"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-04",
+        "question": "What is the scope of out-of-order (forward) alias reference \u2014 the whole module only, or also across imports? Are alias cycles that cross module boundaries legal, and are alias declarations order-independent with respect to non-alias type declarations too?",
+        "impact": [
+          "Decides whether expansion is a per-module fixpoint or a whole-program/dependency-graph pass",
+          "Governs whether the incremental compiler can expand a module without loading its dependents",
+          "Determines whether cross-module cycle detection is required, and which module owns the resulting error"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-05",
+        "question": "Full generic-parameter semantics: is arity checked at use sites (is bare `Pair` ever legal \u2014 partial application, higher-kinded use)? Are parameter bounds/constraints allowed on aliases, and if so are they checked at the alias declaration, at each use site, or after expansion? Are unused parameters legal? Is variance inferred, declared, or irrelevant?",
+        "impact": [
+          "Determines the alias declaration's own well-formedness rules and its error set",
+          "Decides whether constraint checking runs before expansion (needs alias-level constraint solving) or after (constraints attach to the expanded form)",
+          "Changes the shape of the alias symbol stored in the incremental cache"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-06",
+        "question": "Name resolution and shadowing: may an alias name shadow a nominal type, a type parameter, or an imported alias? May a type parameter shadow an outer alias name? Are aliases exported by default, and can a private alias appear in the expansion of a public signature?",
+        "impact": [
+          "Resolution order must be specified before expansion can resolve any name deterministically",
+          "Private-alias leakage into public expanded signatures is a visibility soundness question with API-compatibility consequences",
+          "Determines whether cache entries must be keyed by resolution scope, not just name"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-07",
+        "question": "The cache is described as keyed by alias name \u2014 is that key sufficient? A generic alias expands differently per type argument, per module scope, and per version of every alias it transitively references. What is the actual cache key and what is the invalidation trigger when a referenced alias, a bound, or a nominal type in the expansion changes?",
+        "impact": [
+          "As stated, the key is unsound for generics and for transitive edits: an edit to a referenced alias yields stale expansions and silently wrong type checking",
+          "Decides whether the compiler must record a reverse-dependency graph or a content fingerprint of the transitive expansion",
+          "Sets the correctness obligation for every incremental test in the plan"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-08",
+        "question": "Is the expansion cache in-memory per compiler process, or persisted on disk across builds? If persisted: what is its format, is it version-stamped, and what happens when a cache written by an older compiler (or with a different depth budget / different flags) is read?",
+        "impact": [
+          "Persistence decides whether this is a serialized-artifact evolution problem with a format version and an invalidation path, or a process-local concern",
+          "Determines rollback behavior and whether a stale cache must be detected or merely tolerated",
+          "Governs whether a cache format change forces a full rebuild for existing users"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-09",
+        "question": "What does 'existing modules compiled before this feature must remain compatible' concretely mean: source compatibility only, reuse of previously written build artifacts/cached IR, serialized module-metadata/interface compatibility, or ABI compatibility for already-linked output? Is there a mixed-version window where old and new artifacts coexist in one build?",
+        "impact": [
+          "Source-only compatibility makes this a grammar non-regression test; artifact compatibility makes it a format-versioning and migration workstream",
+          "Decides whether pre-feature caches/metadata are read, upgraded, or discarded on first build with the new compiler",
+          "Determines whether a rollback to the previous compiler must still work against artifacts the new one wrote"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-10",
+        "question": "Does adding generic alias syntax change the existing grammar in any way that alters how already-valid source parses (e.g. `<` disambiguation, an existing non-generic `type` form, reserved words)? What is the required proof that no pre-existing module changes meaning?",
+        "impact": [
+          "An unstated parse change silently reinterprets existing code \u2014 the exact failure the compatibility requirement is meant to prevent",
+          "Determines whether a differential/golden corpus run over existing modules is a required acceptance gate",
+          "May force a syntax alternative if a conflict exists"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-11",
+        "question": "Since expansion runs before type checking, what provenance must survive expansion so diagnostics 'point at the problem'? Should errors be reported at the use site, the alias declaration, or the full expansion chain? Must inferred types and hover/tooling output print the alias name or the expanded form?",
+        "impact": [
+          "Without a mandated source-span/provenance mapping in the expanded representation, helpful diagnostics are unimplementable after the fact",
+          "Decides the data carried on expanded type nodes and therefore their memory/cache size",
+          "Sets the contract for the language server and any other tooling consumer"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-12",
+        "question": "Enumerate the required diagnostic classes and their stable identifiers (unknown alias, arity mismatch, illegal cycle, budget exceeded, constraint violation, private-alias leak). For a cycle spanning several aliases, which member is blamed, and is the blame deterministic across runs and across incremental vs clean builds?",
+        "impact": [
+          "Non-deterministic blame makes diagnostics untestable and breaks golden tests between incremental and clean builds",
+          "Stable codes are a public compatibility surface for tooling and CI once shipped",
+          "Determines cascade suppression: whether one bad alias produces one error or one per use site"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-13",
+        "question": "What exactly reaches the typed IR: only fully expanded structural types (aliases erased), or a new IR node preserving the alias? Which existing IR invariants must hold after lowering, and do any existing IR consumers or serialized IR readers need to change?",
+        "impact": [
+          "Decides whether the IR schema changes at all \u2014 and if it does, this becomes a serialized-format evolution with its own compatibility path",
+          "Determines which existing passes must be re-verified against expanded types",
+          "Sets whether expansion size blowup shows up as IR size, affecting compile-time and memory budgets"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-14",
+        "question": "In which positions may an alias be used \u2014 value type positions only, or also in signatures/bounds, trait or interface positions, pattern positions, and as the head of an instance/impl? May an alias be used before it is expanded by another alias in a bound?",
+        "impact": [
+          "Defines the surface area of the feature and thus the test matrix",
+          "Instance/impl-head use interacts with coherence and can make transparent aliases unsound for selection",
+          "Directly changes the MVP scope and the effort estimate"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-15",
+        "question": "What is the MVP boundary and the explicit non-goals for this change (e.g. constraints on parameters, cross-module cycles, higher-kinded use, persisted cache, tooling integration)?",
+        "impact": [
+          "Without a stated boundary the plan cannot be phased or sized",
+          "Prevents scope leak between the alias feature and the incremental-cache rework, which may be separable deliverables"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-16",
+        "question": "Non-functional targets: what compile-time and memory budget does expansion get on a large module, what bound applies to expansion size blowup from nested generic aliases, and what incremental rebuild time is acceptable after touching one alias?",
+        "impact": [
+          "Expansion of nested generic aliases can grow exponentially; with no bound, a pathological (or hostile) source file becomes a resource-exhaustion vector",
+          "Determines whether memoization by expansion structure is required in addition to the per-alias cache",
+          "Needed before any performance acceptance criterion can be written"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-17",
+        "question": "Is the alias expansion cache ever accessed by concurrent compilation workers, or is compilation single-threaded per process? If shared, what are the visibility and write-conflict rules?",
+        "impact": [
+          "A shared mutable expansion cache would add the distributed-and-concurrent domain and a whole question set (races, ordering, cache coherence) not currently selected",
+          "Affects whether cache entries must be immutable/interned once written",
+          "Decides whether diagnostic determinism (AR-12) is threatened by worker scheduling"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-18",
+        "question": "What verification is required to declare this correct: a conformance suite per semantic rule, a differential run of the pre-feature compiler against the existing module corpus, property/fuzz tests over alias graphs for termination, and incremental-vs-clean-build equivalence tests? Which of these gate the release?",
+        "impact": [
+          "Incremental-vs-clean equivalence is the only practical check for the cache-key soundness in AR-07 and must be decided before the plan's test phases exist",
+          "Determines whether a corpus of existing modules must be assembled as project infrastructure",
+          "Sets what 'done' means for the compatibility requirement"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-19",
+        "question": "Terminology and user-facing wording: what is the canonical term in messages and docs ('alias expansion', 'type alias cycle'), and what is the exact wording of each new diagnostic message?",
+        "impact": [
+          "Message wording is cosmetic once the diagnostic classes and blame locations are fixed, but inconsistent terminology across compiler, docs, and tooling is a documentation defect",
+          "Can be settled during authoring without changing any algorithm"
+        ],
+        "must_block": false
+      }
+    ],
+    "gate_verdict": "BLOCK"
+  },
+  {
+    "scenario": "compiler",
+    "selected_domains": [
+      "compiler-and-language",
+      "data-and-migration"
+    ],
+    "material_ambiguities": [
+      {
+        "id": "AR-01",
+        "question": "What is the exact admissibility rule for recursive aliases? 'Useful' recursion is undefined: is the criterion (a) reject every direct and mutual cycle in the alias dependency graph, (b) allow a cycle only when it passes through a guarded/nominal type constructor (productive recursion), or (c) allow any cycle whose expansion terminates within a limit? Does the rule differ for direct self-reference vs. mutual recursion, and for recursion that occurs only in an unused generic parameter position?",
+        "impact": [
+          "Determines whether the expansion engine needs only a cycle detector over the alias graph or a full productivity/guardedness check, which are different algorithms and different amounts of work",
+          "Fixes which programs are legal, so it fixes the entire acceptance-criteria set and the conformance test corpus",
+          "Without it no spec test can be written: the same program is a pass under (b) and a compile error under (a)"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-02",
+        "question": "Is rejection of infinite expansion decided by a structural analysis (deterministic, independent of expansion order and of which module is compiled first) or by an expansion depth/fuel/size limit? If a limit exists, is its value part of the language contract or implementation-defined, and is exceeding it a hard error, a recoverable diagnostic, or a fallback to lazy/unexpanded representation?",
+        "impact": [
+          "A fuel limit makes acceptance order-dependent and cache-dependent: the same module can compile in a cold build and fail in an incremental one, which fails the compiler-and-language gate (two conforming implementations producing observably different results)",
+          "Decides whether the limit is a user-visible, documented, testable constant or an internal detail",
+          "Changes the diagnostic surface: a cycle report names a cycle path, a fuel exhaustion report cannot"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-03",
+        "question": "The scenario says the incremental compiler caches expanded aliases 'by alias name'. Is that the intended key, and if so how is it sound? An expansion depends on the generic arguments applied, the module and import scope in which the name resolves, and the current definitions of every transitively referenced alias. Should the key be (name), (name + argument types), (qualified name + argument types), or (qualified name + content hash of the transitive definition set)? What edit events invalidate an entry \u2014 editing the alias itself, editing any transitively referenced alias, changing an import, or changing a referenced nominal type?",
+        "impact": [
+          "Keying by bare name is a correctness bug for any generic alias: Pair<Int> and Pair<String> collide, and two same-named aliases in different modules collide",
+          "Determines the invalidation graph the incremental engine must maintain (reverse dependency edges per alias), which is the largest single piece of implementation work in the feature",
+          "Decides whether stale-cache bugs are prevented structurally or only by a conservative flush, which changes the performance story entirely",
+          "Without it, no cache-correctness spec test can be authored"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-04",
+        "question": "Is the expanded-alias cache in-memory for one compiler session, or persisted on disk across builds? If persisted: what is its serialized format, does it carry a format/compiler version tag, and how are entries written by a pre-feature compiler treated on first run \u2014 invalidated wholesale, version-gated, or migrated? Is a partially written or corrupt cache detected, and is discarding it always safe?",
+        "impact": [
+          "A persisted cache is a durable artifact with its own evolution semantics: it needs a version boundary, an invalidation or upgrade path, rollback behavior, and a defined mixed-version window",
+          "Decides whether the feature ships a migration/invalidation step at all, and whether that step is in scope for this plan",
+          "Determines whether cache corruption is a recoverable condition or a build failure, which is a user-visible behavior"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-05",
+        "question": "What exactly must 'remain compatible' for modules compiled before this feature? Source-level (every previously valid program still compiles and infers the same types), artifact-level (previously emitted IR, object files, or serialized type metadata still load and link without recompilation), or both? Is any previously valid program permitted to break \u2014 for example one using an identifier that becomes a keyword, or a non-generic alias whose use site now parses as a generic application? Must a new-compiler-produced module be consumable by an old compiler (backward mixed-version window), or only the reverse?",
+        "impact": [
+          "Artifact-level compatibility forces a version field and a load-time compatibility check on every serialized artifact and turns this into a data-migration workstream; source-level compatibility alone does not",
+          "Determines whether a full recompile is an acceptable upgrade path or is explicitly forbidden",
+          "Defines the regression corpus: 'existing modules still compile' needs a named, pinned set of modules to be a testable claim",
+          "A permitted-break list is a scope boundary that must be decided before any grammar change is designed"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-06",
+        "question": "What are the generic parameter semantics for aliases? Specifically: is arity checked, and what happens on under- or over-application (`Pair` bare, `Pair<A, B>`)? Are partially applied or higher-kinded aliases (`type F = Pair`) permitted? Are duplicate or unused type parameters legal? May parameters carry bounds/constraints, defaults, or variance annotations? How is capture avoided when a substituted argument mentions a name that is also bound inside the alias body (hygiene)?",
+        "impact": [
+          "Higher-kinded support changes the representation of aliases in the type checker from a simple substitution to a kind-checked entity \u2014 a fundamentally different implementation",
+          "Arity and bound checking decide whether validation happens at declaration, at use, or after expansion, which interacts directly with AR-08's phase ordering",
+          "Hygiene rules determine whether substitution can be naive or must rename bound names, a correctness matter with silent-wrong-answer failure modes"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-07",
+        "question": "Is an alias fully transparent (definitionally equal to its expansion everywhere, with no identity of its own), or does the alias name retain any identity for type equality, overlap/coherence, or trait/impl resolution? Independently: does the alias name survive into the typed IR, into inference results, and into error messages, or is it erased at expansion?",
+        "impact": [
+          "Erasing the name at expansion makes lowering trivial but makes every diagnostic report the expanded structural type rather than the name the user wrote, which directly contradicts the 'point at the problem' goal (AR-11)",
+          "If the name survives, the typed IR needs an alias-carrying node and every downstream pass must preserve or strip it consistently \u2014 an IR invariant change (AR-12)",
+          "Decides whether aliases can be used in nominal positions such as impl targets or constructors"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-08",
+        "question": "'Expansion before type checking' fixes one ordering edge but not the rest. Does expansion run before or after name/import resolution? Which checks apply to the unexpanded form (arity, kind, bounds, unused parameters) and which only after expansion? Are errors inside an alias body reported once at the declaration site or once per use site after expansion? Does expansion happen before unification and defaulting, or can inference variables appear in alias arguments?",
+        "impact": [
+          "Expansion cannot precede name resolution if aliases may reference later-declared aliases (AR-09) \u2014 the ordering as stated may be internally inconsistent and needs the user to resolve it",
+          "Determines whether the pass is a standalone pre-pass over the module or interleaved with the resolver, which is the top-level architecture of the change",
+          "Report-once vs. report-per-use decides whether diagnostics cascade, which is a measurable acceptance criterion"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-09",
+        "question": "How far does the forward-reference allowance extend? Same-module forward reference is stated \u2014 does it also hold across modules and imports, and is there any ordering restriction at all? May an alias shadow a builtin type, an imported alias, or a nominal type in the same scope? Are duplicate alias names in one module an error or a last-wins rule? Are aliases exported by default, and can visibility be restricted?",
+        "impact": [
+          "Unrestricted forward reference forces a two-pass design (collect all declarations, then expand), ruling out single-pass expansion",
+          "Cross-module forward reference introduces cross-module cycles, which the AR-01 recursion rule must then also cover, and directly changes the cache key's scope component (AR-03)",
+          "Shadowing and export rules define the resolution algorithm and are unrecoverable if guessed wrong"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-10",
+        "question": "What is the concrete grammar change? Is `type X<T> = ...` an extension of an existing non-generic `type` form or a new construct? How is the `<` ambiguity against comparison/shift operators resolved in positions where a type and an expression are both possible, and what disambiguation strategy is chosen (turbofish, context-sensitive lexing, backtracking)? Is `type` becoming a reserved word, and are trailing commas, empty parameter lists `Pair<>`, and whitespace variants (`Pair< T >`) accepted? What is the parse-tree shape and the error-recovery behavior on a malformed parameter list?",
+        "impact": [
+          "The `<` disambiguation strategy is a parser-architecture decision that cannot be retrofitted cheaply and may itself break previously valid programs (feeds AR-05)",
+          "Reserving `type` is a source-compatibility break requiring an explicit user decision",
+          "Error recovery shape determines whether one malformed alias produces one diagnostic or a cascade (feeds AR-11)"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-11",
+        "question": "'Helpful diagnostics' needs a testable contract. For each error class (infinite expansion, arity mismatch, unresolved alias, malformed parameter list): which span is primary \u2014 the use site, the alias declaration, or the full cycle path? Are stable error codes required? For a cycle, is one diagnostic emitted or one per participating alias? Are downstream cascading errors suppressed once expansion fails? Must diagnostics be byte-identical between a cold build and an incremental build that hits the cache? Is a machine-readable form (JSON, LSP) required, and are existing diagnostic codes and message texts a compatibility surface for tooling and tests?",
+        "impact": [
+          "Without a named span and code per error class there is no acceptance criterion to test against, and 'helpful' cannot be verified or regressed",
+          "Cold-vs-incremental diagnostic stability is a hard constraint on the cache design: a cache that stores only the expansion cannot replay declaration-site notes (feeds AR-03)",
+          "If existing diagnostic codes are a compatibility surface, changing any message becomes a breaking change under AR-05"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-12",
+        "question": "What does the existing typed IR actually represent? Does it have any notion of parameterized or generic types, or only fully applied concrete ones? Does an alias survive as an IR node, and if so what invariants must every subsequent pass preserve? Is the IR itself serialized to disk, and does it carry a version? Which existing passes consume the nodes this feature would emit?",
+        "impact": [
+          "If the IR has no parameterized-type representation, either expansion must fully monomorphize before lowering or the IR needs a new node \u2014 a substantially larger change touching every consuming pass",
+          "If the IR is serialized, the lowering change is also an artifact-format change and pulls AR-04/AR-05 versioning into scope",
+          "This is unverifiable from the scenario text alone: no repository, IR definition, or pass list was provided, so the lowering half of the plan cannot be sized"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-13",
+        "question": "What bounds apply to expansion? Nested aliases can expand exponentially even without a cycle (each alias referencing the previous one twice). Is there a maximum expanded size, node count, expansion time, or memory ceiling? Is the cache itself bounded, and what is the eviction policy? What is the required incremental rebuild behavior after a single alias edit \u2014 bounded by the alias's reverse-dependency set, or is a full module re-expansion acceptable?",
+        "impact": [
+          "A blowup bound is a user-visible behavior (a program that compiles or does not), not a tuning knob, and its error class must be defined alongside AR-02",
+          "Eviction policy interacts with diagnostic stability (AR-11): an evicted entry that re-expands must produce identical output",
+          "Without a rebuild bound there is no performance acceptance criterion, and the incremental-cache work has no success condition"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-14",
+        "question": "Is the compiler single-threaded and single-process for this cache, or do parallel query threads, parallel module compilation, or concurrent build processes share it? If shared: what is the concurrency control, can two threads expand the same alias simultaneously, and is a partially populated entry ever observable?",
+        "impact": [
+          "This decides whether `distributed-and-concurrent` joins the domain selection; selecting it wrong silently drops every concurrency question from the interview, and no one notices what was never asked",
+          "If the cache is shared, the plan needs interning/locking, deadlock analysis for cyclic expansion under concurrent access, and determinism guarantees under racing writers",
+          "Concurrent access also constrains the on-disk format in AR-04 (atomic replace, lock file, or per-process cache)"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-15",
+        "question": "How is each claim verified? Specifically: which pinned corpus of pre-existing modules proves the compatibility claim in AR-05; are differential tests against the pre-feature compiler required; is fuzzing over alias graphs required to exercise the recursion rule; and are golden diagnostic files the acceptance mechanism for AR-11?",
+        "impact": [
+          "Determines whether the plan must include building a corpus and a differential harness, which can exceed the feature work itself",
+          "Fixes what 'done' means for the compatibility and diagnostics goals; without it those two goals have no exit condition",
+          "A plan can be drafted under a stated assumption here and corrected later, so this constrains scope rather than blocking the design"
+        ],
+        "must_block": false
+      }
+    ],
+    "gate_verdict": "BLOCK"
+  }
+]

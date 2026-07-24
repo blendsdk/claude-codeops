@@ -27,6 +27,27 @@
       ]
     },
     {
+      "label": "candidate-3.14.0",
+      "captured": "2026-07-25",
+      "release": "3.14.0",
+      "plugin_source": "working tree (domain classification added)",
+      "cli_version": "2.1.219",
+      "model": "claude-opus-5[1m]",
+      "effort": "high",
+      "runs_per_scenario": 3,
+      "scenarios": ["compiler", "financial", "web"],
+      "files": {
+        "compiler": "compiler/candidate-3.14.0.json",
+        "financial": "financial/candidate-3.14.0.json",
+        "web": "web/candidate-3.14.0.json"
+      },
+      "notes": [
+        "Captured under the same rig as baseline-3.12.0, which is the only reason the two can be compared.",
+        "Every run selected canonical domain ids, so classification demonstrably reached the runs.",
+        "Oracle pass rate: compiler 2/3 (baseline 3/3), financial 3/3 (baseline 2/3), web 3/3 (baseline 3/3). Retained as the evidence behind a gate that did not pass."
+      ]
+    },
+    {
       "label": "retained-3.12.0-2026-07-23",
       "captured": "2026-07-23",
       "release": "3.12.0",
