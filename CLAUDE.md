@@ -12,10 +12,12 @@
 
 ## Toolchain
 - **Language(s):** Markdown (skills/commands/standards/docs content), Bash (validation + dev
-  installer), TypeScript (VitePress config only), JSON (plugin/marketplace manifests, hooks)
+  installer), Python (standalone engines under `scripts/`), TypeScript (VitePress config only),
+  JSON (plugin/marketplace manifests, hooks)
 - **Framework(s):** Claude Code plugin system; VitePress (docs site)
 - **Package manager:** npm (dev-only; for the docs build)
-- **Test framework:** none formal — Bash spec suites (`scripts/validate.sh`, `scripts/docs-check.sh`,
+- **Test framework:** Bash spec suites for the Bash engines, pytest for the standalone Python
+  engines (dev-only, `requirements-dev.txt`) — Bash suites (`scripts/validate.sh`, `scripts/docs-check.sh`,
   `scripts/migration-check.sh`, `scripts/compact-check.sh`, `scripts/roadmap-sync-check.sh`,
   `scripts/telemetry-check.sh`, `scripts/agents-sync-check.sh`) plus the VitePress build's dead-link check
 
@@ -26,9 +28,10 @@
   `./scripts/migration-check.sh` (flat→nested migration engine, against `scripts/fixtures/flat-repo/`),
   `./scripts/compact-check.sh` (roadmap compact engine, against `scripts/fixtures/bloated-repo/`),
   `./scripts/roadmap-sync-check.sh` (roadmap sync engine, against `scripts/fixtures/roadmap-repo/`),
-  `./scripts/telemetry-check.sh` (telemetry utility spec suite, against `scripts/fixtures/telemetry-events/`, sandbox HOME), and
-  `./scripts/agents-sync-check.sh` (agent-sync engine spec suite, temp repos against this plugin root)
-- **Verify (run before every commit):** `./scripts/validate.sh && npm run docs:build && ./scripts/docs-check.sh && ./scripts/migration-check.sh && ./scripts/compact-check.sh && ./scripts/roadmap-sync-check.sh && ./scripts/telemetry-check.sh && ./scripts/agents-sync-check.sh`
+  `./scripts/telemetry-check.sh` (telemetry utility spec suite, against `scripts/fixtures/telemetry-events/`, sandbox HOME),
+  `./scripts/agents-sync-check.sh` (agent-sync engine spec suite, temp repos against this plugin root), and
+  `./scripts/pytest-check.sh` (pytest suites for the standalone Python engines; skips cleanly when pytest is absent)
+- **Verify (run before every commit):** `./scripts/validate.sh && npm run docs:build && ./scripts/docs-check.sh && ./scripts/migration-check.sh && ./scripts/compact-check.sh && ./scripts/roadmap-sync-check.sh && ./scripts/telemetry-check.sh && ./scripts/agents-sync-check.sh && ./scripts/pytest-check.sh`
 - **Clean:** `rm -rf node_modules docs/.vitepress/dist docs/.vitepress/cache`
 
 ## Project structure
@@ -40,7 +43,9 @@
 - `hooks/hooks.json` — SessionStart standards + output-style hooks + PreToolUse `.codeops.yml` marker guard + PostToolUse telemetry hook (`Skill|Task|Agent` → `codeops-events.sh`).
 - `standards/coding-standards.md` — always-on injected core (≤50 lines); full text in `coding-standards-full.md`.
 - `standards/output-style.md` — always-on injected reporting rules; the two injected files are capped together at 65 lines (ST-74).
-- `scripts/` — Bash spec suites + engines: `validate.sh`, `docs-check.sh`, `migration-check.sh`, `compact-check.sh`, `telemetry-check.sh`, `codeops-migrate.sh`, `codeops-roadmap-sync.sh`, `codeops-roadmap-compact.sh`, `codeops-agents-sync.sh` (materializes per-repo agent effort overrides from `agent_models`; sole owner of `CODEOPS-GENERATED` files), `codeops-events.sh` (telemetry utility — sole reader/writer of `~/.claude/codeops-telemetry/events.jsonl`), `fixtures/`.
+- `scripts/` — Bash spec suites + engines: `validate.sh`, `docs-check.sh`, `migration-check.sh`, `compact-check.sh`, `telemetry-check.sh`, `codeops-migrate.sh`, `codeops-roadmap-sync.sh`, `codeops-roadmap-compact.sh`, `codeops-agents-sync.sh` (materializes per-repo agent effort overrides from `agent_models`; sole owner of `CODEOPS-GENERATED` files), `codeops-events.sh` (telemetry utility — sole reader/writer of `~/.claude/codeops-telemetry/events.jsonl`), `pytest-check.sh`, `codeops_eval.py` (evaluation harness), `fixtures/`.
+- `tests/` — pytest suites and evaluation scenarios. Inert to the plugin loader and never installed.
+- `requirements-dev.txt` — development-only dependencies (pytest). Never needed to install or run the plugin.
 - `bin/codeops-worktree` — user-facing worktree CLI (installed by the dev installer, not the marketplace plugin); carries a version stamp watched by `validate.sh`.
 - `docs/` — VitePress documentation site (`.vitepress/config.ts`, guide/skills/tutorials/reference).
 - `.github/workflows/docs.yml` — builds + deploys the docs site to GitHub Pages.
@@ -57,7 +62,13 @@
 - **User-facing docs are hand-authored** (the `techdocs` skill is for architecture/ADR docs only).
   Keep `docs/` content consistent with `README.md` / `TUTORIAL.md`; do not contradict them.
 - **VitePress `base` is `/claude-codeops/`** (the Pages sub-path). Dead links fail the build.
-- **Bash scripts** never execute repo data as code — they only read/parse it.
+- **Bash scripts** never execute repo data as code — they only read/parse it. The same rule binds
+  the Python engines: repository data is parsed, never `eval`'d, imported, or shelled out.
+- **Bash-or-Python.** An engine that parses repository markdown and is invoked by a skill is a
+  **Bash entry point with embedded Python** (`codeops-roadmap-sync.sh`, `codeops-agents-sync.sh`).
+  A module with an independent unit-test surface is a **standalone `.py`** under `scripts/`,
+  declared in `validate.sh`'s `PY_MODULES`, version-stamped, and covered by
+  `tests/test_<module>_spec.py` plus `tests/test_<module>_impl.py`. Nothing else is standalone.
 
 ## Git conventions
 - **Commit scope:** the area changed — `docs`, `plugin`, `skills`, `standards`, `ci`, `scripts`.

@@ -11,79 +11,87 @@ import pytest
 import codeops_eval as ev
 
 
-# --------------------------------------------------------------------------------------
-# Fixtures — minimal shapes the specification defines, built explicitly so each test reads
-# on its own without tracing helper indirection.
-# --------------------------------------------------------------------------------------
-
 EXPECTED = {
-    "requiredConcepts": {
-        "rounding": ["round", "precision"],
-        "idempotency": ["idempoten", "duplicate"],
-        "atomicity": ["atomic", "rollback"],
-        "currency": ["currency", "unit"],
-        "overflow": ["overflow", "negative"],
-        "audit": ["audit", "trail"],
-        "authz": ["authoriz", "permission"],
-        "isolation": ["tenant", "isolation"],
-    },
-    "expectedGate": "closed",
+    "scenario": "sample",
+    "required_domains": ["financial-system", "distributed-and-concurrent"],
+    "required_concepts": [
+        "currency precision and rounding order",
+        "idempotency and timeout unknown outcome",
+    ],
+    "minimum_material_ambiguities": 2,
+    "verdict": "BLOCK",
 }
 
-ALL_CONCEPT_BLOCKERS = [
-    {"question": "How are amounts rounded?", "impact": "precision loss"},
-    {"question": "Is the transfer idempotent?", "impact": "duplicate posting"},
-    {"question": "Is the write atomic with rollback?", "impact": "partial commit"},
-    {"question": "What currency unit is stored?", "impact": "unit mismatch"},
-    {"question": "Can an amount be negative or overflow?", "impact": "overflow"},
-    {"question": "What audit trail is kept?", "impact": "no audit"},
-    {"question": "Who is authorized to post?", "impact": "permission gap"},
-    {"question": "How is tenant isolation enforced?", "impact": "cross-tenant read"},
+
+def ambiguity(question, impact, blocking=True):
+    """Build one material ambiguity in the shape a scored run reports."""
+    return {"question": question, "impact": list(impact), "must_block": blocking}
+
+
+COVERING = [
+    ambiguity(
+        "What currency precision applies and in what rounding order?",
+        ["wrong rounding order changes settled amounts"],
+    ),
+    ambiguity(
+        "Is the transfer idempotent when a timeout leaves the outcome unknown?",
+        ["a retry can double-post"],
+    ),
 ]
 
 
-def result(blockers, gate="closed"):
-    """Build a structured run result carrying the given blockers and gate verdict."""
-    return {"domains": [], "blockers": list(blockers), "gate": gate}
+def run(ambiguities, verdict="BLOCK", domains=("financial-system", "distributed-and-concurrent")):
+    """Build a structured run result."""
+    return {
+        "selected_domains": list(domains),
+        "material_ambiguities": list(ambiguities),
+        "gate_verdict": verdict,
+    }
 
 
-def runs_with_counts(counts, gate="closed"):
-    """Build one run per requested blocker count, each covering every required concept.
-
-    Concept coverage is held constant so a test that varies counts is isolated to counts.
-    """
-    out = []
-    for count in counts:
-        blockers = list(ALL_CONCEPT_BLOCKERS)
-        while len(blockers) < count:
-            blockers.append({"question": f"Extra question {len(blockers)}", "impact": "minor"})
-        out.append(result(blockers[:count] if count < len(blockers) else blockers, gate))
-    return out
+def padded(count, ambiguities=COVERING):
+    """Extend a covering run to `count` blocking ambiguities, holding coverage constant."""
+    items = list(ambiguities)
+    while len(items) < count:
+        items.append(ambiguity(f"Filler question {len(items)}", ["minor"]))
+    return run(items)
 
 
 # --------------------------------------------------------------------------------------
 # The oracle
 # --------------------------------------------------------------------------------------
 
-def test_should_pass_when_every_required_concept_is_covered_and_the_gate_matches():
-    score = ev.score(EXPECTED, result(ALL_CONCEPT_BLOCKERS, gate="closed"))
-    assert score.passed is True
-    assert score.coverage == 1.0
-    assert score.missing_concepts == []
+def test_should_return_no_errors_when_concepts_volume_domains_and_verdict_all_hold():
+    assert ev.score(EXPECTED, run(COVERING)) == []
 
 
-def test_should_fail_and_name_the_gap_when_one_required_concept_is_uncovered():
-    score = ev.score(EXPECTED, result(ALL_CONCEPT_BLOCKERS[:-1], gate="closed"))
-    assert score.passed is False
-    assert score.coverage < 1.0
-    assert score.missing_concepts == ["isolation"]
+def test_should_name_the_concept_left_below_the_overlap_threshold():
+    thin = [COVERING[0], ambiguity("Is anything cached?", ["unclear"])]
+    errors = ev.score(EXPECTED, run(thin))
+    assert any("idempotency and timeout unknown outcome" in e for e in errors)
 
 
-def test_should_fail_on_the_gate_verdict_when_coverage_is_complete_but_the_gate_is_wrong():
-    score = ev.score(EXPECTED, result(ALL_CONCEPT_BLOCKERS, gate="open"))
-    assert score.passed is False
-    assert score.gate_ok is False
-    assert score.coverage == 1.0
+def test_should_report_the_gate_verdict_when_it_does_not_match_the_expectation():
+    errors = ev.score(EXPECTED, run(COVERING, verdict="PASS"))
+    assert any("PASS" in e and "BLOCK" in e for e in errors)
+
+
+def test_should_report_both_counts_when_too_few_ambiguities_block():
+    one_blocking = [COVERING[0], dict(COVERING[1], must_block=False)]
+    errors = ev.score(EXPECTED, run(one_blocking))
+    assert any("1" in e and "2" in e for e in errors)
+
+
+def test_should_not_report_a_domain_gap_when_the_domain_check_is_disabled():
+    # A release predating domain selection cannot satisfy the check by construction, so a
+    # baseline from such a release is scored on coverage and verdict alone.
+    errors = ev.score(EXPECTED, run(COVERING, domains=()), require_domains=False)
+    assert not any("domain" in e.lower() for e in errors)
+
+
+def test_should_report_a_domain_gap_when_the_domain_check_is_enabled():
+    errors = ev.score(EXPECTED, run(COVERING, domains=("financial-system",)))
+    assert any("distributed-and-concurrent" in e for e in errors)
 
 
 # --------------------------------------------------------------------------------------
@@ -91,78 +99,81 @@ def test_should_fail_on_the_gate_verdict_when_coverage_is_complete_but_the_gate_
 # --------------------------------------------------------------------------------------
 
 def test_should_report_no_regression_when_the_candidate_median_is_at_or_above_the_baseline_floor():
-    comparison = ev.compare(
-        EXPECTED, runs_with_counts([10, 13, 16]), runs_with_counts([11, 12, 14])
-    )
-    assert comparison.regressed is False
+    baseline = [padded(10), padded(13), padded(16)]
+    candidate = [padded(11), padded(12), padded(14)]
+    assert ev.compare(EXPECTED, baseline, candidate).regressed is False
 
 
 def test_should_report_regression_when_the_candidate_median_falls_below_the_baseline_floor():
-    comparison = ev.compare(
-        EXPECTED, runs_with_counts([10, 13, 16]), runs_with_counts([7, 8, 9])
-    )
-    assert comparison.regressed is True
+    baseline = [padded(10), padded(13), padded(16)]
+    candidate = [padded(7), padded(8), padded(9)]
+    assert ev.compare(EXPECTED, baseline, candidate).regressed is True
 
 
-def test_should_report_regression_when_a_required_concept_is_dropped_despite_a_higher_count():
-    # The candidate asks more questions overall but stops covering one required concept.
-    # Losing a concept outranks any gain in raw question count.
-    weakened = []
-    for run in runs_with_counts([20, 20, 20]):
-        run["blockers"] = [
-            b for b in run["blockers"] if "tenant" not in b["question"].lower()
-        ]
-        weakened.append(run)
-    comparison = ev.compare(EXPECTED, runs_with_counts([10, 13, 16]), weakened)
-    assert comparison.regressed is True
+def test_should_report_regression_when_a_covered_concept_is_lost_despite_a_higher_volume():
+    baseline = [padded(10), padded(13), padded(16)]
+    thin = [COVERING[0], ambiguity("Is anything cached?", ["unclear"])]
+    candidate = [padded(20, thin), padded(20, thin), padded(20, thin)]
+    assert ev.compare(EXPECTED, baseline, candidate).regressed is True
 
 
-def test_should_report_regression_when_the_gate_closes_less_often_than_the_baseline():
-    baseline = runs_with_counts([10, 13, 16], gate="closed")
-    candidate = runs_with_counts([10, 13, 16], gate="open")
-    comparison = ev.compare(EXPECTED, baseline, candidate)
-    assert comparison.regressed is True
+def test_should_report_regression_when_the_expected_verdict_is_reached_less_often():
+    baseline = [padded(10), padded(13), padded(16)]
+    candidate = [
+        run(list(padded(10)["material_ambiguities"]), verdict="PASS"),
+        run(list(padded(13)["material_ambiguities"]), verdict="PASS"),
+        run(list(padded(16)["material_ambiguities"]), verdict="BLOCK"),
+    ]
+    assert ev.compare(EXPECTED, baseline, candidate).regressed is True
+
+
+def test_should_map_the_source_editions_field_name_when_loading_a_retained_result(tmp_path):
+    retained = tmp_path / "retained.json"
+    legacy = {
+        "selected_lenses": ["financial-system"],
+        "material_ambiguities": COVERING,
+        "gate_verdict": "BLOCK",
+    }
+    retained.write_text(json.dumps(legacy), encoding="utf-8")
+    loaded = ev.load_result(retained)
+    assert loaded["selected_domains"] == ["financial-system"]
+    assert "selected_lenses" not in loaded
 
 
 # --------------------------------------------------------------------------------------
 # Running a scenario — retry, aggregation, and refusal to measure too little
 # --------------------------------------------------------------------------------------
 
-def test_should_record_one_successful_run_when_the_first_attempt_fails_and_the_retry_succeeds():
+def test_should_record_one_successful_run_when_the_first_attempt_fails_and_the_retry_succeeds(tmp_path):
     attempts = []
 
     def invoke(_plugin, _scenario):
         attempts.append(1)
         if len(attempts) == 1:
             raise ev.InvocationError("transient failure")
-        return result(ALL_CONCEPT_BLOCKERS)
+        return run(COVERING)
 
-    outcome = ev.run_scenario("plugin", "scenario", runs=1, invoke=invoke)
+    outcome = ev.run_scenario(tmp_path, tmp_path, runs=1, invoke=invoke, min_runs=1)
     assert len(outcome.successful) == 1
     assert outcome.failed == []
     assert len(attempts) == 2
 
 
-def test_should_exclude_and_report_a_run_when_both_attempts_fail():
+def test_should_exclude_and_report_a_run_when_both_attempts_fail(tmp_path):
     def invoke(_plugin, _scenario):
         raise ev.InvocationError("hard failure")
 
-    outcome = ev.run_scenario("plugin", "scenario", runs=3, invoke=invoke, min_runs=0)
+    outcome = ev.run_scenario(tmp_path, tmp_path, runs=3, invoke=invoke, min_runs=0)
     assert outcome.successful == []
     assert len(outcome.failed) == 3
 
 
-def test_should_abort_when_fewer_than_two_runs_succeed_because_a_median_needs_two():
-    calls = []
-
+def test_should_abort_when_fewer_than_two_runs_succeed_because_a_median_needs_two(tmp_path):
     def invoke(_plugin, _scenario):
-        calls.append(1)
-        if len(calls) <= 2:
-            raise ev.InvocationError("failure")
-        return result(ALL_CONCEPT_BLOCKERS)
+        raise ev.InvocationError("failure")
 
     with pytest.raises(ev.InsufficientRunsError) as excinfo:
-        ev.run_scenario("plugin", "scenario", runs=1, invoke=invoke)
+        ev.run_scenario(tmp_path, tmp_path, runs=3, invoke=invoke)
     assert "2" in str(excinfo.value)
 
 
@@ -171,10 +182,9 @@ def test_should_abort_when_fewer_than_two_runs_succeed_because_a_median_needs_tw
 # --------------------------------------------------------------------------------------
 
 def test_should_raise_a_hard_error_naming_the_capture_command_when_the_baseline_is_absent(tmp_path):
-    missing = tmp_path / "baseline-3.12.0.json"
     with pytest.raises(ev.BaselineMissingError) as excinfo:
-        ev.load_baseline(missing)
-    # A reader who hits this must be told how to produce the file, not merely that it is absent.
+        ev.load_baseline(tmp_path / "baseline-3.12.0.json")
+    # A reader hitting this must be told how to produce the file, not merely that it is absent.
     assert "run" in str(excinfo.value)
 
 
@@ -183,7 +193,7 @@ def test_should_raise_before_spending_anything_when_the_plugin_directory_does_no
 
     def invoke(_plugin, _scenario):
         spent.append(1)
-        return result(ALL_CONCEPT_BLOCKERS)
+        return run(COVERING)
 
     with pytest.raises(ev.PluginNotFoundError):
         ev.run_scenario(tmp_path / "absent", tmp_path, runs=1, invoke=invoke)
@@ -205,7 +215,7 @@ def test_should_accept_a_path_that_stays_inside_its_allowed_root(tmp_path):
 
 def test_should_raise_a_parse_error_naming_the_file_when_json_is_malformed(tmp_path):
     broken = tmp_path / "expected.json"
-    broken.write_text('{"requiredConcepts": ', encoding="utf-8")
+    broken.write_text('{"required_concepts": ', encoding="utf-8")
     with pytest.raises(ev.MalformedJSONError) as excinfo:
         ev.load_json(broken)
     assert "expected.json" in str(excinfo.value)
@@ -215,3 +225,17 @@ def test_should_load_well_formed_json_unchanged(tmp_path):
     good = tmp_path / "expected.json"
     good.write_text(json.dumps(EXPECTED), encoding="utf-8")
     assert ev.load_json(good) == EXPECTED
+
+
+# --------------------------------------------------------------------------------------
+# The ported fixtures must satisfy the contract the oracle reads
+# --------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("name", ["compiler", "financial", "web"])
+def test_should_ship_each_scenario_with_a_well_formed_expectation(name, request):
+    scenario = request.config.rootpath / "tests" / "scenarios" / name
+    expected = ev.load_json(scenario / "expected.json")
+    assert (scenario / "scenario.md").is_file()
+    for key in ("required_domains", "required_concepts", "minimum_material_ambiguities", "verdict"):
+        assert key in expected, f"{name}/expected.json is missing {key}"
+    assert expected["required_concepts"], f"{name} declares no required concepts"
