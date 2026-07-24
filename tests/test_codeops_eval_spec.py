@@ -177,6 +177,17 @@ def test_should_abort_when_fewer_than_two_runs_succeed_because_a_median_needs_tw
     assert "2" in str(excinfo.value)
 
 
+def test_should_name_why_the_runs_failed_when_aborting_for_too_few_successes(tmp_path):
+    # Without the underlying reason the abort tells an operator nothing they can act on, and the
+    # failure has to be reproduced by hand to be diagnosed at all.
+    def invoke(_plugin, _scenario):
+        raise ev.InvocationError("not a valid JSON Schema")
+
+    with pytest.raises(ev.InsufficientRunsError) as excinfo:
+        ev.run_scenario(tmp_path, tmp_path, runs=3, invoke=invoke)
+    assert "not a valid JSON Schema" in str(excinfo.value)
+
+
 # --------------------------------------------------------------------------------------
 # Refusing to proceed on bad inputs
 # --------------------------------------------------------------------------------------

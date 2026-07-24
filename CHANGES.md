@@ -2,6 +2,30 @@
 
 ## Changelog
 
+### 3.13.0 — An evaluation harness for release quality (2026-07-25)
+
+Development tooling. Nothing in the installed plugin changes: the harness, its scenarios, and its
+test suites are contributor-side and never ship.
+
+- **`scripts/codeops_eval.py` scores a release against pinned scenarios.** It answers one
+  question — does a release surface the safety concepts a scenario demands, and does it reach the
+  right gate verdict? Three subcommands: `run` (invokes a model, costs tokens), `score`, and
+  `compare`. The latter two are pure functions over stored JSON.
+- **A release is selected by path, not by installation state.** `run` passes `--plugin-dir`
+  through, so a candidate can be measured before it is merged and the installed plugin is never
+  mutated to take a reading.
+- **The oracle is deterministic.** Concept coverage is set overlap over word tokens against a
+  fixed threshold — no fuzzy similarity, no embeddings, no model in the loop. Same input, same
+  verdict, which is what lets it be used as a gate.
+- **Its limits are documented as prominently as its use.** It measures the requirements stage
+  only, and is not evidence of execution quality, recovery behavior, or system quality. A guard
+  fails the build if the reference page stops saying so.
+- **Python joins the toolchain, narrowly.** A module gets its own `.py` only when it has an
+  independent unit-test surface; engines that parse repository markdown for a skill stay Bash
+  entry points with embedded Python. Guards enforce version stamps, spec-test presence, and that
+  `tests/` never reaches an install manifest. `pytest-check.sh` skips cleanly without pytest, so
+  the Bash verify chain still runs on a bare checkout.
+
 ### 3.12.0 — Per-repo effort overrides without forking a prompt (2026-07-21)
 
 Feature. Backward compatible: an `agent_models` map of plain model names keeps working unchanged,

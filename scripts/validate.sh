@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.12.0"
+CODEOPS_VERSION="3.13.0"
 
 FAILURES=0
 
@@ -1957,6 +1957,26 @@ for f in "${PY_MODULES[@]}"; do
     pass "$f is free of ephemeral CodeOps references"
   fi
 done
+
+# -----------------------------------------------------------------------------
+# ST-81 — the evaluation harness is documented with its limits attached.
+# A measurement quoted without its scope invites over-reading: the harness sees
+# the requirements stage only, and the page that explains it must say so.
+# -----------------------------------------------------------------------------
+section "ST-81: the evaluation harness is documented with its limits"
+harness_doc="docs/reference/evaluation-harness.md"
+if [[ ! -s "$harness_doc" ]]; then
+  fail "$harness_doc is missing — the harness must be documented"
+else
+  pass "$harness_doc exists"
+  for phrase in "requirements-stage" "execution quality" "recovery" "system quality"; do
+    if grep -qiF "$phrase" "$harness_doc"; then
+      pass "$harness_doc states its limit on \"$phrase\""
+    else
+      fail "$harness_doc does not state its limit on \"$phrase\""
+    fi
+  done
+fi
 
 # -----------------------------------------------------------------------------
 # Summary

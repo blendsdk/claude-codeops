@@ -2,7 +2,7 @@
 #
 # codeops-agents-sync.sh — materialize per-repo agent effort overrides without forking prompts.
 #
-# CodeOps Skills Version: 3.12.0
+# CodeOps Skills Version: 3.13.0
 #
 # A subagent's MODEL can be redirected at dispatch time, so an `agent_models` entry naming only a
 # model needs no file on disk. A subagent's EFFORT cannot: Claude Code reads it from the agent's

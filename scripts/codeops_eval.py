@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Evaluation harness — score a CodeOps release against pinned requirements-stage scenarios.
 
-CodeOps Skills Version: 3.12.0
+CodeOps Skills Version: 3.13.0
 
 The harness answers one question: does a release surface the safety concepts a scenario demands,
 and does it reach the right gate verdict? Scoring and comparison are pure functions over stored
@@ -152,6 +152,19 @@ def load_baseline(path: Path | str) -> list[dict[str, Any]]:
     if not isinstance(runs, list):
         raise MalformedJSONError(f"{path}: expected a list of runs")
     return runs
+
+
+def schema_payload(path: Path | str) -> dict[str, Any]:
+    """Load the structured-output schema in the form the CLI accepts.
+
+    The CLI validates the schema it is handed against the dialects it has loaded, and rejects a
+    `$schema` URI it cannot resolve — which fails the invocation before any measurement happens.
+    The declaration is dropped here rather than removed from the file so the file stays a
+    well-formed schema for every other reader.
+    """
+    schema = dict(load_json(path))
+    schema.pop("$schema", None)
+    return schema
 
 
 # ---------------------------------------------------------------------------------------------
@@ -312,7 +325,7 @@ def _invoke_cli(plugin: Path, scenario: Path) -> dict[str, Any]:
         "--plugin-dir", str(plugin),
         "--effort", "high",
         "--output-format", "json",
-        "--json-schema", json.dumps(load_json(schema), separators=(",", ":")),
+        "--json-schema", json.dumps(schema_payload(schema), separators=(",", ":")),
         prompt,
     ]
     completed = subprocess.run(command, cwd=scenario, capture_output=True, text=True)
@@ -369,9 +382,12 @@ def run_scenario(
             outcome.failed.append(f"run {index + 1}: {last_error}")
 
     if len(outcome.successful) < min_runs:
+        # The failures travel with the abort: without them an operator has to reproduce the
+        # invocation by hand before they can act on it.
+        detail = "".join(f"\n  {failure}" for failure in outcome.failed)
         raise InsufficientRunsError(
             f"only {len(outcome.successful)} runs succeeded; at least {min_runs} are needed "
-            f"for a median to mean anything"
+            f"for a median to mean anything{detail}"
         )
     return outcome
 
