@@ -1979,6 +1979,112 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# ST-82 — the domain enum and references/domains/ are a bijection.
+# An enum value with no file sends a skill to a dead reference; a file outside
+# the enum is content nothing can legally select. Both are packaging defects.
+# -----------------------------------------------------------------------------
+section "ST-82: domain enum and reference files agree"
+QP_DOMAINS="$(sed -n '/^### Domain enum/,/^### Lens enum/p' "$QP" 2>/dev/null | grep -oE '^\| `[a-z-]+`' | sed 's/[|` ]//g')"
+domain_n="$(printf '%s\n' $QP_DOMAINS | grep -c . || true)"
+if [[ "$domain_n" -eq 5 ]]; then
+  pass "domain enum table lists 5 values"
+else
+  fail "domain enum table lists $domain_n values; expected 5"
+fi
+st82_bad=0
+for d in $QP_DOMAINS; do
+  if [[ -s "references/domains/$d.md" ]]; then
+    grep -q "CodeOps Skills Version" "references/domains/$d.md" \
+      && pass "references/domains/$d.md present and stamped" \
+      || { fail "references/domains/$d.md missing its version stamp"; st82_bad=1; }
+  else
+    fail "domain '$d' is in the enum but references/domains/$d.md does not exist"
+    st82_bad=1
+  fi
+done
+if [[ -s "references/domains/selection.md" ]]; then
+  grep -q "CodeOps Skills Version" "references/domains/selection.md" \
+    && pass "references/domains/selection.md present and stamped" \
+    || fail "references/domains/selection.md missing its version stamp"
+else
+  fail "references/domains/selection.md does not exist"
+  st82_bad=1
+fi
+for f in references/domains/*.md; do
+  [[ -f "$f" ]] || continue
+  base="$(basename "$f" .md)"
+  [[ "$base" == "selection" ]] && continue
+  if [[ " $(printf '%s ' $QP_DOMAINS) " != *" $base "* ]]; then
+    fail "$f has no matching value in the domain enum"
+    st82_bad=1
+  fi
+done
+[[ "$st82_bad" -eq 0 ]] && pass "enum and reference files are a bijection"
+
+# -----------------------------------------------------------------------------
+# ST-83 — "lens" never names a domain.
+# This repository already spends `lenses` on phase-reviewer add-ons. Two names
+# for two concepts only stays workable if the boundary is mechanical.
+# -----------------------------------------------------------------------------
+section "ST-83: domain files never say \"lens\""
+st83_bad=0
+for f in references/domains/*.md; do
+  [[ -f "$f" ]] || continue
+  if grep -qiE '\blens(es)?\b' "$f"; then
+    fail "$f uses \"lens\" — that word names phase-reviewer add-ons, not domains"
+    st83_bad=1
+  fi
+done
+[[ "$st83_bad" -eq 0 ]] && pass "no domain file uses \"lens\" for this concept"
+
+# -----------------------------------------------------------------------------
+# ST-84 — every wired skill reaches the selection rubric.
+# A skill that stops referencing it silently reverts to the undifferentiated
+# question sweep, which is precisely the regression this phase exists to undo.
+# -----------------------------------------------------------------------------
+section "ST-84: the four wired skills reference the selection rubric"
+for s in make_requirements preflight grill_me retro_requirements; do
+  if grep -rqF "references/domains/selection.md" "skills/$s/" 2>/dev/null; then
+    pass "skills/$s references selection.md"
+  else
+    fail "skills/$s does not reference references/domains/selection.md"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-85 — classification stays outside the quality loop.
+# It runs unconditionally, which is only defensible while it dispatches nothing
+# and emits nothing: those two are what the profile's absence rule governs.
+# -----------------------------------------------------------------------------
+section "ST-85: domain files dispatch no agent and emit no telemetry"
+st85_bad=0
+for f in references/domains/*.md; do
+  [[ -f "$f" ]] || continue
+  if grep -qE 'codeops-events\.sh|subagent_type|codeops-dispatch' "$f"; then
+    fail "$f dispatches or emits — classification must do neither"
+    st85_bad=1
+  fi
+done
+[[ "$st85_bad" -eq 0 ]] && pass "no domain file dispatches an agent or emits telemetry"
+
+# -----------------------------------------------------------------------------
+# ST-86 — the domains pin key is documented, and documented as pin-only.
+# A key that could disable classification would hand back the very default this
+# phase removes, so the file that owns the taxonomy must rule it out in writing.
+# -----------------------------------------------------------------------------
+section "ST-86: the domains profile key is documented as pin-only"
+if grep -qE '^\| `domains` \|' "$QP" 2>/dev/null; then
+  pass "quality-profile.md documents the domains key"
+  if sed -n '/^| `domains` |/p' "$QP" | grep -qiE 'pin|never disable'; then
+    pass "the domains key is described as pinning only"
+  else
+    fail "the domains key must state that it pins the selection and never disables it"
+  fi
+else
+  fail "quality-profile.md does not document the domains key"
+fi
+
+# -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
 section "Summary"
