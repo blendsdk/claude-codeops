@@ -66,7 +66,10 @@ EVENTS_FILE="$EVENTS_DIR/events.jsonl"
 # Grow-only: add new events/keys here; never rename or repurpose existing ones.
 # ---------------------------------------------------------------------------
 LENS_ENUM="correctness maintainability standards security perf api-surface concurrency"
-REVIEWER_AGENTS="phase-reviewer security-auditor preflight-auditor perf-auditor"
+# Agents whose completions are expected to be followed by a ruling. The gaps report asks that
+# question of exactly this list, so a finding-producing agent left out of it reads as one with
+# nothing outstanding rather than one nobody checked.
+REVIEWER_AGENTS="phase-reviewer security-auditor preflight-auditor perf-auditor concurrency-auditor financial-integrity-auditor semantics-reviewer"
 
 allowed_keys_for() {
   case "$1" in

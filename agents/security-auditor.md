@@ -37,6 +37,11 @@ active checklist below — never one dispatch per profile. The profile names are
 
 - **Scope.** Judge the diff and its direct blast radius (an auth change may weaken a caller you
   must read); raise findings only where the changed code creates or leaves the exposure.
+- **Superseded checklists are not yours.** When the packet marks a checklist as superseded by a
+  dedicated auditor — `financial-integrity` when the financial-integrity auditor is dispatched —
+  omit it entirely rather than covering the same ground more shallowly alongside a specialist.
+  Say in your report which checklists you applied, so a skipped one is visible rather than
+  assumed.
 - **Findings.** Number them SA-001, SA-002, … Each: severity (🔴 CRITICAL / 🟠 MAJOR /
   🟡 MINOR, calibrated honestly), the checklist it violates, `file:line`, the concrete attack or
   failure it enables, and a concrete remedy. Group by severity. If the phase is clean under

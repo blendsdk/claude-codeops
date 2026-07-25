@@ -1,7 +1,7 @@
 # Agents
 
-The plugin ships nine subagents in its `agents/` directory: two plan-task executors (used by
-model routing) and, since 3.10.0, seven quality agents that power the profile-gated quality
+The plugin ships twelve subagents in its `agents/` directory: two plan-task executors (used by
+model routing) and, since 3.10.0, ten quality agents that power the profile-gated quality
 loop. All are dispatched by the skills — you never invoke them directly.
 
 ## Roster
@@ -16,7 +16,47 @@ loop. All are dispatched by the skills — you never invoke them directly.
 | `preflight-auditor` | opus / high | read-only + bash | Audits one artifact against one preflight dimension cluster; PA findings |
 | `design-challenger` | fable / high | read-only, no bash | Independent second opinion on a decision, blind to the dispatcher's pick |
 | `perf-auditor` | opus / high | read-only + bash | Hot paths, allocations, complexity, N+1s, blocking I/O; PE findings |
+| `concurrency-auditor` | inherit / high | read-only + bash | Races, deadlocks, lost updates, unsafe retry; each finding carries an interleaving; CA findings |
+| `financial-integrity-auditor` | inherit / high | read-only + bash | Idempotency, precision, atomicity, audit trails on money movement; FA findings |
+| `semantics-reviewer` | inherit / high | read-only + bash | Formal semantics across parsing, typing, lowering, diagnostics, compatibility; SR findings |
 | `codebase-scout` | sonnet / low | read-only | Facts with `file:line` only; honest "not found"; capped at 3 per skill run |
+
+The three specialists inherit the session model rather than pinning a tier, so they run at
+whatever you are already running at. Raise or lower them per repo through `agent_models` like any
+other agent.
+
+## Supersession
+
+A dedicated auditor **supersedes** the matching dimension in a shared reviewer for that phase, so
+the same ground is never covered twice at two different depths:
+
+| When this dispatches | It supersedes | In |
+|----------------------|---------------|----|
+| `security-auditor` | the `security` lens | `phase-reviewer` |
+| `perf-auditor` | the `perf` lens | `phase-reviewer` |
+| `concurrency-auditor` | the `concurrency` lens | `phase-reviewer` |
+| `financial-integrity-auditor` | the `financial-integrity` checklist | `security-auditor`, which still runs for its other checklists |
+| `semantics-reviewer` | *(nothing — no shared reviewer covers formal semantics)* | — |
+
+Supersession is written into both prompts, not just the profile: the specialist claims the ground
+and the shared reviewer is told to stand down. Each dispatch packet names the dimensions withdrawn
+for that phase, and a reviewer that skipped one says so in its report — a dropped dimension has to
+be visible, never assumed.
+
+## Activation
+
+| Agent | Activates on |
+|-------|--------------|
+| `security-auditor` | `security_profile` is non-empty |
+| `perf-auditor` | `perf_critical: true` and the diff touches code |
+| `concurrency-auditor` | `lenses` contains `concurrency` and the diff touches code |
+| `financial-integrity-auditor` | `security_profile` contains `financial-integrity` |
+| `semantics-reviewer` | `compiler-and-language` is among the selected domains and the diff touches code |
+
+The semantics reviewer is the one agent keyed on a **domain** rather than a profile field, because
+`compiler-and-language` already means "this system has formal transformation semantics". Domains
+are classified for every repo, but this dispatch still requires a quality profile — as every agent
+does. See [Domains](/guide/domains).
 
 ## Packet contracts
 

@@ -157,7 +157,7 @@ codeops-skills/                # repo root == plugin root
 │   ├── codeops_stats.md       #   relay the local telemetry tables (metadata-only)
 │   ├── codeops_retro.md       #   quality retrospective (thresholds → tuning recommendations)
 │   └── …                      #   + thin alias commands that delegate to a parent skill
-├── agents/                    # 9 subagents: 2 plan-task executors + 7 quality agents
+├── agents/                    # 12 subagents: 2 plan-task executors + 10 quality agents
 │                              #   (phase-reviewer, spec-test-author, security-auditor,
 │                              #   preflight-auditor, design-challenger, perf-auditor, codebase-scout)
 ├── _shared/                   # shared conventions (gates, hardening, quality-profile.md)
