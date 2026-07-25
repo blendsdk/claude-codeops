@@ -2226,6 +2226,222 @@ else
   fi
 fi
 
+# =============================================================================
+# Delegated technical design (ST-92…ST-98)
+#
+# SPECIFICATION tests written from the contract BEFORE the policy exists. The
+# flag is parsed from prose, exactly as the commit-mode flags are, so these
+# guards assert that every rule standing between a typo and delegated authority
+# is actually written down. What they cannot do is prove the rule is followed —
+# that is what the behavioral matrix in scripts/fixtures/auto-design/ is for,
+# and neither substitutes for the other.
+# =============================================================================
+
+AUTO_DESIGN="_shared/auto-design.md"
+AD_SKILLS=(make_requirements make_plan preflight exec_plan)
+
+# -----------------------------------------------------------------------------
+# ST-92 — the policy exists in one place and carries all eight sections.
+# -----------------------------------------------------------------------------
+section "ST-92: the auto-design policy is present and complete"
+if [[ ! -s "$AUTO_DESIGN" ]]; then
+  fail "$AUTO_DESIGN missing"
+else
+  pass "$AUTO_DESIGN present"
+  for heading in "Invocation contract" "Default mode" "Eligibility boundary" \
+    "Reserved authority" "Strongest-option procedure" "Durable resolution" \
+    "Bounded escalation" "Invalidation" "Supported workflows"; do
+    if grep -qiE "^#+ .*$heading" "$AUTO_DESIGN"; then
+      pass "section present: $heading"
+    else
+      fail "$AUTO_DESIGN has no '$heading' section"
+    fi
+  done
+  if grep -qiE 'Policy version.*: *1' "$AUTO_DESIGN"; then
+    pass "policy version declared"
+  else
+    fail "$AUTO_DESIGN must declare its policy version"
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+# ST-93 — the whole hostile-argument matrix is specified, not just the happy path.
+#
+# Every row here is a way a typo, a shell expansion, or a filename could hand
+# over design authority nobody meant to delegate. A parser rule that is not
+# written down is a rule the reader is free to improvise.
+# -----------------------------------------------------------------------------
+section "ST-93: the hostile-argument matrix is fully specified"
+if [[ -s "$AUTO_DESIGN" ]]; then
+  ad_matrix_ok=1
+  check_ad() { # check_ad <label> <grep-pattern>
+    if grep -qiE "$2" "$AUTO_DESIGN"; then
+      pass "specified: $1"
+    else
+      fail "$AUTO_DESIGN does not specify: $1"
+      ad_matrix_ok=0
+    fi
+  }
+  check_ad "exactly one standalone token activates"        'exactly one standalone token'
+  check_ad "the end-of-options sentinel bounds the scan"   'sentinel'
+  check_ad "zero occurrences means default mode"           '[Zz]ero occurrences.*[Dd]efault mode'
+  check_ad "more than one is invalid, with a correction"   'more than one is invalid|usage correction'
+  check_ad "a token at or after the sentinel is content"   'at or after the sentinel is target content'
+  check_ad "lookalike --auto-designer is inert"            'auto-designer'
+  check_ad "lookalike --auto-design=true is inert"         'auto-design=true'
+  check_ad "lookalike bare auto-design is inert"           'bare .?auto-design'
+  check_ad "removal precedes target resolution"            'remove[sd]? the .*token before resolving'
+  [[ "$ad_matrix_ok" -eq 1 ]] && pass "every hostile-argument case is written down"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-94 — reserved authority is ported whole, and the flag grants no action.
+#
+# The reserved list is the entire safety boundary of this feature: it is what
+# stops a delegated technical decision from becoming a product, money, or
+# security decision. A category dropped in transcription is a silent widening.
+# -----------------------------------------------------------------------------
+section "ST-94: reserved authority is complete and grants no action permission"
+if [[ -s "$AUTO_DESIGN" ]]; then
+  ad_reserved_ok=1
+  for term in "product behavior" "scope" "acceptance criteria" "security policy" \
+    "data ownership" "retention" "compliance" "risk acceptance" "financial exposure" \
+    "budget" "deadline" "vendor" "compatibility break" "destructive migration" \
+    "credential" "spending" "deployment" "publication" "external communication" \
+    "equally defensible"; do
+    if grep -qi -- "$term" "$AUTO_DESIGN"; then
+      pass "reserved category present: $term"
+    else
+      fail "$AUTO_DESIGN omits reserved category: $term"
+      ad_reserved_ok=0
+    fi
+  done
+  if grep -qiE 'does not grant action permission' "$AUTO_DESIGN" \
+    && grep -qiE '\-\-auto-commit' "$AUTO_DESIGN"; then
+    pass "the no-action-permission clause names auto-commit explicitly"
+  else
+    fail "$AUTO_DESIGN must state it grants no action permission, naming --auto-commit"
+    ad_reserved_ok=0
+  fi
+  [[ "$ad_reserved_ok" -eq 1 ]] && pass "reserved authority survived the port intact"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-95 — the supported surface is a closed allowlist.
+#
+# These four skills are themselves the slash commands (`/codeops:exec_plan <feature>
+# --auto-commit`), so wiring the skill wires the only invocation path there is;
+# there is no command wrapper that could silently drop the flag. What still needs
+# guarding is the other direction — a fifth workflow quietly claiming the
+# authority, which the closed-allowlist sweep below catches.
+# -----------------------------------------------------------------------------
+section "ST-95: exactly four skills honor the flag, and no others"
+ad_surface_ok=1
+for s in "${AD_SKILLS[@]}"; do
+  if grep -qF 'auto-design' "skills/$s/SKILL.md" 2>/dev/null; then
+    pass "skills/$s honors the flag"
+  else
+    fail "skills/$s/SKILL.md does not honor --auto-design"
+    ad_surface_ok=0
+  fi
+done
+while read -r stray; do
+  [[ -z "$stray" ]] && continue
+  if [[ "$stray" == commands/* ]]; then
+    base="$(basename "$stray" .md)"
+  else
+    base="$(basename "$(dirname "$stray")")"
+  fi
+  case " ${AD_SKILLS[*]} " in
+    *" $base "*) continue ;;
+  esac
+  fail "$stray references --auto-design but is outside the allowlist"
+  ad_surface_ok=0
+done < <(grep -lF 'auto-design' skills/*/*.md commands/*.md 2>/dev/null || true)
+[[ "$ad_surface_ok" -eq 1 ]] && pass "the supported-workflow allowlist is closed and complete"
+
+# -----------------------------------------------------------------------------
+# ST-96 — nothing persists or confers the mode (ST-4.12).
+#
+# The feature's containment rests entirely on it being invocation-scoped. A
+# config key that switched it on would make a shared repo permanently delegated,
+# and a historical record read as standing authority would do the same by habit.
+# -----------------------------------------------------------------------------
+section "ST-96: the mode is never persisted and no key grants it"
+if grep -qiE '^\| .auto.design' "$QP" || grep -qiE '^\| .auto_design' "$QP"; then
+  fail "$QP defines a profile key for auto-design — the mode must not be configurable"
+else
+  pass "no quality-profile key grants or refuses the mode"
+fi
+ad_persist="$(grep -rlniE 'auto.design *[:=] *(true|on|yes|1)' \
+  skills/ commands/ standards/ _shared/ agents/ hooks/ .claude-plugin/ 2>/dev/null || true)"
+if [[ -n "$ad_persist" ]]; then
+  fail "auto-design is assigned as a setting in: $(tr '\n' ' ' <<<"$ad_persist")"
+else
+  pass "no shipped file assigns auto-design as a setting"
+fi
+if [[ -s "$AUTO_DESIGN" ]] && grep -qiE 'never persisted' "$AUTO_DESIGN" \
+  && grep -qiE 'confer|standing authority' "$AUTO_DESIGN"; then
+  pass "the policy states non-persistence and that history confers no authority"
+else
+  fail "$AUTO_DESIGN must state the mode is never persisted and history confers no authority"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-97 — the finding gate resolves, and never waives.
+#
+# This is the phase's accepted-risk surface. A finding may be fixed under
+# delegated authority; it may never be talked away. The distinction has to be
+# explicit in the skill that runs the gate, not only in the policy.
+# -----------------------------------------------------------------------------
+section "ST-97: findings are resolved with a fix, never waived"
+ad_gate_ok=1
+for f in "$AUTO_DESIGN" "skills/exec_plan/execution-protocol.md"; do
+  [[ -s "$f" ]] || { fail "$f missing"; ad_gate_ok=0; continue; }
+  if grep -qiE 'never .*(waiv|dismiss|downgrad)' "$f"; then
+    pass "$f forbids waiving, dismissing, or downgrading a finding"
+  else
+    fail "$f must state a finding is never waived, dismissed, or downgraded"
+    ad_gate_ok=0
+  fi
+done
+if grep -qiE 'reserved' skills/exec_plan/execution-protocol.md \
+  && grep -qiE 'auto-design' skills/exec_plan/execution-protocol.md; then
+  pass "the finding gate names the reserved-authority pause"
+else
+  fail "execution-protocol.md must state that reserved decisions still pause under auto-design"
+  ad_gate_ok=0
+fi
+[[ "$ad_gate_ok" -eq 1 ]] && pass "the no-waiver rule is stated where the gate runs"
+
+# -----------------------------------------------------------------------------
+# ST-98 — the provenance record carries all twelve fields.
+#
+# The record is the only durable trace that a decision was made by delegation
+# rather than by the user. A missing field is a decision nobody can audit later.
+# -----------------------------------------------------------------------------
+section "ST-98: the delegated resolution record has all twelve fields"
+if [[ -s "$AUTO_DESIGN" ]]; then
+  ad_fields_ok=1
+  for field in "Authority" "Eligibility" "Objective" "Decision" "Evidence" \
+    "Rejected alternatives" "Strongest counterargument" "Confidence" "Hardening" \
+    "Policy version" "Root invocation ID" "Reopen triggers"; do
+    if grep -qE "^${field}:" "$AUTO_DESIGN"; then
+      pass "provenance field: $field"
+    else
+      fail "$AUTO_DESIGN omits provenance field: $field"
+      ad_fields_ok=0
+    fi
+  done
+  if grep -qiE 'parallel decision database' "$AUTO_DESIGN"; then
+    pass "the record forbids a parallel decision database"
+  else
+    fail "$AUTO_DESIGN must forbid a parallel decision database"
+    ad_fields_ok=0
+  fi
+  [[ "$ad_fields_ok" -eq 1 ]] && pass "the provenance record is complete"
+fi
+
 # -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
