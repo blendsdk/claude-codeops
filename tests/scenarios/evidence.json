@@ -1,6 +1,35 @@
 {
   "captures": [
     {
+      "label": "candidate-3.18.0",
+      "captured": "2026-07-26",
+      "release": "3.18.0",
+      "plugin_source": "working tree (telemetry measure taxonomy added)",
+      "cli_version": "2.1.219",
+      "model": "claude-opus-5[1m]",
+      "effort": "high",
+      "runs_per_scenario": 3,
+      "scenarios": [
+        "compiler",
+        "financial",
+        "web"
+      ],
+      "files": {
+        "compiler": "compiler/candidate-3.18.0.json",
+        "financial": "financial/candidate-3.18.0.json",
+        "web": "web/candidate-3.18.0.json"
+      },
+      "notes": [
+        "Captured under the same rig as baseline-3.12.0, which is the only reason the two can be compared.",
+        "Pre-merge no-regression gate. The comparator reports no regression on all three scenarios.",
+        "Intolerant signals (concept coverage + gate verdict), baseline -> candidate: compiler 6/6 -> 3/3, financial 2/3 -> 3/3, web 3/3 -> 3/3. Median blocking volume 11 -> 12, 15 -> 23, 13 -> 22.",
+        "Against the immediately preceding release rather than the pinned baseline, the medians are flat: 12 -> 12, 24 -> 23, 21 -> 22. Movement of that size is inside the run-to-run spread of the individual runs and is not read as a signal in either direction.",
+        "The baseline is scored with require_domains=False and both candidates with require_domains=True. Domain classification shipped in 3.14.0, so requiring domains of a 3.12.0 capture would score it against a specification it was never built to meet; that is a correction for what the release could do, not a relaxation of the oracle.",
+        "This phase adds measurement to the workflow rather than changing how it decides anything, and telemetry is profile-gated while these scenarios run without a quality profile. The expected effect on scenario output is therefore none, and the gate is checking for collateral damage from the skill-prose edits that carry the new emission points.",
+        "Captured 00:58-01:23 from a tree carrying every change in this phase including the version bump and the documentation. Two later edits are NOT in the measured tree: a correction to the telemetry guide's content-free sentence and the evidence record itself. Neither is loaded by the requirements workflow these scenarios run."
+      ]
+    },
+    {
       "label": "candidate-3.17.0",
       "captured": "2026-07-25",
       "release": "3.17.0",

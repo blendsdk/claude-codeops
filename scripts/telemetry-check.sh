@@ -14,7 +14,7 @@
 # It NEVER mutates a committed fixture — fixtures are copied into temp dirs first, and
 # every utility invocation runs with an overridden HOME inside the sandbox.
 #
-# CodeOps Skills Version: 3.17.0
+# CodeOps Skills Version: 3.18.0
 #
 # Usage:  ./scripts/telemetry-check.sh
 # Exit:   0 = all checks pass (green); non-zero = at least one check failed (red).
@@ -629,6 +629,336 @@ else
   spec17_ok=0
 fi
 [[ "$spec17_ok" -eq 1 ]] && pass "specialist telemetry surface complete"
+
+# -----------------------------------------------------------------------------
+# SPEC-18 — the measure-taxonomy event types are in the catalog and land typed.
+#
+# Four types and two keys, each closing one audited measure. Every field is an int, a
+# bool, or a closed enum: the taxonomy exists to count outcomes, and an outcome that
+# needs prose to describe it is not collected at all.
+# -----------------------------------------------------------------------------
+section "SPEC-18: measure-taxonomy types accepted and typed"
+h18="$(mk_home)"
+ev18="$h18/$EVENTS_REL"
+
+run_util "$h18" "$WORK" emit spec_test_cycle feature=checkout phase=P1 \
+  authored=6 red_confirmed=6 post_impl_failures=1
+line="$(tail -n1 "$ev18" 2>/dev/null || true)"
+if [[ "$RC" -eq 0 && "$(jget '.event' "$line")" == "spec_test_cycle" \
+      && "$(jget '.authored' "$line")" == "6" && "$(jget '.authored|type' "$line")" == "number" \
+      && "$(jget '.post_impl_failures' "$line")" == "1" ]]; then
+  pass "spec_test_cycle accepted with integer counters"
+else
+  fail "spec_test_cycle not accepted as specified (rc=$RC line='${line:0:120}')"
+fi
+
+run_util "$h18" "$WORK" emit runtime_ambiguity feature=checkout phase=P1 \
+  owner=plan kind=assumption_invalidated
+line="$(tail -n1 "$ev18" 2>/dev/null || true)"
+if [[ "$RC" -eq 0 && "$(jget '.event' "$line")" == "runtime_ambiguity" \
+      && "$(jget '.owner' "$line")" == "plan" \
+      && "$(jget '.kind' "$line")" == "assumption_invalidated" ]]; then
+  pass "runtime_ambiguity accepted with owning stage and kind"
+else
+  fail "runtime_ambiguity not accepted as specified (rc=$RC line='${line:0:120}')"
+fi
+
+run_util "$h18" "$WORK" emit session_resumed feature=checkout phase=P1 \
+  resume_point=in_progress_task marks_corrected=true
+line="$(tail -n1 "$ev18" 2>/dev/null || true)"
+if [[ "$RC" -eq 0 && "$(jget '.event' "$line")" == "session_resumed" \
+      && "$(jget '.resume_point' "$line")" == "in_progress_task" \
+      && "$(jget '.marks_corrected' "$line")" == "true" \
+      && "$(jget '.marks_corrected|type' "$line")" == "boolean" ]]; then
+  pass "session_resumed accepted with a boolean correction flag"
+else
+  fail "session_resumed not accepted as specified (rc=$RC line='${line:0:120}')"
+fi
+
+run_util "$h18" "$WORK" emit design_delegated feature=checkout phase=P1 \
+  class=failure_recovery outcome=resolved confidence=high challenged=true
+line="$(tail -n1 "$ev18" 2>/dev/null || true)"
+if [[ "$RC" -eq 0 && "$(jget '.event' "$line")" == "design_delegated" \
+      && "$(jget '.class' "$line")" == "failure_recovery" \
+      && "$(jget '.outcome' "$line")" == "resolved" \
+      && "$(jget '.confidence' "$line")" == "high" ]]; then
+  pass "design_delegated accepted with class, outcome and confidence"
+else
+  fail "design_delegated not accepted as specified (rc=$RC line='${line:0:120}')"
+fi
+
+# A reserved-authority escalation carries no class — the choice was never in an eligible
+# one, and inventing a class to fill the field would misreport why it escalated.
+run_util "$h18" "$WORK" emit design_delegated feature=checkout phase=P1 \
+  outcome=escalated_reserved confidence=med challenged=false
+line="$(tail -n1 "$ev18" 2>/dev/null || true)"
+if [[ "$RC" -eq 0 && "$(jget '.outcome' "$line")" == "escalated_reserved" \
+      && "$(jget '.class' "$line")" == "null" ]]; then
+  pass "reserved escalation accepted without a class"
+else
+  fail "reserved escalation mishandled (rc=$RC line='${line:0:120}')"
+fi
+
+run_util "$h18" "$WORK" emit phase_started feature=checkout phase=P1 tag=standard \
+  mode=inline tasks_planned=12
+line="$(tail -n1 "$ev18" 2>/dev/null || true)"
+if [[ "$RC" -eq 0 && "$(jget '.tasks_planned' "$line")" == "12" \
+      && "$(jget '.tasks_planned|type' "$line")" == "number" ]]; then
+  pass "phase_started carries a planned-task count"
+else
+  fail "tasks_planned not accepted on phase_started (rc=$RC line='${line:0:120}')"
+fi
+
+run_util "$h18" "$WORK" emit review_run agent=phase-reviewer feature=checkout phase=P1 \
+  lenses=correctness round=rereview findings_critical=0 findings_major=0 findings_minor=1
+line="$(tail -n1 "$ev18" 2>/dev/null || true)"
+if [[ "$RC" -eq 0 && "$(jget '.round' "$line")" == "rereview" ]]; then
+  pass "review_run distinguishes a re-review from the initial pass"
+else
+  fail "round not accepted on review_run (rc=$RC line='${line:0:120}')"
+fi
+
+# -----------------------------------------------------------------------------
+# SPEC-19 (ST-6.2) — content-bearing payloads are refused whole-line.
+#
+# Each case is a PAIR: the same event with a legal enumerated value must land, and with
+# free text, a path, or an identifier in that same field must be refused. The pair is
+# what makes the check meaningful — a refusal on its own is also what an unimplemented
+# event type produces, so a lone rejection assertion would pass before the feature
+# exists and prove nothing.
+# -----------------------------------------------------------------------------
+section "SPEC-19: content-bearing payloads refused (ST-6.2)"
+h19="$(mk_home)"
+ev19="$h19/$EVENTS_REL"
+
+# refuses_but_accepts <label> <legal-args...> -- <hostile-args...>
+refuses_but_accepts() {
+  local label="$1"; shift
+  local -a legal=() hostile=()
+  local seen=0 a
+  for a in "$@"; do
+    if [[ "$a" == "--" ]]; then seen=1; continue; fi
+    if [[ "$seen" -eq 0 ]]; then legal+=("$a"); else hostile+=("$a"); fi
+  done
+  local before after
+  before="$(count_lines "$ev19")"
+  run_util "$h19" "$WORK" emit "${legal[@]}"
+  after="$(count_lines "$ev19")"
+  if [[ "$RC" -ne 0 || "$after" != "$((before + 1))" ]]; then
+    fail "$label: the legal form was not accepted (rc=$RC ${before}→${after})"
+    return
+  fi
+  before="$after"
+  run_util "$h19" "$WORK" emit "${hostile[@]}"
+  after="$(count_lines "$ev19")"
+  if [[ "$RC" -eq 0 && "$after" == "$before" && -n "$ERR" ]]; then
+    pass "$label"
+  else
+    fail "$label: hostile form not refused (rc=$RC ${before}→${after} warn='${ERR:0:60}')"
+  fi
+}
+
+refuses_but_accepts "free text in runtime_ambiguity.owner" \
+  runtime_ambiguity feature=checkout phase=P1 owner=plan kind=unspecified_detail \
+  -- runtime_ambiguity feature=checkout phase=P1 owner="the plan never said" kind=unspecified_detail
+refuses_but_accepts "a file path in runtime_ambiguity.kind" \
+  runtime_ambiguity feature=checkout phase=P1 owner=spec_tests kind=conflicting_spec \
+  -- runtime_ambiguity feature=checkout phase=P1 owner=spec_tests kind=src/auth/login.ts
+refuses_but_accepts "a path in design_delegated.class" \
+  design_delegated feature=checkout phase=P1 class=concurrency outcome=resolved confidence=low challenged=false \
+  -- design_delegated feature=checkout phase=P1 class=/etc/passwd outcome=resolved confidence=low challenged=false
+refuses_but_accepts "an unknown key carrying decision prose" \
+  design_delegated feature=checkout phase=P1 class=persistence outcome=resolved confidence=high challenged=true \
+  -- design_delegated feature=checkout phase=P1 class=persistence outcome=resolved confidence=high challenged=true rationale=chose-b
+refuses_but_accepts "traversal in session_resumed.resume_point" \
+  session_resumed feature=checkout phase=P1 resume_point=next_task marks_corrected=false \
+  -- session_resumed feature=checkout phase=P1 resume_point=../../etc marks_corrected=false
+refuses_but_accepts "a non-integer spec_test_cycle counter" \
+  spec_test_cycle feature=checkout phase=P1 authored=4 red_confirmed=4 post_impl_failures=0 \
+  -- spec_test_cycle feature=checkout phase=P1 authored=three red_confirmed=4 post_impl_failures=0
+refuses_but_accepts "an out-of-enum review round" \
+  review_run agent=phase-reviewer feature=checkout phase=P1 lenses=correctness round=initial \
+    findings_critical=0 findings_major=0 findings_minor=0 \
+  -- review_run agent=phase-reviewer feature=checkout phase=P1 lenses=correctness round=third-pass \
+    findings_critical=0 findings_major=0 findings_minor=0
+
+# The hash channel is the one place free text is legitimately handed to the utility, so
+# the new types must not open it: none of them takes a hash, and asking for one refuses
+# the line rather than quietly hashing prose into a measure event.
+for t in spec_test_cycle runtime_ambiguity session_resumed design_delegated; do
+  before="$(count_lines "$ev19")"
+  run_util "$h19" "$WORK" emit "$t" feature=checkout phase=P1 --hash-text "the user said the retry budget should be three"
+  if [[ "$RC" -eq 0 && "$(count_lines "$ev19")" == "$before" && -n "$ERR" ]]; then
+    pass "$t refuses --hash-text"
+  else
+    fail "$t accepted a hash channel (rc=$RC warn='${ERR:0:60}')"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# SPEC-20 (ST-6.3) — `telemetry: off` silences every new type.
+#
+# Paired for the same reason as SPEC-19: each type is first shown to land in a normal
+# home, so the silence in the opted-out repo is the kill switch working rather than the
+# type not existing.
+# -----------------------------------------------------------------------------
+section "SPEC-20: telemetry: off silences every new type (ST-6.3)"
+h20a="$(mk_home)"
+h20b="$(mk_home)"
+off_root="$(mktemp -d)"
+TMP_DIRS+=("$off_root")
+cp -R "$FIXTURES/fake-repo/." "$off_root/"
+git -C "$off_root" init -q
+for spec in \
+  "spec_test_cycle feature=checkout phase=P1 authored=1 red_confirmed=1 post_impl_failures=0" \
+  "runtime_ambiguity feature=checkout phase=P1 owner=execution kind=unspecified_detail" \
+  "session_resumed feature=checkout phase=P1 resume_point=plan_complete marks_corrected=false" \
+  "design_delegated feature=checkout phase=P1 class=algorithms outcome=resolved confidence=high challenged=false"
+do
+  read -r -a argv <<<"$spec"
+  run_util "$h20a" "$WORK" emit "${argv[@]}"
+  landed_on="$RC:$(count_lines "$h20a/$EVENTS_REL")"
+  run_util "$h20b" "$off_root" emit "${argv[@]}"
+  if [[ "${landed_on%%:*}" -eq 0 && "${landed_on##*:}" -gt 0 \
+        && "$RC" -eq 0 && ! -e "$h20b/$EVENTS_REL" ]]; then
+    pass "${argv[0]}: recorded normally, silent under telemetry: off"
+  else
+    fail "${argv[0]}: on='$landed_on' off_rc=$RC off_file=$([[ -e "$h20b/$EVENTS_REL" ]] && echo present || echo absent)"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# SPEC-21 (ST-6.4) — event files written before the taxonomy still parse.
+#
+# A regression guard, and green on both sides of this change by design: it exists to
+# catch a reader that starts assuming a key older data cannot have. The committed
+# fixture predates every type above, so it is exactly the shape a user's file has.
+# -----------------------------------------------------------------------------
+section "SPEC-21: pre-taxonomy events.jsonl still parses (ST-6.4)"
+h21="$(mk_home)"
+mkdir -p "$h21/.claude/codeops-telemetry"
+cp "$FIXTURES/valid-events.jsonl" "$h21/$EVENTS_REL"
+spec21_ok=1
+for view in "stats" "stats --by agent" "stats --by lens" "stats --by event" "stats --by project" "gaps"; do
+  read -r -a argv <<<"$view"
+  run_util "$h21" "$WORK" "${argv[@]}"
+  if [[ "$RC" -ne 0 || -z "$OUT" ]] || grep -qi 'error\|null' <<<"$OUT"; then
+    fail "'$view' broke on pre-taxonomy data (rc=$RC out='${OUT:0:80}')"
+    spec21_ok=0
+  fi
+done
+[[ "$spec21_ok" -eq 1 ]] && pass "every reader handles a pre-taxonomy file unchanged"
+
+# Old and new lines side by side: the readers must aggregate across the boundary rather
+# than choke on rows that lack the newer keys.
+run_util "$h21" "$WORK" emit runtime_ambiguity feature=checkout phase=P1 owner=requirements kind=conflicting_spec
+run_util "$h21" "$WORK" emit design_delegated feature=checkout phase=P1 class=testing_strategy outcome=resolved confidence=med challenged=false
+run_util "$h21" "$WORK" stats --by event
+if [[ "$RC" -eq 0 ]] && grep -q 'runtime_ambiguity' <<<"$OUT" && grep -q 'review_run' <<<"$OUT"; then
+  pass "mixed old/new file aggregates across the version boundary"
+else
+  fail "mixed file aggregation wrong (rc=$RC out='${OUT:0:120}')"
+fi
+
+# -----------------------------------------------------------------------------
+# SPEC-22 (ST-6.5) — an emit that genuinely fails never blocks the workflow step.
+#
+# HOME is a regular file, so the events directory cannot be created for any user, root
+# included. The utility must warn about THAT and still exit 0, letting both a sequenced
+# and an `&&`-chained caller continue. The warning text is asserted because a refusal
+# for some earlier reason — an unknown event type, say — would also exit 0 and would
+# make this check pass without ever reaching the write.
+# -----------------------------------------------------------------------------
+section "SPEC-22: a failing emit never blocks the workflow step (ST-6.5)"
+blocked_home="$SANDBOX/home-is-a-file"
+: >"$blocked_home"
+step_out="$(cd "$WORK" && env -u CODEOPS_TELEMETRY HOME="$blocked_home" \
+  "$UTILITY" emit design_delegated feature=checkout phase=P1 class=performance \
+  outcome=resolved confidence=high challenged=false 2>"$SANDBOX/blocked-err.txt" \
+  && printf 'CHAINED\n'; printf 'STEP-DONE\n')"
+blocked_err="$(cat "$SANDBOX/blocked-err.txt")"
+if grep -q 'CHAINED' <<<"$step_out" && grep -q 'STEP-DONE' <<<"$step_out"; then
+  pass "the workflow step continues, sequenced and && -chained"
+else
+  fail "a failed emit blocked the step (out='${step_out:0:80}')"
+fi
+if [[ -n "$blocked_err" ]] && ! grep -qi 'unknown event' <<<"$blocked_err"; then
+  pass "the warning names the write failure, not an unrecognized event"
+else
+  fail "wrong failure reached: '${blocked_err:0:100}'"
+fi
+
+# -----------------------------------------------------------------------------
+# SPEC-23 (R7.7) — the new measures reach a reader.
+#
+# A measure that lands in the file and reaches no aggregation answers no question, which
+# under the taxonomy's own rule is indistinguishable from one that was never collected.
+# The arithmetic is asserted, not just the presence of a table: the rates are what a
+# retro threshold fires on.
+# -----------------------------------------------------------------------------
+section "SPEC-23: new measures reach a reader with correct arithmetic"
+h23="$(mk_home)"
+run_util "$h23" "$WORK" emit phase_started feature=checkout phase=P1 tag=standard mode=inline tasks_planned=10
+run_util "$h23" "$WORK" emit task_completed feature=checkout phase=P1 task=1.1 verify=pass attempts=1 files_changed=2
+run_util "$h23" "$WORK" emit task_completed feature=checkout phase=P1 task=1.2 verify=pass attempts=3 files_changed=1
+run_util "$h23" "$WORK" emit spec_test_cycle feature=checkout phase=P1 authored=6 red_confirmed=6 post_impl_failures=1
+run_util "$h23" "$WORK" emit review_run agent=phase-reviewer feature=checkout phase=P1 \
+  lenses=correctness round=initial findings_critical=0 findings_major=1 findings_minor=0
+run_util "$h23" "$WORK" emit review_run agent=phase-reviewer feature=checkout phase=P1 \
+  lenses=correctness round=rereview findings_critical=0 findings_major=0 findings_minor=0
+run_util "$h23" "$WORK" emit runtime_ambiguity feature=checkout phase=P1 owner=plan kind=assumption_invalidated
+run_util "$h23" "$WORK" emit runtime_ambiguity feature=checkout phase=P1 owner=requirements kind=unspecified_detail
+run_util "$h23" "$WORK" emit session_resumed feature=checkout phase=P1 resume_point=in_progress_task marks_corrected=true
+run_util "$h23" "$WORK" emit design_delegated feature=checkout phase=P1 class=failure_recovery outcome=resolved confidence=high challenged=true
+run_util "$h23" "$WORK" emit design_delegated feature=checkout phase=P1 class=concurrency outcome=resolved confidence=low challenged=false
+run_util "$h23" "$WORK" emit design_delegated feature=checkout phase=P1 outcome=escalated_reserved confidence=med challenged=false
+
+# 2 tasks, one at attempts=1 → 50% first-pass; 1 of 6 spec tests failed after implementation.
+run_util "$h23" "$WORK" stats --by delivery
+row="$(grep 'first-pass verify' <<<"$OUT" || true)"
+if [[ "$RC" -eq 0 ]] && grep -q '50%' <<<"$row" && grep -q '10' <<<"$(grep 'tasks planned' <<<"$OUT")"; then
+  pass "delivery view: planned count and 50% first-pass rate"
+else
+  fail "delivery view wrong (rc=$RC row='${row:-<missing>}')"
+fi
+if grep -qE 'spec failed post-impl .* 17%' <<<"$OUT"; then
+  pass "delivery view: 1 of 6 spec tests failed after implementation"
+else
+  fail "spec-cycle arithmetic wrong: '$(grep 'spec failed' <<<"$OUT")'"
+fi
+
+# 2 ambiguities, one owned by plan and one by requirements; the single resume needed a correction.
+run_util "$h23" "$WORK" stats --by drift
+if [[ "$RC" -eq 0 ]] && grep -qE '^  plan +1 +2 +50%' <<<"$OUT" \
+   && grep -qE 'marks corrected +1 +1 +100%' <<<"$OUT"; then
+  pass "drift view: ambiguity split by owning stage, resume accuracy"
+else
+  fail "drift view wrong (rc=$RC out='${OUT:0:200}')"
+fi
+
+# 2 of 3 delegated decisions resolved — the ratio RD-07 exists to make answerable.
+run_util "$h23" "$WORK" stats --by design
+if [[ "$RC" -eq 0 ]] && grep -qE '^resolved +2 +3 +67%' <<<"$OUT" \
+   && grep -qE '^escalated_reserved +1 +3 +33%' <<<"$OUT"; then
+  pass "design view: delegation resolved/escalated split"
+else
+  fail "design view wrong (rc=$RC out='${OUT:0:200}')"
+fi
+# The reserved escalation carried no class, so it must not appear in the class breakdown.
+if [[ "$(grep -cE '^(failure_recovery|concurrency) ' <<<"$OUT")" == "2" ]] \
+   && ! grep -qE '^null ' <<<"$OUT"; then
+  pass "design view: classless escalation absent from the class breakdown"
+else
+  fail "class breakdown wrong: '$(grep -A4 '^class' <<<"$OUT")'"
+fi
+
+# An unknown view is refused rather than silently falling back to the overview.
+run_util "$h23" "$WORK" stats --by rationale
+if [[ "$RC" -eq 0 && -z "$OUT" && -n "$ERR" ]]; then
+  pass "an unknown --by view is refused"
+else
+  fail "unknown --by view not refused (rc=$RC out='${OUT:0:60}')"
+fi
 
 # -----------------------------------------------------------------------------
 # SPEC-16 — containment meta-assertion: the whole run wrote nothing to the real home's

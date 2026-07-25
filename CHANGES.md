@@ -2,6 +2,34 @@
 
 ## Changelog
 
+### 3.18.0 — Telemetry measure taxonomy (2026-07-26)
+
+Telemetry could say whether the review agents were earning their keep. It could not say whether the
+workflow delivered what it planned, or what it discovered too late. 3.18.0 adds the measures for
+that — each one tied to a question `/codeops_retro` can act on, because a measure that cannot
+change a decision is not worth collecting.
+
+- **Four new event types.** `spec_test_cycle` (authored / confirmed red / still failing after
+  implementation), `runtime_ambiguity` (which stage should have caught it), `session_resumed`
+  (whether the plan's marks survived the interruption), and `design_delegated` (whether a delegated
+  design decision resolved or escalated, and why).
+- **Two new fields.** `tasks_planned` on `phase_started` — the planned side of planned-vs-verified,
+  which previously existed nowhere — and `round` on `review_run`, so a re-review after a fix is
+  distinguishable from the initial pass.
+- **Three new aggregations:** `/codeops_stats --by delivery|drift|design`, with six matching
+  `/codeops_retro` thresholds. Two of them carry their own plugin-vs-profile discriminator inside
+  the data rather than waiting for cross-repo evidence.
+- **Fixed: `spec_test_cycle` was a pinned emission moment with no catalog entry**, so every emit of
+  it had been refused and dropped since 3.10.0. A new `validate.sh` guard now cross-checks the
+  protocol's pinned moments against the catalog, which is the check whose absence let it survive.
+- **Every field is content-free** — an integer, a boolean, or a closed enumeration. None of the new
+  types accepts free text or opens the hashing channel.
+- **Two measures are deliberately dropped**, not deferred: findings that escaped review entirely
+  (attribution needs a description, and a description is content) and unplanned file changes
+  (plans carry no per-task file list to compare against). Both are documented as drops so the next
+  reader does not "fix" them with something content-bearing.
+- Existing `events.jsonl` files parse unchanged — every addition is additive.
+
 ### 3.17.0 — Worktree phase snapshot (2026-07-25)
 
 Quality reviews are now given the whole phase. Previously the review packet was a commit range,

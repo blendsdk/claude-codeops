@@ -23,7 +23,10 @@ events file — never open `events.jsonl` yourself):
 1. `stats --since <Nd>` (default `30d`, or the user's window)
 2. `stats --since <Nd> --by agent`
 3. `stats --since <Nd> --by lens`
-4. `gaps --since <Nd>`
+4. `stats --since <Nd> --by delivery`
+5. `stats --since <Nd> --by drift`
+6. `stats --since <Nd> --by design`
+7. `gaps --since <Nd>`
 
 Relay each table verbatim, then analyze.
 
@@ -35,9 +38,17 @@ Relay each table verbatim, then analyze.
 | Emission gap rate | **> 20%** | Reviews complete without recorded rulings — the dispatch wiring or ruling discipline is leaking |
 | Blocker category | same category **≥ 3×** in the window | A systemic weakness in packets or plans, not bad luck |
 | Lens acceptance | a lens with **0 accepted** findings over **n ≥ 10** phases | The lens adds noise, not value — candidate to drop from the profile |
+| First-pass verify rate | **< 60%** with **n ≥ 10** tasks | Tasks arrive at verification unfinished — task granularity or the spec tests, not the executor |
+| Spec tests failing post-impl | **> 15%** of authored, **n ≥ 20** | Tests confirmed red are passing for the wrong reason — a spec-author calibration problem |
+| Re-review rate | **> 40%** with **n ≥ 10** phases | Phases routinely need a second pass — the dispatch packet is not carrying enough |
+| Runtime ambiguity owner | one stage **≥ 50%** with **n ≥ 10** | That stage is closing over decisions it should be settling |
+| Resume marks corrected | **> 10%** with **n ≥ 10** resumes | The two-stage `[~]`/`[x]` mark is not surviving interruption |
+| Delegated escalation share | **> 50%** with **n ≥ 10** decisions | Delegated design is moving questions rather than answering them; split by escalation reason before judging |
 | gate_summary trends | *display-only* | Context only — no gate-friction threshold yet (deliberately deferred until about a quarter of gate data exists) |
 
-Below-n signals are reported as "insufficient data", never judged.
+Below-n signals are reported as "insufficient data", never judged. The taxonomy measures carry
+higher n floors than they look like they need because a single unusual phase moves a rate built
+from ten data points by ten points — enough to trip a threshold on noise alone.
 
 ## Step 3 — Two-bucket verdicts
 
@@ -52,6 +63,16 @@ Sort every triggered signal into exactly one bucket:
 
 The discriminator is scope: one repo → profile bucket; everywhere → plugin bucket. When the
 data cannot distinguish, say so and name what additional window or repos would settle it.
+
+Two taxonomy signals carry their own discriminator inside the data, so use it rather than waiting
+for cross-repo evidence:
+
+- **Delegated escalations** — a dominant `escalated_reserved` share means the eligibility boundary
+  is drawn in the wrong place (plugin bucket); a dominant `escalated_evidence` share means this
+  repository does not carry the evidence the policy needs (profile bucket).
+- **Runtime ambiguity owner** — a dominant `plan` owner means the zero-ambiguity gate closes too
+  early (plugin bucket); a dominant `requirements` owner means this repo's RDs are thin
+  (profile bucket).
 
 ## Step 4 — Recommend
 
