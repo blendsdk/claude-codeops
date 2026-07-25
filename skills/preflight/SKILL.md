@@ -21,7 +21,7 @@ arguments: artifact
 
 # preflight — Multi-Dimensional, Codebase-Grounded Quality Audit
 
-> **CodeOps Skills Version**: 3.15.0
+> **CodeOps Skills Version**: 3.16.0
 
 Run a rigorous quality audit of the artifact named in `$ARGUMENTS`, **grounded in the actual
 codebase**. Find every issue, ambiguity, contradiction, gap, and risk; verify every claim and
@@ -237,3 +237,22 @@ checklist. Full safeguards in [report-format.md](report-format.md).
 **Standalone:** when used without a follow-up, finish the scan + resolution, present the final
 status, then ask the user what to do next (apply fixes, create a plan, start execution, or review
 specific findings).
+
+## Authority mode — `--auto-design` (optional)
+
+`--auto-design` delegates **eligible technical** design decisions for this workflow chain, so a run
+stops for product, security, financial, legal, and destructive choices — not for a data-structure
+pick. The complete policy (invocation contract, eligibility boundary, reserved list,
+strongest-option procedure, provenance record, bounded escalation, invalidation) lives in
+**[../../_shared/auto-design.md](../../_shared/auto-design.md)** and is deliberately not restated
+here.
+
+**Parse it FIRST, before resolving any target.** Exactly one standalone `--auto-design` token
+before the first `--` sentinel activates the mode and is then **removed** from the arguments;
+zero occurrences means normal mode; more than one stops with a usage correction. Lookalikes
+(`--auto-designer`, `--auto-design=true`, bare `auto-design`) and anything at or after the
+sentinel are ordinary content. Announce activation in-session before making any delegated
+decision.
+
+It grants **no action permission** and is independent of the commit mode. Every delegated
+resolution carries the full provenance record into the artifact that owns the decision.

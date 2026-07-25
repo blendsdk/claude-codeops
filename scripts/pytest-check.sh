@@ -2,7 +2,7 @@
 #
 # pytest-check.sh — run the Python specification and implementation suites, tolerating absence.
 #
-# CodeOps Skills Version: 3.15.0
+# CodeOps Skills Version: 3.16.0
 #
 # The repository's engines are Bash entry points with embedded Python; modules with an
 # independent unit-test surface are standalone .py files instead, and those are covered by

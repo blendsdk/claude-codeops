@@ -2,6 +2,36 @@
 
 ## Changelog
 
+### 3.16.0 — Delegated technical design (2026-07-25)
+
+`--auto-design` delegates eligible **technical** decisions for one workflow chain, so a long run
+stops for the choices that are genuinely yours and not for a data-structure pick. It is honored by
+`make_requirements`, `make_plan`, `preflight`, and `exec_plan`.
+
+- **`_shared/auto-design.md` owns the policy** — invocation contract, eligibility boundary,
+  reserved list, strongest-option procedure, provenance record, bounded escalation, invalidation.
+  The four skills link to it and never restate it.
+- **The token is matched exactly.** Exactly one standalone `--auto-design` before the first `--`
+  sentinel activates it; two stops with a usage correction rather than guessing; anything at or
+  after the sentinel is target content; `--auto-designer`, `--auto-design=true`, and bare
+  `auto-design` do nothing. This token is the only thing between a typo and delegated authority,
+  so there is no fuzzy match and no inferred intent.
+- **Sixteen reserved categories always stop for you**, in every commit mode — including the one
+  that is easiest to argue past: equally defensible designs that create materially different
+  products.
+- **It grants no permission to act.** Delegated design and commit mode are independent axes.
+- **There is no setting for it.** No repository key, no global default, nothing in the quality
+  profile. A later run is in normal mode unless its own arguments carry the token, and a record
+  that a decision was once delegated is evidence about that decision, never permission for the
+  next one.
+- **Findings are resolved, never waived.** Under active auto-design a CRITICAL or MAJOR finding
+  may be fixed and re-reviewed once — it may never be waived, dismissed, downgraded, or re-scoped,
+  and a fix touching reserved authority still pauses.
+- **Two risks are accepted and documented plainly**, not buried: an unattended
+  `--auto-design --auto-commit` run can fix a CRITICAL security finding before you see it, and a
+  shared repository has no way to refuse the flag. Both are stated in the guide with the reasoning
+  behind accepting them.
+
 ### 3.15.0 — Three specialist auditors (2026-07-25)
 
 Concurrency, financial integrity, and formal semantics each get a dedicated read-only auditor.

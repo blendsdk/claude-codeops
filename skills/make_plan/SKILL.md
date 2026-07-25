@@ -11,7 +11,7 @@ argument-hint: "[feature-name or description]"
 
 Create a detailed, multi-document implementation plan for a software feature or task. This skill covers plan **creation** only. To **execute** a finished plan, use the **exec_plan skill**.
 
-> **CodeOps Skills Version**: 3.15.0
+> **CodeOps Skills Version**: 3.16.0
 
 ## What you produce
 
@@ -42,7 +42,7 @@ Determine the layout via **[../../_shared/layout-convention.md](../../_shared/la
 Not every change is a feature. Ad-hoc work (a bugfix, chore, small change) is a **task** (`T-NN`), and a *non-trivial* task gets a **single mini-plan**, not the full multi-document set. When the work is a task (see the routing rule in **[../../_shared/layout-convention.md](../../_shared/layout-convention.md)**):
 
 - Write **only** the mini-plan at the resolved task path (flat: `plans/<task-slug>/99-execution-plan.md`; nested: `codeops/features/<f>/plans/<task-slug>/99-execution-plan.md`) — an execution doc with an **Objective**, a short **task checklist**, and a **Verify** line. **No** `00–07` docs, **no** RD, **no** Zero-Ambiguity Gate.
-- Stamp it `> **Type**: Task (lightweight) · **Feature**: <f> · **CodeOps Skills Version**: 3.15.0` and a `> **Progress**:` line (in flat layout drop the `**Feature**:` part).
+- Stamp it `> **Type**: Task (lightweight) · **Feature**: <f> · **CodeOps Skills Version**: 3.16.0` and a `> **Progress**:` line (in flat layout drop the `**Feature**:` part).
 - Specification-first ordering still applies *when the task warrants tests* (e.g. a bugfix gets a regression test first); a trivial doc/config tweak may not.
 - A **trivial** task needs no plan at all — it is just a roadmap row + the commit (point the user to the roadmap skill, then do the work).
 
@@ -51,7 +51,7 @@ Mini-plan shape:
 ```markdown
 # Task T-05: Debounce the search input
 
-> **Type**: Task (lightweight) · **Feature**: search · **CodeOps Skills Version**: 3.15.0
+> **Type**: Task (lightweight) · **Feature**: search · **CodeOps Skills Version**: 3.16.0
 > **Progress**: 0/3 tasks (0%)
 
 ## Objective
@@ -124,7 +124,7 @@ Gate opens ONLY when: every row Status = `✅ Resolved` with the user's explicit
 ## Phase 2 — Create Plan Documents
 
 1. Create the plan folder (`plans/<feature-name>/` flat, or `codeops/features/<f>/plans/<plan>/` nested — resolve via the convention doc).
-2. Write each document using the templates in **[templates.md](templates.md)** — including its **Reference, don't restate** rule (one owning doc per fact; everything else cites ST-# / 03-doc § / AR-# with at most a one-line gloss). Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.15.0`.
+2. Write each document using the templates in **[templates.md](templates.md)** — including its **Reference, don't restate** rule (one owning doc per fact; everything else cites ST-# / 03-doc § / AR-# with at most a one-line gloss). Stamp `00-index.md` and `99-execution-plan.md` with `> **CodeOps Skills Version**: 3.16.0`.
 3. Every design decision, scope decision, and error-handling strategy must carry an `AR #` back-reference to the register (only exceptions: universally obvious facts and zero-semantic-impact formatting).
 4. `07-testing-strategy.md` must contain concrete **Specification Test Cases (ST-*)** with input→expected-output pairs, each traced to a requirement / spec doc / AR entry. Expectations come from the SPEC, never from imagined implementation behavior.
 4b. **Confirm the verify command once.** The command that fills every Verify line comes from the
@@ -188,3 +188,22 @@ See the **roadmap skill** for the full Roadmap Keeper protocol.
 - **upgrade_plan skill** — upgrades outdated plans; the gate applies to new decisions only.
 - **techdocs skill** — architecture docs read during Phase 1.2 and updated during execution.
 - For coding, testing, and git standards, follow **your project's coding standards (CLAUDE.md)** and use **/gitcm** / **/gitcmp** for commits.
+
+## Authority mode — `--auto-design` (optional)
+
+`--auto-design` delegates **eligible technical** design decisions for this workflow chain, so a run
+stops for product, security, financial, legal, and destructive choices — not for a data-structure
+pick. The complete policy (invocation contract, eligibility boundary, reserved list,
+strongest-option procedure, provenance record, bounded escalation, invalidation) lives in
+**[../../_shared/auto-design.md](../../_shared/auto-design.md)** and is deliberately not restated
+here.
+
+**Parse it FIRST, before resolving any target.** Exactly one standalone `--auto-design` token
+before the first `--` sentinel activates the mode and is then **removed** from the arguments;
+zero occurrences means normal mode; more than one stops with a usage correction. Lookalikes
+(`--auto-designer`, `--auto-design=true`, bare `auto-design`) and anything at or after the
+sentinel are ordinary content. Announce activation in-session before making any delegated
+decision.
+
+It grants **no action permission** and is independent of the commit mode. Every delegated
+resolution carries the full provenance record into the artifact that owns the decision.

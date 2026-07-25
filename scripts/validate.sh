@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.15.0"
+CODEOPS_VERSION="3.16.0"
 
 FAILURES=0
 
@@ -2373,7 +2373,11 @@ if grep -qiE '^\| .auto.design' "$QP" || grep -qiE '^\| .auto_design' "$QP"; the
 else
   pass "no quality-profile key grants or refuses the mode"
 fi
-ad_persist="$(grep -rlniE 'auto.design *[:=] *(true|on|yes|1)' \
+# A leading `--` is required to be ABSENT: the policy and every skill that links
+# to it must quote `--auto-design=true` in order to declare that lookalike inert,
+# and a sweep that cannot tell quoting-to-forbid from assigning would fire on the
+# documentation of the rule it is enforcing. A settings key has no dashes.
+ad_persist="$(grep -rlniE '(^|[^-])auto[-_]design *[:=] *(true|on|yes|1)' \
   skills/ commands/ standards/ _shared/ agents/ hooks/ .claude-plugin/ 2>/dev/null || true)"
 if [[ -n "$ad_persist" ]]; then
   fail "auto-design is assigned as a setting in: $(tr '\n' ' ' <<<"$ad_persist")"

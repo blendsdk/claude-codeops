@@ -1,6 +1,6 @@
 # Zero-Ambiguity Gate (shared protocol)
 
-> **CodeOps Skills Version**: 3.15.0
+> **CodeOps Skills Version**: 3.16.0
 
 This is the **single canonical definition** of the Zero-Ambiguity Gate. It lives at the plugin
 root in `_shared/` (deliberately outside `skills/`, like `layout-convention.md`). The gate-running
@@ -73,6 +73,14 @@ of the historical per-skill variants — use every clause that fits the artifact
 
 Write the register **to disk incrementally from the first entry** (never hold it only in
 memory) — it is the audit trail and must survive a crash mid-phase.
+
+**Delegated resolutions live in this same register.** Under active `--auto-design` (see
+[auto-design.md](auto-design.md)), an eligible item is resolved by CodeOps rather than by the
+user, and its `User Decision` cell carries the full provenance record — authority marker,
+eligibility rationale, evidence, rejected alternatives, strongest counterargument, confidence,
+hardening result, policy version, root invocation ID, and reopen triggers. There is no second
+register and no parallel decision database: one owning artifact per decision, so the audit trail
+stays in one place and a delegated resolution is visibly distinguishable from a user's answer.
 
 ## Gate enforcement rules
 
