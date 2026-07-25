@@ -22,7 +22,7 @@
 # fields ever land in the file — never free text. Free text goes through --hash-text,
 # which stores the first 8 hex of its SHA-256 and discards the text.
 #
-# CodeOps Skills Version: 3.14.0
+# CodeOps Skills Version: 3.15.0
 
 set -uo pipefail
 

@@ -48,6 +48,28 @@
       ]
     },
     {
+      "label": "candidate-3.15.0",
+      "captured": "2026-07-25",
+      "release": "3.15.0",
+      "plugin_source": "working tree (three specialist auditors added)",
+      "cli_version": "2.1.219",
+      "model": "claude-opus-5[1m]",
+      "effort": "high",
+      "runs_per_scenario": 3,
+      "scenarios": ["compiler", "financial", "web"],
+      "files": {
+        "compiler": "compiler/candidate-3.15.0.json",
+        "financial": "financial/candidate-3.15.0.json",
+        "web": "web/candidate-3.15.0.json"
+      },
+      "notes": [
+        "Captured under the same rig as baseline-3.12.0, which is the only reason the two can be compared.",
+        "Pre-merge no-regression gate. The comparator reports no regression on all three scenarios.",
+        "Intolerant signals (concept coverage + gate verdict), baseline → candidate: compiler 6/6 → 3/3, financial 2/3 → 3/3, web 3/3 → 3/3. Median blocking volume 11 → 12, 15 → 23, 13 → 22.",
+        "This phase changes agents and dispatch conventions, not the requirements workflow the scenarios exercise, so the gate is checking for collateral damage rather than for an effect. Finding none is the expected result, not a null one."
+      ]
+    },
+    {
       "label": "retained-3.12.0-2026-07-23",
       "captured": "2026-07-23",
       "release": "3.12.0",
