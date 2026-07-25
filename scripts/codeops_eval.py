@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Evaluation harness — score a CodeOps release against pinned requirements-stage scenarios.
 
-CodeOps Skills Version: 3.16.0
+CodeOps Skills Version: 3.17.0
 
 The harness answers one question: does a release surface the safety concepts a scenario demands,
 and does it reach the right gate verdict? Scoring and comparison are pure functions over stored

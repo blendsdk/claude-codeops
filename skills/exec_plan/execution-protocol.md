@@ -32,7 +32,7 @@ If the execution plan can't be loaded cleanly, **STOP** and handle as follows:
 
 ### Version Check (auto-suggest)
 
-After loading, check the version stamp against the current **CodeOps Skills Version: 3.16.0**:
+After loading, check the version stamp against the current **CodeOps Skills Version: 3.17.0**:
 
 1. Read `00-index.md` or `99-execution-plan.md`.
 2. Look for `> **CodeOps Version**: X.Y.Z` (or `CodeOps Skills Version`).
@@ -57,7 +57,8 @@ Suggestion only — the user may proceed without upgrading.
 Before a phase's first task (and before a T-NN mini-plan's first task), record the current
 commit as the phase-start ref: run `git rev-parse HEAD` and write `> **Phase ref**: <sha>` into
 that phase's header in `99-execution-plan.md` (for a mini-plan, its single header). The
-post-phase quality step diffs `<phase-ref>..HEAD` — without the ref there is nothing to review.
+post-phase quality step snapshots the worktree against that ref — without it there is nothing to
+review.
 When the repo has an active quality profile, emit `phase_started` at this moment (see Telemetry
 emissions below).
 
@@ -115,20 +116,28 @@ complete. For each task, in order:
 ### Post-phase quality step (profile-gated)
 
 Runs after a phase's last task verifies — and after a T-NN mini-plan's work verifies, on the
-whole-task diff. Activation rules, packets, supersession, and caps are defined in
+whole task's snapshot. Activation rules, packets, supersession, and caps are defined in
 `_shared/quality-profile.md`; this section owns the order of operations:
 
 1. **Determine activation.** No profile block, or `review_hook: off` → skip silently (no
    skill-side emissions; hook events still fire natively). Trivial tasks are never reviewed.
    A docs-only diff → phase-reviewer only, and the auditor skip is logged — never silent.
+
+   **Then take the snapshot**, once, and hand the same one to every agent dispatched below:
+   `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/codeops_worktree_snapshot.py" --phase-ref <phase-ref>`
+   (from a skill's base directory, `../../scripts/codeops_worktree_snapshot.py`). It composes
+   committed, staged, unstaged, and untracked-new work, so the review is the same in every commit
+   mode. A non-zero exit is a **blocker** reported to the user: the quality step never substitutes
+   a partial change set and never falls back to a commit range, because a reviewer cannot tell a
+   packet that is missing half a phase from one that is complete, and neither can its report.
 2. **Dispatch in parallel:** the phase-reviewer plus every active auditor — security-auditor when
    the profile names security profiles; perf-auditor when `perf_critical` and the diff touches
    code; concurrency-auditor when `lenses` contains `concurrency` and the diff touches code;
    financial-integrity-auditor when `security_profile` contains `financial-integrity`;
    semantics-reviewer when `compiler-and-language` is among the selected domains and the diff
-   touches code — each with the dispatch header on line 1 of its prompt and its packet
-   (diff = `git diff <phase-ref>..HEAD`). State every superseded dimension in the packet of the
-   reviewer that must stand down, rather than leaving it to infer the supersession.
+   touches code — each with the dispatch header on line 1 of its prompt and its packet (the
+   snapshot from step 1). State every superseded dimension in the packet of the reviewer that must
+   stand down, rather than leaving it to infer the supersession.
 3. **Merge findings** (RV/SA/PE/CA/FA/SR) and present them in severity-grouped batches (reuse the
    preflight skill's batch pacing). 🔴 CRITICAL / 🟠 MAJOR findings PAUSE execution for the
    user's ruling in ALL commit modes; 🟡 MINOR findings are report-only.
@@ -146,8 +155,10 @@ whole-task diff. Activation rules, packets, supersession, and caps are defined i
      escalation. Never resolve by narrowing what the finding said.
 4. **Emit `finding_decided`** per finding immediately after each ruling batch.
 5. **Accepted fixes:** implement → verify → follow-up commit per the commit mode. If any 🔴/🟠
-   fix was applied, dispatch ONE re-review scoped to the fix diff — never a third pass. A fix
-   the re-review still rejects is reported; the user decides.
+   fix was applied, dispatch ONE re-review — never a third pass. Its packet is a **fresh
+   snapshot** with the fixed findings named as its scope; taking it again is what makes the fix
+   visible in `--no-commit` mode, where there is no fix commit to point at. A fix the re-review
+   still rejects is reported; the user decides.
 6. **Emit `review_run`** (one per reviewer/auditor that ran) **and `phase_completed`**, then
    proceed to the next phase.
 

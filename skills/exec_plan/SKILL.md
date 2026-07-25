@@ -21,7 +21,7 @@ arguments: feature
 
 # exec_plan — Execute an Implementation Plan
 
-> **CodeOps Skills Version**: 3.16.0
+> **CodeOps Skills Version**: 3.17.0
 
 Execute the implementation plan at `plans/$ARGUMENTS/99-execution-plan.md`. The first
 argument is the feature name; an optional flag selects the commit mode.
@@ -146,7 +146,7 @@ links to them, never restates them.
 
 The flow: the protocol records a phase-start ref when the phase begins; after the phase's last
 task verifies, the phase-reviewer and any active auditors are dispatched **in parallel** on the
-phase diff, their findings are merged and presented in severity-grouped batches, and each ruling
+worktree phase snapshot, their findings are merged and presented in severity-grouped batches, and each ruling
 is emitted to telemetry.
 
 > **🚨 Finding gate (load-bearing).** 🔴 CRITICAL and 🟠 MAJOR findings PAUSE execution for the

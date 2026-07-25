@@ -1,6 +1,6 @@
 # Quality Profile (shared convention)
 
-> **CodeOps Skills Version**: 3.16.0
+> **CodeOps Skills Version**: 3.17.0
 
 This is the **single canonical definition** of the per-repo quality profile and the quality-agent
 conventions built on it. It lives at the plugin root in `_shared/` (deliberately outside
@@ -133,7 +133,7 @@ returning empty output.
 |-----------|--------|
 | No profile block | Everything dormant — no dispatches, no skill-side emissions |
 | Block present, `review_hook: off` | Loop announced as off; no dispatches |
-| Block present (hook on) | Post-phase quality review runs for **all executed phases and task mini-plans** (whole-task diff); trivial tasks are never reviewed |
+| Block present (hook on) | Post-phase quality review runs for **all executed phases and task mini-plans** (the whole task's snapshot); trivial tasks are never reviewed |
 | Docs-only diff | Phase reviewer still runs; security/perf auditors skip — the skip is logged, never silent |
 | `security_profile` non-empty | Security auditor dispatches once per phase with the union of the named checklists, and **supersedes** the reviewer's `security` lens |
 | `perf_critical: true` + diff touches code | Perf auditor dispatches and **supersedes** the reviewer's `perf` lens |
@@ -167,11 +167,33 @@ produces a completion event with those fields omitted, so missing headers are me
 
 | Agent | Packet contents (the agent receives nothing else and must need nothing else) |
 |-------|------------------------------------------------------------------------------|
-| phase-reviewer, security-auditor, perf-auditor, concurrency-auditor, financial-integrity-auditor, semantics-reviewer | Phase diff (`git diff <phase-start-ref>..HEAD`), the phase's task + Deliverable lines, active lenses, profile excerpt, verify command + last result. The packet names every dimension superseded for this phase, so a reviewer standing down never has to infer it |
+| phase-reviewer, security-auditor, perf-auditor, concurrency-auditor, financial-integrity-auditor, semantics-reviewer | **Worktree phase snapshot** (below), the phase's task + Deliverable lines, active lenses, profile excerpt, verify command + last result. The packet names every dimension superseded for this phase, so a reviewer standing down never has to infer it |
 | spec-test-author | Spec excerpts + test cases, planned interface signatures from the plan documents, test framework/conventions, the FORBIDDEN implementation-file list, verify command (expected RED) |
 | preflight-auditor | The artifact under audit + ONE assigned dimension cluster |
 | design-challenger | Problem + candidate options, **without** the parent's preferred choice (per `_shared/recommendation-hardening.md`) |
 | codebase-scout | The factual questions, search hints, and the facts-only contract |
+
+### The worktree phase snapshot
+
+Every reviewing agent's change set comes from one engine —
+`"${CLAUDE_PLUGIN_ROOT}/scripts/codeops_worktree_snapshot.py" --phase-ref <phase-start-ref>` —
+which composes committed, staged, unstaged, and untracked-new work into a single packet. A change
+set assembled from commits alone is empty in `--no-commit` mode, and newly created files are
+invisible in it in every mode, so a reviewer handed one can report clean on code it never
+received.
+
+Four guarantees come with it, and a reviewer may rely on them:
+
+- **Read-only.** The engine never stages, stashes, commits, or checks anything out; it runs git
+  against a throwaway copy of the index. A review is never bought with a risk to uncommitted work.
+- **Commit modes produce an identical packet.** `--ask-commit`, `--no-commit`, and `--auto-commit`
+  all yield the same change set. When work was recorded is not a review input.
+- **Ignored paths are excluded.** Build output and other git-ignored trees never enter a packet.
+- **Bounded, and never silently.** A very large phase is truncated to a readable packet that names
+  every omitted path and the bound that dropped it, so unreviewed work is visible as unreviewed.
+
+If the snapshot cannot be produced, the quality step reports a **blocker**. Nothing is substituted
+for it — reviewing a partial change set while reporting on the phase is the failure this replaces.
 
 ## Budget caps
 

@@ -1,6 +1,6 @@
 # Auto-Design Authority Policy (shared convention)
 
-> **CodeOps Skills Version**: 3.16.0
+> **CodeOps Skills Version**: 3.17.0
 > **Policy version**: 1
 
 `--auto-design` delegates eligible **technical** design decisions to CodeOps for one workflow

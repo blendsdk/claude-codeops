@@ -41,11 +41,12 @@ blocking. Both enums are grow-only.
 ## What activates when
 
 - **Every executed phase** (and non-trivial task mini-plan) ends with a parallel dispatch of the
-  phase reviewer plus any active auditors on the phase diff. Trivial tasks are never reviewed;
-  docs-only diffs get the reviewer only.
+  phase reviewer plus any active auditors on the phase's
+  [worktree snapshot](/reference/worktree-snapshot) — the whole change set, in any commit mode.
+  Trivial tasks are never reviewed; docs-only diffs get the reviewer only.
 - **Findings gate commits:** critical and major findings pause execution for your ruling in
   every commit mode — auto-commit automates the git operation, never the ruling. Minor findings
-  are report-only. Accepted fixes are re-reviewed once, on the fix diff.
+  are report-only. Accepted fixes are re-reviewed once, from a fresh snapshot scoped to the fix.
 - **Supersession:** an active security profile replaces the reviewer's `security` lens;
   `perf_critical` replaces its `perf` lens — the same ground is never reviewed twice.
 - **Budget caps:** one re-review per phase, at most; three codebase-scout dispatches per skill

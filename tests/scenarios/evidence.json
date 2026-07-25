@@ -1,6 +1,33 @@
 {
   "captures": [
     {
+      "label": "candidate-3.17.0",
+      "captured": "2026-07-25",
+      "release": "3.17.0",
+      "plugin_source": "working tree (worktree phase snapshot added)",
+      "cli_version": "2.1.219",
+      "model": "claude-opus-5[1m]",
+      "effort": "high",
+      "runs_per_scenario": 3,
+      "scenarios": [
+        "compiler",
+        "financial",
+        "web"
+      ],
+      "files": {
+        "compiler": "compiler/candidate-3.17.0.json",
+        "financial": "financial/candidate-3.17.0.json",
+        "web": "web/candidate-3.17.0.json"
+      },
+      "notes": [
+        "Captured under the same rig as baseline-3.12.0, which is the only reason the two can be compared.",
+        "Pre-merge no-regression gate. The comparator reports no regression on all three scenarios.",
+        "Intolerant signals (concept coverage + gate verdict), baseline -> candidate: compiler 6/6 -> 3/3, financial 2/3 -> 3/3, web 3/3 -> 3/3. Median blocking volume 11 -> 12, 15 -> 24, 13 -> 21.",
+        "This phase changes what a reviewer is handed during execution, not the requirements workflow the scenarios exercise, so the gate is checking for collateral damage rather than for an effect. Finding none is the expected result, not a null one.",
+        "Captured at 09:24-09:33 from a tree that already carried the version bump and every skill, standards, and shared-convention edit in this phase. Four later commits to the snapshot engine's internals, its packet renderer, and two documentation cross-links are NOT in the measured tree; none of them is loaded by the requirements workflow these scenarios run, so the reading stands, but it is a reading of that tree and not of the merge commit."
+      ]
+    },
+    {
       "label": "baseline-3.12.0",
       "captured": "2026-07-25",
       "release": "3.12.0",
@@ -17,7 +44,7 @@
       ],
       "invocation": "claude -p --no-session-persistence --permission-mode dontAsk --tools Read --plugin-dir <plugin> --add-dir <plugin> --effort high --output-format json --json-schema <result.schema.json>",
       "recaptured": "2026-07-25",
-      "recapture_reason": "The first capture omitted --add-dir, so a run could not read the release's own reference material from the scenario working directory. It answered from general knowledge and returned a well-formed, plausible result anyway \u2014 invented classification ids that match no enum value. Every capture is retaken whenever the rig changes, because a baseline and a candidate measured under different rigs are not comparable.",
+      "recapture_reason": "The first capture omitted --add-dir, so a run could not read the release's own reference material from the scenario working directory. It answered from general knowledge and returned a well-formed, plausible result anyway — invented classification ids that match no enum value. Every capture is retaken whenever the rig changes, because a baseline and a candidate measured under different rigs are not comparable.",
       "files": {
         "compiler": "compiler/baseline-3.12.0.json",
         "financial": "financial/baseline-3.12.0.json",
@@ -78,7 +105,7 @@
         "Captured under the same rig as baseline-3.12.0, which is the only reason the two can be compared.",
         "Pre-merge no-regression gate. The comparator reports no regression on all three scenarios.",
         "Intolerant signals (concept coverage + gate verdict), baseline -> candidate: compiler 6/6 -> 3/3, financial 2/3 -> 3/3, web 3/3 -> 3/3. Median blocking volume 11 -> 16, 15 -> 23, 13 -> 21.",
-        "The scenarios are run without the --auto-design token, so this measures the token-absent path \u2014 which is exactly the path that must not have moved."
+        "The scenarios are run without the --auto-design token, so this measures the token-absent path — which is exactly the path that must not have moved."
       ]
     },
     {
@@ -103,7 +130,7 @@
       "notes": [
         "Captured under the same rig as baseline-3.12.0, which is the only reason the two can be compared.",
         "Pre-merge no-regression gate. The comparator reports no regression on all three scenarios.",
-        "Intolerant signals (concept coverage + gate verdict), baseline \u2192 candidate: compiler 6/6 \u2192 3/3, financial 2/3 \u2192 3/3, web 3/3 \u2192 3/3. Median blocking volume 11 \u2192 12, 15 \u2192 23, 13 \u2192 22.",
+        "Intolerant signals (concept coverage + gate verdict), baseline → candidate: compiler 6/6 → 3/3, financial 2/3 → 3/3, web 3/3 → 3/3. Median blocking volume 11 → 12, 15 → 23, 13 → 22.",
         "This phase changes agents and dispatch conventions, not the requirements workflow the scenarios exercise, so the gate is checking for collateral damage rather than for an effect. Finding none is the expected result, not a null one."
       ]
     },

@@ -2,6 +2,32 @@
 
 ## Changelog
 
+### 3.17.0 — Worktree phase snapshot (2026-07-25)
+
+Quality reviews are now given the whole phase. Previously the review packet was a commit range,
+which meant that in `--no-commit` mode the reviewers received an empty change set and reported no
+findings — a result indistinguishable from a genuine clean review. Newly created files were
+invisible in **every** commit mode, and a new file is frequently a phase's entire deliverable.
+
+- **`scripts/codeops_worktree_snapshot.py` builds the packet** from all four states — committed,
+  staged, unstaged, and untracked-but-new — organized by path rather than by state.
+- **Every commit mode produces the identical packet.** `--ask-commit`, `--no-commit`, and
+  `--auto-commit` are indistinguishable to a reviewer. When work was recorded is not a review
+  input, and it can no longer become one by accident.
+- **Read-only with respect to git.** The engine never stages, stashes, commits, or checks out, and
+  runs git against a throwaway copy of the index. The suite asserts `git status`, the refs, the
+  reflog, and the index are byte-identical before and after.
+- **Gitignore is respected**, so build output and dependency trees never displace the code a
+  reviewer was dispatched to read.
+- **Truncation is stated, never silent.** A very large phase yields a bounded packet that names
+  every omitted path and the bound that dropped it — silent truncation reads as "the reviewer saw
+  everything" when it did not.
+- **Failure is a blocker.** No partial change set is ever substituted, because a reviewer cannot
+  tell an incomplete packet from a complete one and neither can its report.
+- The re-review after a 🔴/🟠 fix takes a fresh snapshot too — in `--no-commit` mode there is no
+  fix commit to point at.
+- Documented at `docs/reference/worktree-snapshot.md`.
+
 ### 3.16.0 — Delegated technical design (2026-07-25)
 
 `--auto-design` delegates eligible **technical** decisions for one workflow chain, so a long run
