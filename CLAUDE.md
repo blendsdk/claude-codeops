@@ -37,7 +37,8 @@
 ## Project structure
 - `.claude-plugin/` — `marketplace.json` (`source: "."`) + `plugin.json` (version tracks the release).
 - `skills/<name>/SKILL.md` — the 11 skills; every `skills/<dir>` needs a `SKILL.md` (loader requirement).
-- `_shared/` — reference docs linked by skills (layout-convention, zero-ambiguity-gate, spec-first-ordering, recommendation-hardening, quality-profile); at the plugin root, not under `skills/`, linked as `../../_shared/…`.
+- `_shared/` — reference docs linked by skills (layout-convention, zero-ambiguity-gate, spec-first-ordering, recommendation-hardening, quality-profile, auto-design); at the plugin root, not under `skills/`, linked as `../../_shared/…`.
+- `references/domains/` — 5 domain docs + `selection.md`, read by the domain-classifying skills; shipped surface, so a change here bumps the version like any other.
 - `commands/*.md` — the 21 slash commands (frontmatter `description`), incl. `/codeops_stats` + `/codeops_retro` (telemetry consumers).
 - `agents/` — plugin-shipped subagents: 2 executors (`plan-task-executor`, `plan-task-executor-opus`) + 10 quality agents (`phase-reviewer`, `spec-test-author`, `security-auditor`, `preflight-auditor`, `design-challenger`, `perf-auditor`, `codebase-scout`, `concurrency-auditor`, `financial-integrity-auditor`, `semantics-reviewer`).
 - `hooks/hooks.json` — SessionStart standards + output-style hooks + PreToolUse `.codeops.yml` marker guard + PostToolUse telemetry hook (`Skill|Task|Agent` → `codeops-events.sh`).
@@ -49,10 +50,9 @@
 - `bin/codeops-worktree` — user-facing worktree CLI (installed by the dev installer, not the marketplace plugin); carries a version stamp watched by `validate.sh`.
 - `docs/` — VitePress documentation site (`.vitepress/config.ts`, guide/skills/tutorials/reference).
 - `.github/workflows/docs.yml` — builds + deploys the docs site to GitHub Pages.
-- `plans/` — internal CodeOps planning docs (git-ignored via `/plans/`, not distributed).
-- `requirements/` — internal RD docs for developing the plugin itself (git-ignored via `/requirements/`, not distributed).
+- `plans/` + `requirements/` — internal planning and RD docs for developing the plugin itself; both git-ignored (`/plans/`, `/requirements/`) and never distributed.
 - `install.sh` / `uninstall.sh` — optional dev installer (symlinks skills/commands into `~/.claude/`).
-- Loader reads only `skills/`, `commands/`, `hooks/`, `.claude-plugin/`; `docs/`, `package.json`, `.github/` are inert to the installed plugin.
+- Loader reads only `skills/`, `commands/`, `agents/`, `hooks/`, `.claude-plugin/` (with `_shared/` and `references/` reached by relative link); `docs/`, `package.json`, `.github/` are inert to the installed plugin.
 
 ## Conventions
 - **Skill/command descriptions** must stay ≤ 1024 chars (Claude Code display budget; enforced by
@@ -78,7 +78,7 @@
 ## Special rules
 - **🚨 NON-NEGOTIABLE — bump the version on every change, and keep all stamps in sync.** Any change
   that touches the plugin's shipped surface (`skills/`, `commands/`, `standards/`, `_shared/`,
-  `agents/`, `scripts/`, `bin/`, `hooks/`, `.claude-plugin/`) MUST bump the release version **in the
+  `references/`, `agents/`, `scripts/`, `bin/`, `hooks/`, `.claude-plugin/`) MUST bump the release version **in the
   same change**, per SemVer against what changed — **patch** for fixes/docs/refactors, **minor** for
   a backward-compatible feature, **major** for a breaking change. Bump the single `CODEOPS_VERSION`
   constant in `scripts/validate.sh` (the one edit point), then sync **every** `CodeOps Skills
@@ -90,7 +90,7 @@
 - Before pushing changes that touch the plugin, run `./scripts/validate.sh`; for docs changes also
   run `npm run docs:build && ./scripts/docs-check.sh`.
 
-<!-- analyze_project: refreshed Toolchain + Commands + Project structure — 11 skills, 21 commands, 9 agents, release 3.10.0 with the quality loop (quality-profile block, 7 quality agents, telemetry via codeops-events.sh + /codeops_stats + /codeops_retro) (2026-07-19) -->
+<!-- analyze_project: refreshed Project structure — added references/domains/ (was absent) and _shared/auto-design.md; references/ added to the shipped-surface list in the version rule. 11 skills, 21 commands, 12 agents, release 3.19.0 after the eight-RD port (eval harness, domain classification, specialist auditors, delegated design, worktree snapshot, telemetry taxonomy, shared reconciliation) (2026-07-26) -->
 
 <!-- CODEOPS-ROUTING:START -->
 ## Model & effort routing (Balanced — fallback profile)
