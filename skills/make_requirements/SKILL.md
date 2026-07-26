@@ -17,7 +17,7 @@ argument-hint: "[idea or brain dump]"
 
 # Requirements Gathering & Documentation
 
-> **CodeOps Skills Version**: 3.15.0
+> **CodeOps Skills Version**: 3.16.0
 
 Transform a rough project idea into a structured, complete set of formal
 **requirement documents (RDs)**. This skill is upstream of, and independent
@@ -248,3 +248,22 @@ comparable systems → key discovery focus is in **`discovery-phases.md`**.
 - the upgrade_plan skill — upgrading outdated requirements (upgrade_requirements)
 - the roadmap skill — sync each newly drafted RD to stage `RD Drafted`
 - Read the project's CLAUDE.md (or detected project conventions) for project-specific constraints
+
+## Authority mode — `--auto-design` (optional)
+
+`--auto-design` delegates **eligible technical** design decisions for this workflow chain, so a run
+stops for product, security, financial, legal, and destructive choices — not for a data-structure
+pick. The complete policy (invocation contract, eligibility boundary, reserved list,
+strongest-option procedure, provenance record, bounded escalation, invalidation) lives in
+**[../../_shared/auto-design.md](../../_shared/auto-design.md)** and is deliberately not restated
+here.
+
+**Parse it FIRST, before resolving any target.** Exactly one standalone `--auto-design` token
+before the first `--` sentinel activates the mode and is then **removed** from the arguments;
+zero occurrences means normal mode; more than one stops with a usage correction. Lookalikes
+(`--auto-designer`, `--auto-design=true`, bare `auto-design`) and anything at or after the
+sentinel are ordinary content. Announce activation in-session before making any delegated
+decision.
+
+It grants **no action permission** and is independent of the commit mode. Every delegated
+resolution carries the full provenance record into the artifact that owns the decision.

@@ -29,6 +29,7 @@ export default defineConfig({
             { text: 'Update', link: '/guide/update' },
             { text: 'Concepts', link: '/guide/concepts' },
             { text: 'Domains', link: '/guide/domains' },
+            { text: 'Delegated design', link: '/guide/auto-design' },
             { text: 'Parallel agents', link: '/guide/parallel-agents' },
             { text: 'Quality profile', link: '/guide/quality-profile' },
             { text: 'Telemetry', link: '/guide/telemetry' },

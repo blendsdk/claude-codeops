@@ -32,7 +32,7 @@ If the execution plan can't be loaded cleanly, **STOP** and handle as follows:
 
 ### Version Check (auto-suggest)
 
-After loading, check the version stamp against the current **CodeOps Skills Version: 3.15.0**:
+After loading, check the version stamp against the current **CodeOps Skills Version: 3.16.0**:
 
 1. Read `00-index.md` or `99-execution-plan.md`.
 2. Look for `> **CodeOps Version**: X.Y.Z` (or `CodeOps Skills Version`).
@@ -132,6 +132,18 @@ whole-task diff. Activation rules, packets, supersession, and caps are defined i
 3. **Merge findings** (RV/SA/PE/CA/FA/SR) and present them in severity-grouped batches (reuse the
    preflight skill's batch pacing). 🔴 CRITICAL / 🟠 MAJOR findings PAUSE execution for the
    user's ruling in ALL commit modes; 🟡 MINOR findings are report-only.
+
+   **Under active `--auto-design`** (see `_shared/auto-design.md`), a 🔴 CRITICAL or 🟠 MAJOR
+   finding may instead be **resolved** by selecting and implementing an eligible technical fix.
+   Three limits hold without exception:
+
+   - A finding is **never waived, dismissed, or downgraded.** Resolving means implementing a fix
+     and re-reviewing it — not deciding the finding does not matter. There is no severity edit and
+     no "accepted risk" path here.
+   - A fix whose choice touches **reserved authority** still pauses for the user, in every commit
+     mode. `--auto-commit` never bypasses the applicable authority gate.
+   - If no eligible fix is defensible, escalate once per root cause per the policy's bounded
+     escalation. Never resolve by narrowing what the finding said.
 4. **Emit `finding_decided`** per finding immediately after each ruling batch.
 5. **Accepted fixes:** implement → verify → follow-up commit per the commit mode. If any 🔴/🟠
    fix was applied, dispatch ONE re-review scoped to the fix diff — never a third pass. A fix
