@@ -18,6 +18,10 @@ session summary template, and error handling.
 5. **Resume spot-check:** before building on prior work, confirm the most recent `[x]` task's
    named files actually exist (branch switches and reverts happen). If they don't, flag the drift
    to the user before continuing.
+6. **Emit `session_resumed`** when this load picks up a plan already in progress — where the scan
+   landed (`resume_point`) and whether the spot-check forced a correction to the plan's marks
+   (`marks_corrected`). The two-stage `[~]`/`[x]` mark exists to make this scan survive a crash,
+   and a correction is the only evidence that it did not.
 
 If the execution plan can't be loaded cleanly, **STOP** and handle as follows:
 
@@ -32,7 +36,7 @@ If the execution plan can't be loaded cleanly, **STOP** and handle as follows:
 
 ### Version Check (auto-suggest)
 
-After loading, check the version stamp against the current **CodeOps Skills Version: 3.17.0**:
+After loading, check the version stamp against the current **CodeOps Skills Version: 3.18.0**:
 
 1. Read `00-index.md` or `99-execution-plan.md`.
 2. Look for `> **CodeOps Version**: X.Y.Z` (or `CodeOps Skills Version`).
@@ -175,12 +179,15 @@ utility always exits 0. Pinned moments:
 
 | Event | Moment |
 |-------|--------|
-| `phase_started` | when the phase-start ref is recorded |
+| `phase_started` | when the phase-start ref is recorded, carrying the phase's `tasks_planned` count |
 | `task_completed` | at each task's `[x]` promotion |
+| `session_resumed` | in Step 1, when the load picks up a plan already in progress |
+| `runtime_ambiguity` | when a `(runtime)` entry is added to the ambiguity register |
+| `design_delegated` | once per delegated resolution or bounded escalation under `--auto-design` |
 | `blocker_reported` | when a blocker is raised to the user |
 | `commit_gate` | once per commit-decision point in every mode (`blocked_by_finding=true` while a 🔴/🟠 ruling holds it) |
 | `spec_test_cycle` | once per phase, at the post-phase quality step, when authored/red_confirmed/post_impl_failures are all known |
-| `finding_decided`, `review_run`, `phase_completed` | inside the post-phase quality step (steps 4 and 6 above) |
+| `finding_decided`, `review_run`, `phase_completed` | inside the post-phase quality step (steps 4 and 6 above) — `review_run` carries `round=initial` for the phase's first pass and `round=rereview` for the single re-review after a 🔴/🟠 fix |
 
 ### Verify-output capture (NON-NEGOTIABLE)
 
@@ -217,9 +224,18 @@ covered by the plan documents or `00-ambiguity-register.md`:
    `(runtime)` in the Category column. Update the register header to note items added during
    execution.
 5. **Only then** resume implementation using the user's decision.
+6. **Emit `runtime_ambiguity`** with the stage that should have caught it (`owner`) and what kind
+   of gap it was (`kind`). Both are enums; the register keeps the prose, and telemetry never
+   receives the question or the decision.
 
 This applies to ALL ambiguities — architectural, behavioral, naming, formatting, UX, error
 handling. Never fill gaps by guessing.
+
+Every runtime entry is a planning assumption that did not survive contact, so the `owner` is the
+judgement worth making carefully: `requirements` when the RD never settled it, `plan` when the
+zero-ambiguity gate closed over it, `spec_tests` when the expectation was never written down, and
+`execution` when it genuinely could not have been known earlier. Answering "which stage leaks
+ambiguity" is the whole point of recording it, and a reflexive `execution` makes the measure useless.
 
 ---
 

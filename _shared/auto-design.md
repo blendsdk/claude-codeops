@@ -1,6 +1,6 @@
 # Auto-Design Authority Policy (shared convention)
 
-> **CodeOps Skills Version**: 3.17.0
+> **CodeOps Skills Version**: 3.18.0
 > **Policy version**: 1
 
 `--auto-design` delegates eligible **technical** design decisions to CodeOps for one workflow
@@ -154,6 +154,26 @@ Reopen triggers: <observable invalidation conditions>
 The canonical delegated marker may occupy an existing `User Decision` column, so existing registers
 keep their shape. Do **not** create a parallel decision database and do not duplicate rationale
 into traceability — one owning artifact per decision, as everywhere else in CodeOps.
+
+### Telemetry (profile-gated)
+
+When the repo has an active quality profile, emit `design_delegated` once per resolution *and* once
+per bounded escalation — one call of `"${CLAUDE_PLUGIN_ROOT}/scripts/codeops-events.sh" emit`, whose
+failure never blocks the decision:
+
+| Field | Value |
+|-------|-------|
+| `class` | the eligible class this choice fell in; **omitted entirely** on a reserved escalation, because by definition the choice was not in an eligible class |
+| `outcome` | `resolved`, or `escalated_reserved` / `escalated_evidence` / `escalated_confidence` |
+| `confidence` | the `Confidence:` line's own value — `high`, `med`, or `low` |
+| `challenged` | whether a blind challenger was required and run |
+
+Nothing else. The decision, its rationale, the rejected alternatives, and the counterargument stay
+in the owning artifact, where they are readable by the people who need them.
+
+Recording escalations as carefully as resolutions is the point: a policy that only counts its
+successes cannot tell you whether it stopped questions being asked or merely moved where they get
+asked, and that ratio is the only honest evidence that delegation earned its accepted risk.
 
 ## Bounded escalation
 

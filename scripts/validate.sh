@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.17.0"
+CODEOPS_VERSION="3.18.0"
 
 FAILURES=0
 
@@ -2544,6 +2544,70 @@ else
       fail "$snapshot_doc does not cover \"$phrase\""
     fi
   done
+fi
+
+# -----------------------------------------------------------------------------
+# ST-103 — every event the protocol tells a skill to emit exists in the catalog.
+#
+# The catalog refuses an unknown event type whole-line and only warns to stderr, so a
+# pinned emission moment for a type nobody added is invisible: the skill dutifully calls
+# the utility, the line is dropped, and the measure reads as "never happened" rather than
+# "never collected". Nothing else in the suite compares the two lists, which is how one
+# such moment survived several releases.
+# -----------------------------------------------------------------------------
+section "ST-103: pinned emission moments match the event catalog"
+events_util="scripts/codeops-events.sh"
+if [[ ! -s "$events_util" || ! -s "$EXEC_PROTO" ]]; then
+  fail "cannot cross-check emissions — $events_util or $EXEC_PROTO missing"
+else
+  catalog_types="$(awk '/^allowed_keys_for\(\) \{/{inside=1; next} inside && /^\}/{exit} inside' \
+      "$events_util" \
+    | sed -n 's/^[[:space:]]*\([a-z_|]*\))[[:space:]].*/\1/p' | tr '|' '\n' | sort -u)"
+  emitted_types="$(awk '/^### Telemetry emissions/{inside=1; next} inside && /^### /{exit} inside' \
+      "$EXEC_PROTO" \
+    | awk -F'|' '/^\| *`[a-z_]/ {print $2}' | grep -oE '[a-z_]+' | sort -u)"
+  if [[ -z "$catalog_types" || -z "$emitted_types" ]]; then
+    fail "ST-103 could not extract both lists (catalog=$(wc -w <<<"$catalog_types") protocol=$(wc -w <<<"$emitted_types"))"
+  else
+    orphans="$(comm -23 <(printf '%s\n' "$emitted_types") <(printf '%s\n' "$catalog_types"))"
+    if [[ -z "$orphans" ]]; then
+      pass "every pinned emission moment names a catalogued event type"
+    else
+      fail "pinned moments with no catalog entry — every emit is refused: $(tr '\n' ' ' <<<"$orphans")"
+    fi
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+# ST-104 — the measure taxonomy is documented and its content-free guarantee restated.
+#
+# The guarantee is the reason this telemetry is defensible at all, so it is restated
+# wherever the new measures are introduced rather than left to a link.
+# -----------------------------------------------------------------------------
+section "ST-104: the measure taxonomy is documented"
+telemetry_doc="docs/guide/telemetry.md"
+if [[ ! -s "$telemetry_doc" ]]; then
+  fail "$telemetry_doc is missing — the taxonomy must be documented"
+else
+  for type in spec_test_cycle runtime_ambiguity session_resumed design_delegated; do
+    if grep -qF "$type" "$telemetry_doc"; then
+      pass "$telemetry_doc documents \`$type\`"
+    else
+      fail "$telemetry_doc does not document \`$type\`"
+    fi
+  done
+  if grep -qiE 'content-free|never (stores|records).*(text|content)' "$telemetry_doc"; then
+    pass "$telemetry_doc restates the content-free guarantee"
+  else
+    fail "$telemetry_doc must restate the content-free guarantee"
+  fi
+  # A measure dropped for privacy is a design outcome, not an omission; saying so is what
+  # stops the next reader from "fixing" it with something content-bearing.
+  if grep -qiE 'dropped' "$telemetry_doc"; then
+    pass "$telemetry_doc records that some measures are deliberately dropped"
+  else
+    fail "$telemetry_doc must record the deliberately dropped measures"
+  fi
 fi
 
 # -----------------------------------------------------------------------------

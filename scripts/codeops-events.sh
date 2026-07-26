@@ -4,7 +4,7 @@
 #
 # Subcommands:
 #   emit <event> [key=value…] [--hash-text "<text>"] [--src hook] [--stdin]
-#   stats [--since <Nd>] [--project <p>] [--by agent|lens|project|event]
+#   stats [--since <Nd>] [--project <p>] [--by agent|lens|project|event|delivery|drift|design]
 #   gaps  [--since <Nd>]
 #
 # The utility is the sole reader and writer of ~/.claude/codeops-telemetry/events.jsonl.
@@ -22,7 +22,7 @@
 # fields ever land in the file — never free text. Free text goes through --hash-text,
 # which stores the first 8 hex of its SHA-256 and discards the text.
 #
-# CodeOps Skills Version: 3.17.0
+# CodeOps Skills Version: 3.18.0
 
 set -uo pipefail
 
@@ -66,6 +66,11 @@ EVENTS_FILE="$EVENTS_DIR/events.jsonl"
 # Grow-only: add new events/keys here; never rename or repurpose existing ones.
 # ---------------------------------------------------------------------------
 LENS_ENUM="correctness maintainability standards security perf api-surface concurrency"
+# The eligible design classes a delegated resolution can fall into. This is the policy's own
+# list, kept as an enum so the measure records which kind of choice was delegated without ever
+# recording the choice.
+DESIGN_CLASS_ENUM="algorithms data_structures internal_architecture compiler_mechanisms \
+failure_recovery concurrency persistence security_mechanism testing_strategy performance sequencing"
 # Agents whose completions are expected to be followed by a ruling. The gaps report asks that
 # question of exactly this list, so a finding-producing agent left out of it reads as one with
 # nothing outstanding rather than one nobody checked.
@@ -75,14 +80,18 @@ allowed_keys_for() {
   case "$1" in
     skill_invoked)                  echo "skill" ;;
     agent_completed)                echo "agent feature phase duration_s" ;;
-    phase_started|phase_completed)  echo "feature phase tag mode" ;;
+    phase_started|phase_completed)  echo "feature phase tag mode tasks_planned" ;;
     task_completed)                 echo "feature phase task verify attempts files_changed" ;;
     blocker_reported)               echo "feature phase task category" ;;
-    review_run)                     echo "agent feature phase lenses findings_critical findings_major findings_minor" ;;
+    review_run)                     echo "agent feature phase lenses round findings_critical findings_major findings_minor" ;;
     finding_decided)                echo "agent feature phase severity lens decision fix_applied hash" ;;
     commit_gate)                    echo "mode blocked_by_finding severity" ;;
     preflight_run)                  echo "artifact clusters findings_critical findings_major findings_minor thorough" ;;
     gate_summary)                   echo "gate rounds questions decisions deferrals feature" ;;
+    spec_test_cycle)                echo "feature phase authored red_confirmed post_impl_failures" ;;
+    runtime_ambiguity)              echo "feature phase owner kind" ;;
+    session_resumed)                echo "feature phase resume_point marks_corrected" ;;
+    design_delegated)               echo "feature phase class outcome confidence challenged" ;;
     *)                              return 1 ;;
   esac
 }
@@ -108,6 +117,13 @@ validate_value() {
     severity)   in_list "$value" "critical major minor" && return 0 ;;
     decision)   in_list "$value" "accepted rejected deferred" && return 0 ;;
     gate)       in_list "$value" "grill_me zero_ambiguity preflight_gate" && return 0 ;;
+    round)      in_list "$value" "initial rereview" && return 0 ;;
+    owner)      in_list "$value" "requirements plan spec_tests execution" && return 0 ;;
+    kind)       in_list "$value" "assumption_invalidated unspecified_detail conflicting_spec" && return 0 ;;
+    resume_point) in_list "$value" "in_progress_task next_task plan_complete" && return 0 ;;
+    class)      in_list "$value" "$DESIGN_CLASS_ENUM" && return 0 ;;
+    outcome)    in_list "$value" "resolved escalated_reserved escalated_evidence escalated_confidence" && return 0 ;;
+    confidence) in_list "$value" "high med low" && return 0 ;;
     lens)       in_list "$value" "$LENS_ENUM" && return 0 ;;
     lenses)
       [[ -n "$value" ]] || return 1
@@ -117,9 +133,9 @@ validate_value() {
       done
       return 0
       ;;
-    duration_s|attempts|files_changed|rounds|questions|decisions|deferrals|clusters|findings_critical|findings_major|findings_minor)
+    duration_s|attempts|files_changed|rounds|questions|decisions|deferrals|clusters|findings_critical|findings_major|findings_minor|tasks_planned|authored|red_confirmed|post_impl_failures)
       [[ "$value" =~ ^[0-9]+$ ]] && return 0 ;;
-    fix_applied|blocked_by_finding|thorough)
+    fix_applied|blocked_by_finding|thorough|marks_corrected|challenged)
       in_list "$value" "true false" && return 0 ;;
     hash)       [[ "$value" =~ ^[0-9a-f]{8}$ ]] && return 0 ;;
     *)          [[ -n "$value" && ! "$value" =~ [[:space:]] ]] && return 0 ;;
@@ -129,9 +145,9 @@ validate_value() {
 
 json_type_of() { # int | bool | list | string
   case "$1" in
-    duration_s|attempts|files_changed|rounds|questions|decisions|deferrals|clusters|findings_critical|findings_major|findings_minor)
+    duration_s|attempts|files_changed|rounds|questions|decisions|deferrals|clusters|findings_critical|findings_major|findings_minor|tasks_planned|authored|red_confirmed|post_impl_failures)
       echo int ;;
-    fix_applied|blocked_by_finding|thorough) echo bool ;;
+    fix_applied|blocked_by_finding|thorough|marks_corrected|challenged) echo bool ;;
     lenses) echo list ;;
     *) echo string ;;
   esac
@@ -477,6 +493,87 @@ stats_by_lens() {
       end' | format_table
 }
 
+# Delivery — did the phase deliver what it planned, and how much rework did it take?
+# The planned side comes from phase_started; everything else is per-task or per-phase.
+stats_by_delivery() {
+  jq -rs '
+    def pct(a; r): if r == 0 then "n/a" else ((((a / r) * 100) + 0.5) | floor | tostring) + "%" end;
+    . as $ev
+    | ([ $ev[] | select(.event == "phase_started") | .tasks_planned // empty ] | add // 0) as $planned
+    | [ $ev[] | select(.event == "task_completed") ] as $tasks
+    | ($tasks | length) as $done
+    | ($tasks | map(select(.verify == "pass")) | length) as $passed
+    | ($tasks | map(select(.attempts != null)) | length) as $measured
+    | ($tasks | map(select(.attempts == 1)) | length) as $first
+    | [ $ev[] | select(.event == "spec_test_cycle") ] as $sc
+    | ($sc | map(.authored // 0) | add // 0) as $authored
+    | ($sc | map(.red_confirmed // 0) | add // 0) as $red
+    | ($sc | map(.post_impl_failures // 0) | add // 0) as $postfail
+    | [ $ev[] | select(.event == "review_run") ] as $rr
+    | ($rr | map(select(.round == "initial")) | length) as $r1
+    | ($rr | map(select(.round == "rereview")) | length) as $r2
+    | if ($planned + $done + ($sc | length) + ($rr | length)) == 0 then "no delivery events in range"
+      else
+        (["measure", "count", "of", "rate"] | @tsv),
+        (["tasks planned", $planned, "-", "-"] | @tsv),
+        (["tasks verified", $passed, $done, pct($passed; $done)] | @tsv),
+        (["first-pass verify", $first, $measured, pct($first; $measured)] | @tsv),
+        (["spec red confirmed", $red, $authored, pct($red; $authored)] | @tsv),
+        (["spec failed post-impl", $postfail, $authored, pct($postfail; $authored)] | @tsv),
+        (["re-review rate", $r2, $r1, pct($r2; $r1)] | @tsv)
+      end' | format_table
+}
+
+# Drift — what did execution discover that planning was supposed to have settled, and did
+# the plan document survive being interrupted?
+stats_by_drift() {
+  jq -rs '
+    def pct(a; r): if r == 0 then "n/a" else ((((a / r) * 100) + 0.5) | floor | tostring) + "%" end;
+    . as $ev
+    | [ $ev[] | select(.event == "runtime_ambiguity") ] as $ra
+    | [ $ev[] | select(.event == "session_resumed") ] as $sr
+    | ($ra | length) as $rat
+    | ($sr | length) as $srt
+    | ($sr | map(select(.marks_corrected == true)) | length) as $corrected
+    | if ($rat + $srt) == 0 then "no drift events in range"
+      else
+        (["signal", "count", "of", "rate"] | @tsv),
+        (["runtime ambiguities", $rat, "-", "-"] | @tsv),
+        (["requirements", "plan", "spec_tests", "execution"][] as $o
+         | ($ra | map(select(.owner == $o)) | length) as $n
+         | ["  " + $o, $n, $rat, pct($n; $rat)] | @tsv),
+        (["assumption_invalidated", "unspecified_detail", "conflicting_spec"][] as $k
+         | ($ra | map(select(.kind == $k)) | length) as $n
+         | ["  " + $k, $n, $rat, pct($n; $rat)] | @tsv),
+        (["sessions resumed", $srt, "-", "-"] | @tsv),
+        (["  marks corrected", $corrected, $srt, pct($corrected; $srt)] | @tsv)
+      end' | format_table
+}
+
+# Design — did delegated authority stop questions being asked, or only move where they
+# are asked? The escalation split is the part that says which.
+stats_by_design() {
+  jq -rs '
+    def pct(a; r): if r == 0 then "n/a" else ((((a / r) * 100) + 0.5) | floor | tostring) + "%" end;
+    [ .[] | select(.event == "design_delegated") ] as $dd
+    | ($dd | length) as $total
+    | if $total == 0 then "no delegated decisions in range"
+      else
+        (["outcome", "count", "of", "share"] | @tsv),
+        (["resolved", "escalated_reserved", "escalated_evidence", "escalated_confidence"][] as $o
+         | ($dd | map(select(.outcome == $o)) | length) as $n
+         | [$o, $n, $total, pct($n; $total)] | @tsv),
+        (["challenged", ($dd | map(select(.challenged == true)) | length), $total,
+          pct(($dd | map(select(.challenged == true)) | length); $total)] | @tsv),
+        (["confidence: low", ($dd | map(select(.confidence == "low")) | length), $total,
+          pct(($dd | map(select(.confidence == "low")) | length); $total)] | @tsv),
+        "",
+        (["class", "count"] | @tsv),
+        ($dd | map(select(.class != null)) | group_by(.class) | sort_by(-length)[]
+         | [.[0].class, length] | @tsv)
+      end' | format_table
+}
+
 stats_by_event() {
   jq -rs '
     (["event", "count"] | @tsv),
@@ -516,7 +613,8 @@ cmd_stats() {
       --by)
         [[ $# -ge 2 ]] || { warn "--by needs a value"; return; }
         by="$2"
-        in_list "$by" "agent lens project event" || { warn "unusable --by value '$by'"; return; }
+        in_list "$by" "agent lens project event delivery drift design" \
+          || { warn "unusable --by value '$by'"; return; }
         shift 2 ;;
       *) warn "unknown stats option '$1'"; return ;;
     esac
@@ -527,11 +625,14 @@ cmd_stats() {
     return
   fi
   case "$by" in
-    agent)   stats_by_agent   <<<"$events" ;;
-    lens)    stats_by_lens    <<<"$events" ;;
-    event)   stats_by_event   <<<"$events" ;;
-    project) stats_by_project <<<"$events" ;;
-    *)       stats_overview   <<<"$events" ;;
+    agent)    stats_by_agent    <<<"$events" ;;
+    lens)     stats_by_lens     <<<"$events" ;;
+    event)    stats_by_event    <<<"$events" ;;
+    project)  stats_by_project  <<<"$events" ;;
+    delivery) stats_by_delivery <<<"$events" ;;
+    drift)    stats_by_drift    <<<"$events" ;;
+    design)   stats_by_design   <<<"$events" ;;
+    *)        stats_overview    <<<"$events" ;;
   esac | head -n 40
 }
 

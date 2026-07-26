@@ -5,7 +5,7 @@ description: >
   its pre-aggregated table verbatim. Use for "codeops_stats", "codeops stats", "show quality
   telemetry", "review acceptance rates", "telemetry gaps". Read-only; the raw events file is
   never read into context.
-argument-hint: "[--since <Nd>] [--project <p>] [--by agent|lens|project|event] [gaps]"
+argument-hint: "[--since <Nd>] [--project <p>] [--by agent|lens|project|event|delivery|drift|design] [gaps]"
 ---
 
 # codeops_stats — relay the telemetry tables
@@ -23,6 +23,9 @@ pre-aggregates to a table of at most ~40 lines precisely so raw events stay out 
 | per-agent rates | `codeops-events.sh stats --by agent` |
 | per-lens rates | `codeops-events.sh stats --by lens` |
 | per-project / per-event counts | `codeops-events.sh stats --by project` / `--by event` |
+| planned vs. verified, first-pass rate, rework | `codeops-events.sh stats --by delivery` |
+| runtime ambiguity by owning stage, resume accuracy | `codeops-events.sh stats --by drift` |
+| whether delegated design decisions resolved or escalated | `codeops-events.sh stats --by design` |
 | a time window ("last 2 weeks") | add `--since 14d` |
 | one project only | add `--project <name>` |
 | emission gaps ("reviews without rulings") | `codeops-events.sh gaps [--since <Nd>]` |
