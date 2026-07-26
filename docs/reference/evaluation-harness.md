@@ -54,6 +54,12 @@ python scripts/codeops_eval.py run \
 A candidate can therefore be measured before it is merged, and the installed plugin is never
 mutated to take a reading.
 
+The release directory is also passed as `--add-dir`, because a run works from the scenario
+directory and would otherwise be unable to read the release's own reference material. That failure
+is silent: the run answers from general knowledge and returns a well-formed, plausible result. Any
+change to how a run is invoked invalidates existing captures — re-take the baseline rather than
+comparing across rigs.
+
 ## Scoring
 
 `score` applies four independent checks and reports every failure by name, rather than collapsing
@@ -81,6 +87,24 @@ the oracle be used as a gate.
 
 The first two admit no tolerance: they are what the harness is for. The third is noise-tolerant,
 because volume is the only metric that varies materially between runs of the same release.
+
+## The oracle saturates
+
+Each check is pass/fail, so a scenario a release already handles well scores 3/3 and cannot score
+higher. On a strong release most scenarios sit at that ceiling, and the harness stops being able
+to see improvement — it can only see damage.
+
+Two consequences worth planning around:
+
+- **Frame a comparison as "no regression, and improvement where there is headroom."** A criterion
+  demanding improvement everywhere is unsatisfiable against a saturated baseline, and failing it
+  says nothing about the change.
+- **A regression claim needs more runs than a no-change claim.** At three runs per side, one run
+  flipping moves a scenario between 3/3 and 2/3. If the run-to-run spread in blocking count is
+  wider than the difference being claimed, the claim is noise. Six runs per side is the working
+  minimum before calling something a regression.
+
+The durable fix is scenarios with real headroom, not a looser threshold.
 
 ## Running it honestly
 

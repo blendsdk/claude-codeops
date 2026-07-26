@@ -17,7 +17,7 @@ argument-hint: "[idea or brain dump]"
 
 # Requirements Gathering & Documentation
 
-> **CodeOps Skills Version**: 3.13.0
+> **CodeOps Skills Version**: 3.14.0
 
 Transform a rough project idea into a structured, complete set of formal
 **requirement documents (RDs)**. This skill is upstream of, and independent
@@ -89,6 +89,25 @@ For **add_requirement** and **review_requirements**, read **`review-and-add.md`*
 and follow the protocol there. Both reuse the gate and templates described below.
 
 ---
+
+## Step 0b: Classify the domains (before Phase 1 discovery)
+
+Before the first discovery question, classify the system from repository evidence and stated
+intent using **[../../references/domains/selection.md](../../references/domains/selection.md)**.
+Follow its detect → present → confirm protocol: select every domain whose evidence appears, show
+the user the evidence behind each and what was rejected, and let them amend before discovery
+proceeds.
+
+The selected domains' question sets join the discovery sweep — they **add** to the universal
+ambiguity categories and never replace them. Record the selection and its evidence in the
+requirements index, so a later reader can see why a given question set was asked.
+
+This runs for every repository, with or without a quality profile: it dispatches no agent and
+emits no telemetry. A `domains:` key in the profile pins the selection and skips detection; it
+can never switch classification off.
+
+If discovery later reveals a domain the evidence did not show, surface the change and the
+questions it newly requires — never fold it in silently.
 
 ## Full Discovery Overview
 

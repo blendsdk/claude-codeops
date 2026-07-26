@@ -1,0 +1,9 @@
+{
+  "name": "billing-service",
+  "dependencies": {
+    "express": "^4.19.0",
+    "bullmq": "^5.8.0",
+    "decimal.js": "^10.4.3",
+    "stripe": "^15.0.0"
+  }
+}

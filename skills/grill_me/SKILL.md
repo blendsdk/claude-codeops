@@ -25,7 +25,7 @@ When the user types `grill_me` (with or without additional context), enter
 designed to eliminate every ambiguity before any plan, requirement, or
 implementation work begins.
 
-> **CodeOps Skills Version**: 3.13.0
+> **CodeOps Skills Version**: 3.14.0
 
 ## Core Directive
 
@@ -50,6 +50,19 @@ conventions) for project-specific constraints, if it exists.
 | **Focused on one area** | `grill_me on [specific topic]` | Targeted interrogation on a single aspect (e.g., "grill_me on the auth flow"). |
 
 ## The Protocol
+
+### Step 0: Classify the domains
+
+Before mapping the tree, classify the system from repository evidence and the user's stated topic
+using **[../../references/domains/selection.md](../../references/domains/selection.md)**. Present
+the selection with the evidence behind each domain and let the user amend it.
+
+Each selected domain contributes branches the tree would otherwise be missing — a
+`financial-system` topic owes rounding order and reconciliation authority a branch each, whether
+or not the user thought to mention them. Domain branches sit alongside the ones the topic
+suggests; they never displace them.
+
+This runs regardless of the quality profile: it dispatches no agent and emits no telemetry.
 
 ### Step 1: Identify the Design Tree
 

@@ -11,7 +11,9 @@
       "effort": "high",
       "runs_per_scenario": 3,
       "scenarios": ["compiler", "financial", "web"],
-      "invocation": "claude -p --no-session-persistence --permission-mode dontAsk --tools Read --plugin-dir <plugin> --effort high --output-format json --json-schema <result.schema.json>",
+      "invocation": "claude -p --no-session-persistence --permission-mode dontAsk --tools Read --plugin-dir <plugin> --add-dir <plugin> --effort high --output-format json --json-schema <result.schema.json>",
+      "recaptured": "2026-07-25",
+      "recapture_reason": "The first capture omitted --add-dir, so a run could not read the release's own reference material from the scenario working directory. It answered from general knowledge and returned a well-formed, plausible result anyway — invented classification ids that match no enum value. Every capture is retaken whenever the rig changes, because a baseline and a candidate measured under different rigs are not comparable.",
       "files": {
         "compiler": "compiler/baseline-3.12.0.json",
         "financial": "financial/baseline-3.12.0.json",
@@ -22,6 +24,27 @@
         "The three scenarios were captured concurrently; runs within a scenario are sequential.",
         "This release has no domain classification, so the selection field carries generic question categories whose names vary between runs. Scored with the domain check disabled.",
         "Only the structured result of each run is retained. Per-run cost, latency, and session ids are not recorded."
+      ]
+    },
+    {
+      "label": "candidate-3.14.0",
+      "captured": "2026-07-25",
+      "release": "3.14.0",
+      "plugin_source": "working tree (domain classification added)",
+      "cli_version": "2.1.219",
+      "model": "claude-opus-5[1m]",
+      "effort": "high",
+      "runs_per_scenario": 3,
+      "scenarios": ["compiler", "financial", "web"],
+      "files": {
+        "compiler": "compiler/candidate-3.14.0.json",
+        "financial": "financial/candidate-3.14.0.json",
+        "web": "web/candidate-3.14.0.json"
+      },
+      "notes": [
+        "Captured under the same rig as baseline-3.12.0, which is the only reason the two can be compared.",
+        "Every run selected canonical domain ids, so classification demonstrably reached the runs.",
+        "Oracle pass rate: compiler 2/3 (baseline 3/3), financial 3/3 (baseline 2/3), web 3/3 (baseline 3/3). Retained as the evidence behind a gate that did not pass."
       ]
     },
     {
