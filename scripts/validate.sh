@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.18.0"
+CODEOPS_VERSION="3.19.0"
 
 FAILURES=0
 
@@ -2607,6 +2607,82 @@ else
     pass "$telemetry_doc records that some measures are deliberately dropped"
   else
     fail "$telemetry_doc must record the deliberately dropped measures"
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+# ST-105 — every shared-document reference from every skill resolves.
+#
+# The shared docs are linked by relative path from skills two directories down, so a
+# rename or a move breaks silently: the skill still loads, the link simply points at
+# nothing, and the convention it was supposed to carry quietly stops being read.
+# -----------------------------------------------------------------------------
+section "ST-105: every _shared reference resolves"
+shared_refs_ok=1
+shared_ref_count=0
+while IFS= read -r src; do
+  [[ -z "$src" ]] && continue
+  while IFS= read -r ref; do
+    [[ -z "$ref" ]] && continue
+    shared_ref_count=$((shared_ref_count + 1))
+    if [[ ! -f "$ref" ]]; then
+      fail "$src references $ref, which does not exist"
+      shared_refs_ok=0
+    fi
+  done < <(grep -oE '_shared/[a-z0-9-]+\.md' "$src" | sort -u)
+done < <(find skills commands agents standards -name '*.md' 2>/dev/null | sort)
+if [[ "$shared_refs_ok" -eq 1 ]]; then
+  pass "all $shared_ref_count shared-document references resolve"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-106 — the gate's closure conditions are present and complete.
+#
+# This list is what makes the gate a gate. Losing a condition to an edit would not
+# break anything visibly — the document still reads well, the gate still "passes",
+# and it passes on strictly less evidence than it used to.
+# -----------------------------------------------------------------------------
+section "ST-106: the zero-ambiguity gate's closure conditions are complete"
+zag="_shared/zero-ambiguity-gate.md"
+if [[ ! -s "$zag" ]]; then
+  fail "$zag is missing"
+else
+  # The section between "GATE OPENS" and the next heading owns the numbered conditions.
+  zag_closure="$(awk 'tolower($0) ~ /gate opens only when/{inside=1} inside && /^## /{exit} inside' "$zag")"
+  # Each pattern is anchored to its own numbered condition. An unanchored phrase would
+  # also match the explanatory prose that follows the list in the same section, so a
+  # deleted condition would still be "found" — the guard would pass over its own gap.
+  declare -A ZAG_CONDITIONS=(
+    ["every row resolved or named-deferred"]='^[0-9]+\. ✅ Every row has Status'
+    ["resolutions carry a decision"]='^[0-9]+\. ✅ Every resolution contains'
+    ["the complete register is confirmed"]='^[0-9]+\. ✅ .*confirmed the complete register'
+    ["no silent deferrals"]='^[0-9]+\. ✅ Zero items are \*\*silently\*\* deferred'
+    ["the header state"]='^[0-9]+\. ✅ The header reads'
+  )
+  if [[ -z "$zag_closure" ]]; then
+    fail "$zag has no gate-opening section — the closure conditions cannot be checked"
+  else
+    for name in "${!ZAG_CONDITIONS[@]}"; do
+      if grep -qEi "${ZAG_CONDITIONS[$name]}" <<<"$zag_closure"; then
+        pass "closure condition present: $name"
+      else
+        fail "$zag lost the closure condition: $name"
+      fi
+    done
+  fi
+  # Deferral is only ever valid in the fully-named form; a bare "deferred" state would
+  # be the cheapest possible way to make the gate easier to pass.
+  if grep -qEi 'Deferred row is valid ONLY in the fully-named form|three (mandatory )?parts' "$zag"; then
+    pass "named-deferral requirement intact"
+  else
+    fail "$zag no longer restricts deferral to the fully-named form"
+  fi
+  # Delegated authority is bounded: whatever the gate says about it, reserved categories
+  # must still escalate to the user.
+  if grep -qEi 'reserved' "$zag" && grep -qF 'auto-design.md' "$zag"; then
+    pass "delegated authority is bounded and points at its owning document"
+  else
+    fail "$zag must bound delegated authority and cite auto-design.md as its owner"
   fi
 fi
 

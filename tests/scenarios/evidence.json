@@ -1,6 +1,34 @@
 {
   "captures": [
     {
+      "label": "candidate-3.19.0",
+      "captured": "2026-07-26",
+      "release": "3.19.0",
+      "plugin_source": "working tree (zero-ambiguity gate reconciled with delegated authority)",
+      "cli_version": "2.1.219",
+      "model": "claude-opus-5[1m]",
+      "effort": "high",
+      "runs_per_scenario": 3,
+      "scenarios": [
+        "compiler",
+        "financial",
+        "web"
+      ],
+      "files": {
+        "compiler": "compiler/candidate-3.19.0.json",
+        "financial": "financial/candidate-3.19.0.json",
+        "web": "web/candidate-3.19.0.json"
+      },
+      "notes": [
+        "The final measurement of the port program. Captured under the same rig as baseline-3.12.0, which is the only reason the two can be compared.",
+        "The comparator reports no regression on all three scenarios.",
+        "Intolerant signals (concept coverage + gate verdict), baseline -> candidate: compiler 6/6 -> 3/3, financial 2/3 -> 3/3, web 3/3 -> 3/3. Median blocking volume 11 -> 15, 15 -> 27, 13 -> 22.",
+        "This is the one phase whose changes could plausibly move measured behavior: it edits the zero-ambiguity gate, which every scenario run exercises directly. The medians rose against 3.18.0 (12 -> 15, 23 -> 27, 22 -> 22) rather than falling. Blocking volume is the noise-tolerant signal and three runs cannot separate a real effect of that size from run-to-run spread; what matters for the gate is the direction, and it is not toward fewer blocking findings.",
+        "The baseline is scored with require_domains=False and the candidates with require_domains=True. Domain classification shipped in 3.14.0, so requiring domains of a 3.12.0 capture would score it against a specification it was never built to meet.",
+        "Captured 10:36-11:09 from a tree carrying every change in this phase including the version bump and the changelog. The evidence record itself is the only later edit."
+      ]
+    },
+    {
       "label": "candidate-3.18.0",
       "captured": "2026-07-26",
       "release": "3.18.0",

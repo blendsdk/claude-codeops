@@ -1,6 +1,6 @@
 # Zero-Ambiguity Gate (shared protocol)
 
-> **CodeOps Skills Version**: 3.18.0
+> **CodeOps Skills Version**: 3.19.0
 
 This is the **single canonical definition** of the Zero-Ambiguity Gate. It lives at the plugin
 root in `_shared/` (deliberately outside `skills/`, like `layout-convention.md`). The gate-running
@@ -18,10 +18,12 @@ links here for everything below. Change the gate in one place: here.
 ## Why this gate exists
 
 Artifacts built on ambiguity produce implementations built on guesswork. When the AI guesses, the
-user gets requirements they didn't specify, behaviors they didn't define, and architectures they
-didn't choose. Every item in every gated artifact must trace back to an **explicit, user-confirmed
-decision**. If you cannot point to a specific user answer for a design choice, behavioral spec,
-edge case, or scope boundary, you have failed this gate.
+user gets requirements they didn't specify, behaviors they didn't define, and architectures with no
+accountable authority behind them. Every item in every gated artifact must trace back to an
+**authorized resolution**: an explicit user decision in normal mode, or — under active
+`--auto-design` — a complete delegated record for a choice that policy made eligible. If you cannot
+point to that authority for a design choice, behavioral spec, edge case, or scope boundary, you
+have failed this gate.
 
 > **Recommendation hardening (complex/sensitive decisions).** When you present options for an
 > ambiguity tagged complex or sensitive, apply `_shared/recommendation-hardening.md` — spawn one
@@ -87,7 +89,7 @@ stays in one place and a delegated resolution is visibly distinguishable from a 
 **🚫 PROHIBITED while the gate is blocked:**
 
 - ❌ Create or modify any artifact the caller's preamble lists as blocked
-- ❌ Make any design decision on the user's behalf
+- ❌ Make any decision without user authority or an active, eligible auto-design delegation
 - ❌ Use phrases like "we'll assume…", "by default…", "a reasonable approach would be…"
 - ❌ Proceed with a partially resolved register
 
@@ -95,10 +97,13 @@ stays in one place and a delegated resolution is visibly distinguishable from a 
 
 1. ✅ Every row has Status = `✅ Resolved` **or** `⏸ Deferred` (see the deferral rules below —
    a Deferred row is valid ONLY in the fully-named form).
-2. ✅ Every resolution contains the **user's explicit decision** (not your recommendation
-   accepted by silence). Bulk acceptance counts — see below.
+2. ✅ Every resolution contains either the **user's explicit decision** (not your recommendation
+   accepted by silence) or, under active `--auto-design`, the complete delegated provenance
+   required by [auto-design.md](auto-design.md). Bulk acceptance counts — see below.
 3. ✅ The user has reviewed and confirmed the complete register. For >15 items, present in
    batches by category — the user confirms each batch, then gives a final confirmation.
+   Under active `--auto-design` this still holds for every reserved row; an eligible delegated
+   row is confirmed instead by passing the authority boundary, with its provenance on the record.
    Items imported pre-resolved (from a grill_me session or an earlier register) do **not**
    need re-confirmation — only new or changed rows do.
 4. ✅ Zero items are **silently** deferred — "figure it out later" without a named Deferred
@@ -147,6 +152,14 @@ record THEIR choice.
 decision must be yours." Present options with your recommendation marked and wait for "I choose
 [option]" (or a bulk acceptance, which qualifies). Never record "AI decided".
 
+Saying "you decide" does **not** activate delegated authority. That takes the `--auto-design` flag
+on the invocation itself, and even then it reaches only eligible technical choices — a reserved
+one still comes back to the user. The distinction matters because the two look identical from the
+inside: one is the user declining to engage, the other is the user having authorized a bounded
+class of decision in advance. Treating the first as the second is how a gate stops being a gate.
+Where the flag *is* active and the item *is* eligible, the resolution is recorded under the
+delegated authority marker with its full provenance — never as "AI decided".
+
 ## Register persistence
 
 The register is a permanent file saved with the artifact it gates (resolve the directory per
@@ -165,7 +178,10 @@ Every decision in the gated artifact must back-reference the register entry that
 > **Decision per AR #7:** User chose Option B — time-based cache invalidation with 5-minute TTL.
 ```
 
-Unbroken chain: **user question → user answer → register entry → artifact.**
+Unbroken chain: **user question → user answer → register entry → artifact.** Under active
+`--auto-design`, an eligible item's chain is **identified ambiguity → delegated provenance →
+register entry → artifact**; a reserved item always uses the normal-mode chain. Either way the
+chain is unbroken, and either way the register entry names which one it was.
 
 The ONLY items exempt from `AR #` back-references: **(a)** universally obvious facts with exactly
 one possible interpretation (e.g., "TypeScript files use `.ts`"), and **(b)** formatting choices
@@ -177,9 +193,13 @@ Even after the gate passes, if you discover a NEW ambiguity while writing the ga
 
 1. **STOP writing immediately.**
 2. **Add** it to the register with the next sequential number.
-3. **Present** it to the user with options and trade-offs.
-4. **Wait** for the user's explicit decision (or named deferral).
-5. **Record** the resolution, **then** resume writing.
+3. **Resolve the authority.** Normally: present it to the user with options and trade-offs. Under
+   active `--auto-design`: an eligible technical item is resolved under
+   [auto-design.md](auto-design.md); a reserved one goes to the user like any other.
+4. **Wait** for the user's explicit decision (or named deferral) wherever their authority applies —
+   which is always, unless the flag is active *and* the item is eligible.
+5. **Record** the resolution — the user's decision, or the complete delegated provenance — **then**
+   resume writing.
 
 Never "make a reasonable choice and move on."
 
