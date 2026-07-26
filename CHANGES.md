@@ -2,6 +2,28 @@
 
 ## Changelog
 
+### 3.19.0 — Zero-ambiguity gate reconciled with delegated authority (2026-07-26)
+
+`--auto-design` shipped in 3.16.0, but `_shared/zero-ambiguity-gate.md` was left saying that every
+resolution requires an explicit user decision. Read literally, **the gate could never close in
+auto-design mode** — one document forbade what another permitted. This release makes them agree.
+
+- **The gate now states its authority model directly:** a resolution carries either the user's
+  explicit decision or, under an active flag, the complete delegated provenance. Both paths are
+  written down, and every register row names which one it used.
+- **Closure conditions 2 and 3 became supersets**, not replacements. Three of the five are
+  byte-identical; nothing was dropped, and normal mode is unchanged in every respect.
+- **Saying "you decide" still does not delegate anything.** Only the flag on the invocation does,
+  and even then only for eligible technical choices — reserved categories come back to you. The two
+  look identical from the inside, and conflating them is how a gate stops being a gate.
+- **New guards:** `validate.sh` checks that every shared-document reference from every skill
+  resolves (59 of them), and that the gate's five closure conditions, the named-deferral form, and
+  the boundedness of delegated authority are all still present. Losing a closure condition to an
+  edit would not break anything visibly — the gate would simply start passing on less evidence.
+- `_shared/layout-convention.md` and `_shared/recommendation-hardening.md` were examined against
+  the source edition and **deliberately left untouched**; the differences were naming conventions
+  and one place where this edition is more accurate about what it ships.
+
 ### 3.18.0 — Telemetry measure taxonomy (2026-07-26)
 
 Telemetry could say whether the review agents were earning their keep. It could not say whether the

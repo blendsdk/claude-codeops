@@ -1,0 +1,855 @@
+[
+  {
+    "scenario": "Multi-tenant document approval workflow web application: users submit documents for approval within their organization; reviewers approve or request changes; administrators act for any team; a background job extracts document metadata and sends notifications; the UI uses optimistic updates and caches document lists for five minutes; customers configure webhooks for approval events; documents can be shared by URL with external collaborators; important actions are logged; the service must remain usable during rolling deployments. Authorization and consistency behavior is explicitly not to be invented, so every such decision is an unresolved gate item.",
+    "selected_domains": [
+      "web-application",
+      "distributed-and-concurrent",
+      "data-and-migration"
+    ],
+    "material_ambiguities": [
+      {
+        "id": "AR-01",
+        "question": "What is the tenant boundary and resource-ownership model? Is an organization the tenant, can a user belong to more than one organization simultaneously, is a 'team' a sub-unit of an organization, and is a document owned by its submitter, its team, or the organization?",
+        "impact": [
+          "Determines the primary key/scoping column on every table and every query predicate \u2014 a wrong choice is a cross-tenant data leak, not a refactor",
+          "Decides whether sessions carry a single active org context or a set, which changes auth token shape and all API routes",
+          "Blocks the document list, cache key design (AR-08) and the share link scope (AR-09)"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-02",
+        "question": "What is the complete authorization matrix (actor x action x resource x state)? Specifically: may a submitter approve or review their own document; may any reviewer in the org act on any document or only assigned reviewers; who assigns reviewers; what may an external collaborator do; and what is the result for each denied combination (404 vs 403)?",
+        "impact": [
+          "No permission check can be implemented or spec-tested without a per-combination expected result; the web-application domain gate fails outright on any missing cell",
+          "Determines whether authorization is role-based, assignment-based, or attribute-based \u2014 different data model, different join, different caching validity",
+          "404-vs-403 choice is an existence-disclosure decision across tenants and cannot be defaulted"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-03",
+        "question": "What exactly does 'administrators can act for any team' mean \u2014 an org-scoped admin acting across teams inside one organization, or a platform/support admin who can cross tenant boundaries? If cross-tenant, is it direct action or an impersonation/break-glass flow, and is it consented, time-bounded, and separately audited?",
+        "impact": [
+          "A cross-tenant admin role changes the threat model, the audit requirements, and every tenant-scoping invariant established in AR-01",
+          "Decides whether admin actions bypass or reuse the AR-02 matrix, and whether approvals made by an admin are attributed to the admin or the team",
+          "Compliance exposure: unlogged cross-tenant access is typically a reportable control failure"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-04",
+        "question": "What is the approval state machine? Enumerate states, legal transitions, terminal states, whether approval needs one reviewer or a quorum/sequence, what 'request changes' does to the document (locked, editable, resubmit as new version), and whether a decision can be withdrawn before the document reaches a terminal state.",
+        "impact": [
+          "The core domain object cannot be modeled, persisted, or spec-tested without the state set and transition table",
+          "Determines webhook event taxonomy (AR-11) and notification triggers (AR-13)",
+          "Quorum vs single-approver changes the concurrency semantics in AR-05 from a race to an aggregation"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-05",
+        "question": "What happens when two reviewers act on the same document concurrently \u2014 e.g. one approves while another requests changes, or an admin acts while a reviewer does? Is the first write authoritative, the last, or is the second rejected with a conflict? Is there an optimistic-concurrency version/ETag on the document, and what is the exact conflict response?",
+        "impact": [
+          "Without a stated rule the implementation would encode an accidental last-write-wins, silently discarding an approval decision \u2014 an outcome the scenario explicitly forbids inventing",
+          "Decides whether the API requires If-Match/version tokens, which changes every mutating endpoint contract and the client",
+          "Required interleaving for the distributed-and-concurrent gate: concurrent duplicate requests and read-during-write have no defined outcome"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-06",
+        "question": "What are the exact optimistic-update semantics in the UI: which actions render optimistically, what is shown when the server later rejects (silent rollback, toast, blocking dialog, forced refetch), and what happens if the user has navigated away or acted again on the rolled-back state?",
+        "impact": [
+          "A reviewer may believe an approval succeeded when it did not \u2014 a correctness-visible, not cosmetic, decision",
+          "Determines client-side mutation queue design and whether actions are serialized per document",
+          "Interacts with AR-05: rollback presentation depends on the conflict response shape"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-07",
+        "question": "Are approval-affecting mutations idempotent under retry and duplicate submission? Is there an idempotency key on submit/approve/request-changes, what is its scope and lifetime, and what does a replayed key return?",
+        "impact": [
+          "Without it, an optimistic-update retry or a user double-click can create duplicate submissions or double-fire webhooks and notifications",
+          "Determines whether a dedupe table/column exists in the schema and its retention",
+          "Required to reason about the timeout-with-unknown-outcome interleaving"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-08",
+        "question": "What is the exact scope and invalidation policy of the five-minute document-list cache? Is it client-side, CDN/shared, or server-side; is the cache key per user, per role, or per tenant; is it invalidated on write or purely TTL-expired; and is a reviewer permitted to make an approval decision from a list that may be up to five minutes stale?",
+        "impact": [
+          "A shared or role-agnostic cache key across a multi-tenant, permission-filtered list is a direct cross-tenant/permission disclosure vector",
+          "Decides whether the write path must publish invalidations (new infrastructure) or the staleness is accepted product behavior",
+          "Determines whether the optimistic update in AR-06 reconciles against a stale cache and appears to 'revert'",
+          "Cached list payload format becomes a versioned artifact under rolling deploys (AR-15)"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-09",
+        "question": "What is the security model for URL sharing with external collaborators? Unguessable capability token vs authenticated external account; what permissions the link grants (view only, comment, approve); expiry; revocation; per-link or per-document; whether the link survives document state changes or new versions; whether recipients are identifiable in the audit log; and whether link contents are excluded from search-engine indexing and referrer leakage.",
+        "impact": [
+          "This is the primary external attack surface; an unspecified link is a permanent unauthenticated read of tenant documents",
+          "Decides whether external actors appear in the AR-02 authorization matrix as an actor class",
+          "Determines whether audit entries can attribute an action to a named person or only to a token",
+          "Sets storage requirements: token hashing, expiry sweep, revocation list"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-10",
+        "question": "What triggers the metadata-extraction job, and what are its delivery and failure semantics? At-least-once or exactly-once, deduplication key, retry/backoff policy, poison-message handling, timeout, whether extraction failure blocks the approval workflow, and what a document looks like to users while extraction is pending or has permanently failed.",
+        "impact": [
+          "Determines queue technology requirements, dead-letter design, and whether documents can be approved with missing metadata",
+          "Without an at-least-once assumption the job may double-send notifications and double-fire webhooks",
+          "The 'pending extraction' UI state is undefined and cannot be built",
+          "Retry semantics interact with the idempotency decision in AR-07"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-11",
+        "question": "What are the webhook contract and delivery guarantees? Event taxonomy and payload schema, payload versioning, ordering guarantees (or explicit none), at-least-once with consumer-side dedupe id, retry schedule and give-up policy, auto-disable on sustained failure, HMAC signing and secret rotation, timeout, per-customer rate limits, and the egress allowlist / SSRF protection for customer-supplied URLs.",
+        "impact": [
+          "A customer-controlled outbound URL without an SSRF policy lets a tenant reach internal network services \u2014 a security-blocking gap, not a detail",
+          "Payload schema and version become a compatibility artifact that must survive rolling deploys (AR-15)",
+          "Retry/ordering choice determines whether the delivery subsystem needs durable queueing and a dispatcher, materially changing plan size",
+          "Whether webhook payloads may contain document content or only identifiers is a data-exposure decision"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-12",
+        "question": "What is the ordering and visibility relationship between the approval write, the metadata extraction, the notification, and the webhook? Must a webhook only fire after the state change is durably committed (transactional outbox), and may a recipient following a webhook or notification immediately read the new state, or can they observe the old state via the cache (AR-08) or a replica?",
+        "impact": [
+          "Determines whether an outbox/inbox pattern is required \u2014 a structural architecture decision that cannot be retrofitted cheaply",
+          "A 'your document was approved' notification linking to a page that still shows Pending is a defect only definable once this is answered",
+          "Fixes the eventual-consistency visibility contract the whole system inherits"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-13",
+        "question": "Who receives notifications for each event, over which channels, with what deduplication/batching, and what opt-out or preference model? Do external collaborators (AR-09) receive them?",
+        "impact": [
+          "Recipient resolution depends on the AR-02 matrix and AR-01 membership model; it cannot be derived independently",
+          "Channel set determines whether third-party providers (email/SMS/push) become dependencies with their own failure and rate-limit handling",
+          "Notifying an external URL-share recipient is a data-disclosure decision"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-14",
+        "question": "What is the definition of 'every important action', concretely? Enumerate the audited action set (including reads of shared documents and admin cross-team actions), the record schema (actor, tenant, resource, before/after, request id, source ip, timestamp with timezone), immutability/tamper-evidence, retention period, who may read or export the log, and what PII the log may and may not contain.",
+        "impact": [
+          "'Important' is unactionable: without the enumeration the audit implementation is arbitrary and cannot be spec-tested",
+          "Immutability and retention decide the storage medium (append-only store vs ordinary table) and the deletion story under GDPR/erasure requests",
+          "Whether audit writes are in the same transaction as the action determines whether an audited action can be lost on partial failure",
+          "Read access to the audit log is itself an entry in the AR-02 matrix"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-15",
+        "question": "What compatibility contract must hold during rolling deployments? The supported mixed-version window; the schema-change policy (expand/contract, no destructive step in the same release); compatibility for in-flight queue messages and webhook payloads written by the old version and consumed by the new (and vice versa); the versioning/invalidation of cached list payloads (AR-08) whose shape changes; API/client skew tolerance; and the rollback procedure including whether any migration step is irreversible.",
+        "impact": [
+          "'Usable during rolling deployments' is the compatibility-language trigger for the data-and-migration domain; without the window and policy, any schema or payload change is a potential outage",
+          "Determines whether every migration must be split into expand/backfill/contract releases \u2014 a change to the delivery process, not just the code",
+          "An old worker consuming a new message (or the reverse) has undefined behavior today",
+          "A stale cache entry in the old format after deploy has undefined behavior today"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-16",
+        "question": "What is the document data lifecycle? Versioning on resubmission, accepted file types and size limits, malware/content scanning, safe rendering or download of untrusted content, storage location and encryption, soft vs hard delete, restore, retention/erasure policy, and data residency/regulatory regime (e.g. GDPR) per tenant.",
+        "impact": [
+          "Untrusted user-uploaded content served to external collaborators over a share link is a stored-XSS / drive-by delivery vector; the serving policy (sandboxed origin, Content-Disposition, CSP) cannot be chosen without it",
+          "Soft vs hard delete determines whether a deleted document remains reachable via an existing share link or a cached list",
+          "Residency and retention constrain storage architecture and the audit retention in AR-14"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-17",
+        "question": "What is the authentication model for internal users and, separately, for external collaborators? IdP/SSO vs local accounts, per-tenant identity federation, session and token lifetime, revocation propagation (including revocation of a session while a five-minute cache is warm), MFA requirements, and rate limiting on auth and on public share endpoints.",
+        "impact": [
+          "Authorization (AR-02) cannot be implemented without a defined principal for each actor class, including the external one",
+          "Revocation semantics interact directly with the cache TTL: a revoked user may keep reading a cached list unless invalidation is specified",
+          "Per-tenant federation changes routing, onboarding, and the tenancy model in AR-01"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-18",
+        "question": "What are the non-functional targets: number of tenants, documents per tenant, list page size and pagination/filter/sort contract, expected read/write rates, latency budgets, availability objective, and job/webhook throughput and backlog limits with the backpressure behavior when they are exceeded?",
+        "impact": [
+          "Indexing strategy, pagination contract, and whether the cache is a nicety or a load-bearing component all depend on these numbers",
+          "Queue bounds and overload behavior for the extraction/webhook subsystems are undefined, so the distributed gate's admission-control requirement cannot be met",
+          "An availability objective is what makes the rolling-deploy constraint in AR-15 measurable"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-19",
+        "question": "What are the UI state and presentation requirements for each surface: empty, loading, partial, stale (cache-served), unauthorized, forbidden, validation error, and server failure \u2014 plus the accessibility conformance target, localization, and how timestamps are displayed relative to tenant/user timezone?",
+        "impact": [
+          "The web-application gate requires a defined state for every user-visible transition; the stale state in particular is created by the AR-08 cache and has no defined presentation",
+          "Accessibility conformance level changes component choices and the test surface",
+          "Timezone display of approval deadlines and audit timestamps is behavior, not formatting"
+        ],
+        "must_block": false
+      },
+      {
+        "id": "AR-20",
+        "question": "What is the MVP-vs-later split across these capabilities, and are any of webhooks, external URL sharing, or cross-tenant admin out of scope for the first release?",
+        "impact": [
+          "Three of the highest-risk subsystems (webhooks, external sharing, admin override) each carry substantial security and infrastructure work; including or excluding them changes plan size and sequencing by a large factor",
+          "Determines whether the AR-15 compatibility policy must accommodate webhook payload versioning from day one"
+        ],
+        "must_block": false
+      }
+    ],
+    "gate_verdict": "BLOCK"
+  },
+  {
+    "scenario": "Multi-tenant document approval workflow, delivered as a web application: users submit documents for approval inside their organization; reviewers approve or request changes; administrators may act for any team; a background job extracts document metadata and sends notifications; the UI applies optimistic updates and caches document lists for five minutes; customers may configure outbound webhooks for approval events; documents may be shared by URL with external collaborators; \"every important action\" must be logged; and the service must stay usable during rolling deployments. No repository, existing schema, tenancy model, identity provider, queue technology, deployment topology, compliance context, or scale target was supplied. Every authorization, consistency, and durability requirement is stated as an outcome (\"administrators can act for any team\", \"caches for five minutes\", \"remain usable\") rather than as a semantic rule, and the brief explicitly forbids inventing authorization or consistency behavior. Evaluated under the make_requirements domain-selection protocol and the Phase 2B Zero-Ambiguity Gate; no files created and no interview conducted.",
+    "selected_domains": [
+      "web-application",
+      "distributed-and-concurrent",
+      "data-and-migration"
+    ],
+    "material_ambiguities": [
+      {
+        "id": "AR-01",
+        "question": "What is the tenancy model and the isolation boundary? Is an organization a hard tenant with physically separated storage, a shared schema partitioned by a tenant column, or something in between; is every query required to carry a tenant predicate enforced at the data layer (row-level security, a scoped repository) or at the application layer; and can any entity \u2014 user, document, approval, webhook endpoint, audit record \u2014 ever legitimately span two organizations?",
+        "impact": [
+          "Decides the entire persistence design: shared-schema-with-tenant-column, schema-per-tenant, and database-per-tenant differ in migration mechanics, backup/restore granularity, and per-tenant deletion, and cannot be swapped later without a full data migration.",
+          "Determines whether cross-tenant leakage is prevented structurally or by developer discipline on every query \u2014 the highest-severity defect class in this system.",
+          "Sets whether the mandatory tenant-isolation test suite asserts at the query layer or the API layer, and what a passing test even looks like.",
+          "Every other authorization question below is scoped by this answer; without it the resource side of the actor/action/resource matrix has no defined extent."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-02",
+        "question": "What is the relationship between 'organization' and 'team', which the brief uses as if both exist? Are teams a sub-unit of an organization, is the hierarchy one level or arbitrarily nested, may a user belong to several teams or several organizations at once, and if so how is the acting context selected (an explicit tenant switch, inferred from the document, or an ambient default)?",
+        "impact": [
+          "Membership cardinality is a core data-model decision \u2014 a single org_id on the user row versus a membership join table with per-membership roles are different schemas and different permission checks.",
+          "A user in two organizations makes every session ambiguous about which tenant the request acts in, which is exactly where cross-tenant authorization bugs originate.",
+          "Determines whether permissions are inherited down a team hierarchy and whether an approval at team level is visible at organization level.",
+          "'Administrators can act for any team' (AR-04) is unstatable until the team/organization boundary is defined."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-03",
+        "question": "What is the complete authorization matrix \u2014 for each actor (submitter, reviewer, administrator, external collaborator, service/API client) crossed with each action (create, upload, submit, view, download, list, edit, approve, request changes, withdraw, reassign, delete, share externally, revoke a share, configure webhooks, read the audit log) crossed with each resource scope (own document, own team, own organization, any organization) \u2014 what is the allowed/denied result? Specifically: may a submitter approve their own document, may a reviewer view documents they were not assigned, and is 'deny' rendered as 403 or as 404 to avoid disclosing existence?",
+        "impact": [
+          "This matrix is the product; the web-application gate fails outright while any actor/action/resource cell lacks a result, and none are currently supplied.",
+          "Self-approval is a segregation-of-duties decision with audit consequences, and both answers are defensible \u2014 it cannot be inferred.",
+          "403-versus-404 for an unauthorized resource is an information-disclosure decision that determines whether document IDs are enumerable across tenants.",
+          "Defines the mandatory authorization test suite; retrofitting a permission model after the data layer exists is a rewrite, not a patch.",
+          "The brief explicitly forbids inventing this, so no plan phase touching an endpoint can be written until it is supplied."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-04",
+        "question": "What exactly does 'administrators can act for any team' mean? Is the administrator scoped to their own organization only, or is there a platform/support administrator who can cross tenant boundaries? Do they act as themselves with elevated rights or impersonate another user, and does the audit record capture the acting principal, the effective principal, and the reason? Is elevation always-on, time-boxed, ticket-linked, or approval-gated, and may an administrator approve, delete, or externally share a document?",
+        "impact": [
+          "A cross-tenant administrator punches a deliberate hole in AR-01's isolation boundary and must be designed for explicitly; it also changes the isolation test suite from 'no cross-tenant access' to 'no cross-tenant access except this named, audited path'.",
+          "Impersonation versus elevated self-action changes the audit schema (one principal field or two) \u2014 and the audit store is append-only, so this must be right before the first record is written.",
+          "Time-boxed, justified elevation is a whole workflow with its own entities and UI; always-on elevation is a role flag. The scope difference is large.",
+          "An administrator who can approve is a bypass of the entire review workflow and needs an explicit policy decision, not a default."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-05",
+        "question": "What is the complete approval state machine? Enumerate every state (draft, submitted, awaiting metadata, in review, changes requested, resubmitted, approved, rejected, withdrawn, expired, archived), which transitions are legal, which are terminal, who or what triggers each, and whether a submission can expire or be auto-escalated after a period of inactivity.",
+        "impact": [
+          "Every notification, webhook event, audit entry, cache key, and API status field references this enum; it is the contract the rest of the system is written against and cannot be inferred from three verbs in a brief.",
+          "'Request changes' is only definable as a transition out of a named state and back into another \u2014 without the machine, the second-most-important feature has no specification.",
+          "Determines whether a rejected-outright outcome exists at all, or whether 'request changes' is the only negative path.",
+          "Absent an expiry rule, a submitted document can sit unreviewed forever with no defined owner or resolution."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-06",
+        "question": "How are reviewers determined and how many are required? Is review an open pool (any reviewer in the team may act), explicit assignment, or rule-based routing; is one approval sufficient or is a quorum/all-of/sequential-chain required; can a reviewer be reassigned, delegate, or decline; and what happens when a reviewer loses their role, leaves the organization, or is deactivated mid-review?",
+        "impact": [
+          "Single-approver versus multi-approver changes the core data model from a status column to an approval-records table with a completion rule, and changes the state machine in AR-05.",
+          "Sequential versus parallel review changes which reviewers can act concurrently, which directly feeds the race in AR-08.",
+          "A departed or de-roled reviewer mid-review is a guaranteed real-world case with no defined behavior; the answer decides whether stale assignments block a document indefinitely.",
+          "Determines whether reviewer assignment is itself an auditable, notifiable, webhook-emitting event."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-07",
+        "question": "What is a document's identity and version model, and what exactly does an approval bind to? Is an approval attached to an immutable document version or to a mutable document record; may the submitter edit or re-upload while the document is in review, and does that invalidate prior approvals; does 'request changes' produce a new version, and is version history retained and viewable; and can a reviewer see the diff between the version they reviewed and the current one?",
+        "impact": [
+          "Approving a mutable record means an approved document can be silently changed after approval \u2014 a control failure that no amount of logging repairs; the choice must precede the schema.",
+          "Version-per-submission versus mutate-in-place is the difference between an append-only document store and a single row, with different storage, retention, and cost profiles.",
+          "Determines whether stale-version approval (a reviewer approving a version superseded while their page was open) is prevented by a version precondition or is representable at all.",
+          "Sets what the five-minute cached list (AR-14) is even caching \u2014 a fixed version or a moving target."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-08",
+        "question": "How are concurrent actions on the same document resolved? Two reviewers act simultaneously (one approves, one requests changes); a reviewer acts while the submitter withdraws or re-uploads; an administrator acts while a reviewer does. Is the rule last-writer-wins, first-writer-wins with a 409 conflict, optimistic concurrency on a version token, or serialization behind a per-document lock \u2014 and what does each loser observe?",
+        "impact": [
+          "Two contradictory terminal decisions on one document are reachable today with no stated resolution; the answer determines whether the API requires an If-Match/version precondition on every mutating call.",
+          "Directly constrains the optimistic-update design in AR-15: an optimistic UI that cannot be told it lost a race silently shows a decision that did not happen.",
+          "Determines whether the conflict is prevented in the data layer (conditional update, unique constraint) or detected and surfaced \u2014 different schema, different error contract.",
+          "Defines the required interleaving tests (concurrent duplicate approvals, a read during a write, an action on a superseded version) that the concurrency gate demands."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-09",
+        "question": "What are the semantics of sharing a document by URL with an external collaborator? Is the link an unauthenticated bearer capability or does it require the recipient to authenticate or verify an email; what capabilities does it grant (view only, download, comment, approve); is it bound to a specific recipient, single-use, or freely forwardable; does it expire, and can it be revoked, listed, and audited; is it bound to a document version; and is the link's authorization evaluated independently of AR-01's tenant boundary?",
+        "impact": [
+          "An unauthenticated forwardable link is a deliberate, permanent exception to tenant isolation and must be designed as one \u2014 including token entropy, non-enumerability, referrer leakage, search-engine indexing, and rate limiting on the share endpoint.",
+          "Whether an external party can approve decides whether they are an actor in AR-03's matrix and AR-05's state machine, or merely a viewer \u2014 a large scope difference.",
+          "Revocation and expiry require a share-record entity with its own lifecycle, listing UI, and audit events; a signed stateless token has none of that but cannot be revoked.",
+          "Interacts with AR-14: a shared document still present in a cached list after its share is revoked extends the revocation window by the cache TTL.",
+          "Determines whether external access appears in the audit trail with a meaningful principal, or as an anonymous hole in it."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-10",
+        "question": "What is the document upload and content contract? Which file types and maximum size are accepted (allowlist by sniffed content type, not extension); is malware scanning required and is a document quarantined until it passes; how is untrusted content parsed safely by the metadata extractor (XXE, zip bombs, embedded scripts, macro-bearing formats, decompression limits, extractor sandboxing and timeouts); and how are documents served back for view or download (inline preview versus Content-Disposition attachment, separate origin or sandboxed frame, CSP) so an uploaded file cannot execute against the application origin?",
+        "impact": [
+          "Rendering attacker-supplied HTML/SVG/PDF inline on the application origin is stored XSS with session theft across the tenant; the serving decision must be made before any preview feature is planned.",
+          "The extractor parses untrusted input by definition (AR-11) \u2014 sandboxing, resource limits, and timeouts are architecture, not hardening added later.",
+          "Quarantine-until-scanned inserts a state into AR-05's machine and changes what a submitter sees immediately after upload.",
+          "Size and type limits are required numeric acceptance criteria and drive storage, timeout, and cost assumptions."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-11",
+        "question": "What is the background job's execution contract? What triggers it (synchronous enqueue on submit, polling, change-data-capture); what are the queue's delivery semantics (at-least-once, at-most-once, claimed exactly-once) and ordering guarantees (per document, per tenant, none); is the handler idempotent and how is a duplicate delivery detected; what are the retry count, backoff, and total budget; where does a poison message go and who owns its resolution; and is metadata extraction one job together with notification, or two independent jobs?",
+        "impact": [
+          "At-least-once delivery with a non-idempotent handler sends duplicate notifications and duplicate webhooks on every retry \u2014 a user-visible defect that is invisible in single-threaded testing.",
+          "One job versus two decides whether a notification can fire for a document whose metadata extraction later fails, leaving a visibly inconsistent record.",
+          "Per-document ordering determines whether an extraction for an older version can overwrite a newer one after a retry.",
+          "A dead-lettered job is a document stuck in an intermediate state with no owner; its repair path is a required operational requirement, not a runbook footnote.",
+          "Ordering and idempotency choices bound what the rolling-deploy question (AR-21) must guarantee for in-flight messages."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-12",
+        "question": "What is the document's observable state between submission and completed metadata extraction? Is it visible in lists, can it be reviewed and approved before extraction finishes, what is displayed where the metadata would be, and what is the behavior when extraction fails permanently \u2014 block the workflow, proceed without metadata, or require manual entry? Is there a bound on how long extraction may take before the user is told something?",
+        "impact": [
+          "This is the eventual-consistency window the user actually experiences; leaving it undefined means the most common post-submit UI state has no specification.",
+          "Whether approval can proceed without metadata decides if extraction is on the critical path, which changes both the state machine (AR-05) and the availability requirement.",
+          "Permanent extraction failure on a legitimate document is common (corrupt file, unsupported variant); 'blocks forever' and 'proceeds degraded' are different products.",
+          "Determines whether the document list must render a partial/pending row type at all \u2014 a required UI state under the web gate."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-13",
+        "question": "What is the notification contract? Which events notify, which recipients for each (submitter, assigned reviewers, all reviewers, team admins, external collaborators), over which channels (in-app, email, push, chat integration), what content is included (does the payload or subject line carry document titles or extracted metadata), are notifications batched or digested and deduplicated, can a user opt out and at what granularity, and what is the behavior on delivery failure or a bouncing address?",
+        "impact": [
+          "Notification content is an outbound data-egress path: a document title in an email subject discloses tenant data to whatever mail system the recipient uses \u2014 a privacy decision, not a copywriting one.",
+          "Recipient rules interact with AR-03: notifying a user who cannot view the resource leaks its existence.",
+          "Without dedup, the at-least-once queue in AR-11 mails users repeatedly; the dedup key and window are concrete design inputs.",
+          "Opt-out granularity determines whether a preferences entity exists at all, and whether some notifications are non-suppressible.",
+          "Bounce and failure handling decides whether notification delivery is best-effort or a tracked, retryable, auditable outcome."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-14",
+        "question": "What exactly does 'caches document lists for five minutes' mean? Where does the cache live (in-memory client store, browser storage that survives logout, a server-side shared cache, a CDN); what is the cache key and is it strictly per-principal-per-tenant-per-filter; is the TTL an absolute expiry or stale-while-revalidate; which events invalidate it early (the user's own mutation, another user's mutation, a permission change, a share revocation, logout); and is five minutes a product requirement or a placeholder open to change?",
+        "impact": [
+          "A cache keyed on anything less specific than the requesting principal serves one user's document list to another \u2014 a cross-tenant disclosure caused purely by a caching decision.",
+          "A five-minute TTL over authorization-dependent data means a revoked reviewer, a removed team member, or a revoked external share keeps seeing listings for up to five minutes; whether that window is acceptable is a security decision the user must make explicitly.",
+          "Browser-persistent caching leaves tenant data on disk after logout on a shared device, which requires an explicit clearing rule.",
+          "Invalidation triggers determine whether a user's own approval leaves their list immediately (read-your-writes) or up to five minutes later \u2014 the difference between a working and a broken-feeling product.",
+          "The brief forbids inventing consistency behavior, so no acceptance criterion for list freshness can be written until this is stated."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-15",
+        "question": "Which actions use optimistic updates, and what is the full reconciliation contract? Precisely: what is rendered the instant the user clicks approve or request-changes; what happens when the server rejects (403 after a permission change, 409 on the AR-08 conflict, 422 validation, network timeout with an unknown outcome); is the UI rolled back, left in place with an error, or re-fetched; what does the user see and is the action recoverable without losing input; and is the mutating request idempotent so that a retry after a timeout cannot double-apply?",
+        "impact": [
+          "A timeout with an unknown outcome plus an optimistic UI shows the user an approval that may or may not have happened \u2014 the failure is silent and directly undermines the auditability requirement.",
+          "Requires an idempotency key or a version precondition on mutating approval calls; that is an API contract decision that cannot be added after clients exist.",
+          "Rollback-versus-retain on rejection is a user-facing behavioral spec, and both are defensible; picking one silently is exactly what the brief prohibits.",
+          "Interacts with AR-14: an optimistic mutation must also patch or invalidate the cached list, or correct server state stays masked by a stale cache for up to five minutes."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-16",
+        "question": "What is the system-wide consistency contract for reads? Is read-your-own-writes guaranteed after a mutation, and across which surfaces (the list, the detail view, another device, another user's view)? Are reads served from replicas, and if so what is the maximum acceptable replication staleness? Which views may be stale and which must be authoritative \u2014 specifically, is the approval-eligibility check always read from the primary?",
+        "impact": [
+          "The brief pairs optimistic updates, a five-minute cache, and asynchronous jobs without stating what any observer is promised; the three cannot be specified independently.",
+          "Determines whether the approval-eligibility check may read a replica \u2014 a stale read there permits a decision on a document that has already moved state.",
+          "Sets the acceptance criteria and monitoring thresholds for freshness; 'usable' and 'correct' have no test without a stated staleness bound.",
+          "Constrains whether read scaling via replicas is available at all, which is an architecture decision made before the plan, not during it."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-17",
+        "question": "What is the webhook configuration and payload contract? Who within a customer may configure endpoints and how many per tenant; what is the exact catalog of subscribable events and does it map one-to-one to AR-05's transitions; what is the payload schema, and does it carry document content, extracted metadata, or only identifiers requiring a call-back; how is the payload versioned and what is the compatibility promise when the schema changes; and does the payload respect the subscriber's authorization scope?",
+        "impact": [
+          "Once a customer builds against a payload, its shape is a published interface \u2014 a versioning and deprecation policy must exist before the first delivery, not after.",
+          "Content-in-payload versus id-only is a data-egress decision: the former sends tenant documents to a customer-controlled endpoint permanently and irrevocably.",
+          "The event catalog is derived from the state machine, so AR-05 must be settled first or the catalog will be wrong.",
+          "Who may configure an endpoint is a privileged action (it redirects tenant data outward) and belongs in AR-03's matrix with an explicit answer."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-18",
+        "question": "What are the webhook delivery guarantees and operational rules? At-least-once with retries or best-effort single attempt; what retry schedule, backoff, and total budget; is ordering guaranteed per tenant or per document, and if not, how does a consumer detect out-of-order events (sequence number, event timestamp, event id for dedup); how is the request authenticated to the receiver (HMAC signature over the raw body with a rotatable per-endpoint secret, mTLS, bearer token) and is there timestamp-based replay protection; what per-request timeout and concurrency bound apply; and what is the policy for a persistently failing endpoint \u2014 auto-disable after N failures, notify whom, and is manual replay or redelivery offered?",
+        "impact": [
+          "An unsigned webhook lets anyone who learns the customer's URL forge approval events into their systems; the signature scheme and secret rotation are design, not deployment detail.",
+          "Without ordering guarantees or a sequence marker, a consumer can process 'approved' before 'submitted' and reach a wrong terminal state with no way to detect it.",
+          "A slow or hanging receiver consumes sender resources; the timeout and concurrency bound determine whether one bad endpoint degrades delivery for every tenant.",
+          "Auto-disable policy and replay capability define an ops-facing surface (endpoint health, failure log, manual redelivery) that is currently entirely unscoped."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-19",
+        "question": "What egress controls apply to customer-supplied webhook URLs? Is there a scheme allowlist (HTTPS only), a denylist for private, link-local, loopback, and cloud-metadata addresses resolved at request time, protection against DNS rebinding and time-of-check/time-of-use, an explicit redirect-following policy, certificate validation requirements, a dedicated egress path or proxy, and per-tenant rate and concurrency limits on deliveries? Is endpoint ownership verified at configuration time by challenge-response?",
+        "impact": [
+          "A customer-configured URL that the server fetches is a textbook SSRF primitive; without resolution-time IP filtering it reaches internal services and instance-metadata endpoints from inside the trust boundary.",
+          "Filtering at configuration time only is insufficient \u2014 DNS can be re-pointed afterwards \u2014 so the control's placement (config-time, request-time, or both) is a concrete architectural requirement.",
+          "Following redirects silently defeats any allowlist and must be an explicit, stated policy.",
+          "Per-tenant delivery limits prevent one customer's configuration from turning the service into a traffic amplifier against a third party.",
+          "Ownership verification decides whether a tenant can point another party's events at an address they do not control."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-20",
+        "question": "What does 'every important action should be logged' require concretely? Enumerate the auditable events (are reads, downloads, list views, failed authorization attempts, external-link accesses, configuration changes, and administrative elevations included, or only state mutations?); the mandatory fields per event (actor, effective actor for admin action, tenant, resource and version, before/after state, timestamp and its source, correlation id, client IP and user agent); whether the audit write shares the mutation's transaction or is best-effort and asynchronous; the storage's immutability and tamper-evidence guarantee; the retention period; who may read audit records and whether tenants can export their own; and how personal data in audit records is reconciled with deletion or erasure requests (AR-23).",
+        "impact": [
+          "'Important' is the load-bearing word and is undefined; auditing reads as well as writes changes log volume by orders of magnitude and drives storage cost and query design.",
+          "A best-effort asynchronous audit write means audit gaps precisely during failures \u2014 the moments the log exists for; an in-transaction write constrains the latency and availability of every mutation.",
+          "Append-only or tamper-evident storage is an infrastructure choice that must precede the first write, since it cannot be applied retroactively to existing records.",
+          "Immutable audit records containing personal data collide directly with erasure obligations; the reconciliation strategy (pseudonymization, crypto-shredding, field-level redaction) is a design requirement, not an afterthought.",
+          "Without the field list, the audit log cannot answer 'who approved which version on whose behalf' \u2014 the one question it exists to answer (see AR-04, AR-07)."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-21",
+        "question": "What must remain compatible during a rolling deployment, and for how long? Concretely: will old and new application versions serve requests simultaneously behind one load balancer, and old and new workers consume the same queue; what is the message and event schema versioning and compatibility rule; what is the client-skew policy when a browser holds an old bundle against a new API (forward-compatible responses, a version header with a forced reload, or a supported-versions window); can one document's submit-extract-notify sequence be handled partly by two code versions; and what is the rollback procedure, including rolling back a deployment whose migration already ran?",
+        "impact": [
+          "Mixed-version workers consuming one queue is a live correctness hazard on every deploy; its prevention (additive-only message schemas, version-gated consumers, drain-before-deploy) is a design constraint carried by every subsequent phase, not an ops preference.",
+          "Client skew with optimistic updates (AR-15) is acute: an old bundle posting to a changed endpoint fails after the UI has already shown success.",
+          "'Remain usable' is currently unquantified \u2014 it must be resolved into a testable rule (no error rate above baseline, no forced re-authentication, no user-visible data loss).",
+          "The rollback path constrains every migration in AR-22: a non-backward-compatible schema change makes rollback impossible, which must be known before it is written."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-22",
+        "question": "Is this greenfield, or must it extend an existing system with live data, an existing schema, an existing permission model, or existing API clients that must keep working? If existing: what is the current model, what must be migrated or backfilled, and what is the rollback path? Independently: what is the standing rule for schema changes under the AR-21 zero-downtime constraint \u2014 expand/contract with additive-only intermediate states, online migration with batching and throttling, and resumable, idempotent, verified backfills?",
+        "impact": [
+          "Greenfield versus brownfield changes the plan's phase count, ordering, and whether a migration workstream exists at all \u2014 potentially a large fraction of the work.",
+          "A tenancy model chosen in AR-01 that differs from an existing one implies a full data migration of every tenant's documents, approvals, and audit records.",
+          "The expand/contract discipline must be stated as a standing rule before the first schema change; discovering it mid-plan invalidates earlier phases.",
+          "No repository or existing code was supplied, so every technical recommendation for this system is currently ungrounded and cannot cite real code."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-23",
+        "question": "What is the data lifecycle for documents, approvals, shares, notifications, webhook delivery records, and audit entries? Is deletion soft or hard; what happens to an approved document's approvals, shares, and history when it is deleted; what happens to a user's submissions and approvals when that user is deleted or deactivated; what retention period applies to each class of data; is per-tenant export and offboarding deletion required; and are there data-residency or regulated-data constraints (personal data, contracts, health, financial) on where documents may be stored and processed?",
+        "impact": [
+          "Soft versus hard delete determines whether every query carries a not-deleted predicate and whether unique constraints must tolerate tombstones \u2014 a schema-wide consequence.",
+          "Deleting a user who approved documents either orphans the approval record or destroys audit history; the answer must be reconciled with AR-20's immutability guarantee.",
+          "Data residency can forbid a single global datastore and constrains the deployment topology before any code is planned.",
+          "Tenant offboarding export and deletion are commonly contractual obligations and are large deliverables that are entirely unscoped today.",
+          "Retention drives archival mechanics and the storage cost model for documents, which are large binary objects."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-24",
+        "question": "What is the authentication and session model? Which mechanism (first-party credentials, per-tenant SSO via SAML/OIDC, both); is MFA required or optional and by whose policy; what is the session and token lifetime, refresh, and revocation behavior \u2014 specifically, does removing a user from a team or organization immediately terminate their active sessions and invalidate cached authorization; how do external collaborators (AR-09) authenticate if at all; what rate limits and lockout apply to authentication, share-link access, submission, and webhook configuration; and what CSRF, cookie (SameSite, Secure, HttpOnly), CORS, and CSP posture applies?",
+        "impact": [
+          "Per-tenant SSO is a large, structural feature (identity provider configuration, just-in-time provisioning, role mapping) that must be known before the identity model is designed, not bolted on.",
+          "Whether a permission change revokes live sessions defines the actual, as opposed to nominal, revocation window \u2014 and it compounds with the five-minute cache in AR-14.",
+          "Rate limiting on share-link access is the only defense against brute-forcing capability tokens from AR-09; without it, token entropy is the sole control.",
+          "CSRF and cookie policy follow from the session mechanism chosen here, and the choice affects every endpoint."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-25",
+        "question": "Which user-visible states must each surface define? For the document list and detail views: initial, loading, empty (no documents, and no results after filtering), partial (metadata pending per AR-12), stale (served from the AR-14 cache \u2014 and is staleness disclosed to the user), offline, unauthenticated, forbidden versus not-found (per AR-03), validation error, conflict (per AR-08), and server failure \u2014 including the exact user-facing message and the recovery action for each.",
+        "impact": [
+          "The web-application gate fails while any user-visible transition lacks a defined state, and the three most distinctive features here (optimistic updates, caching, async extraction) each introduce states with no current definition.",
+          "Whether staleness is disclosed to the user is a product decision that changes the component contract, not a styling choice.",
+          "Forbidden-versus-not-found messaging must match AR-03's disclosure decision, or the UI leaks what the API deliberately hides.",
+          "These states are the acceptance criteria for the UI requirements; without them the criteria are unwritable."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-26",
+        "question": "Define the terms the brief uses without fixing them: 'organization' versus 'team' versus 'tenant'; 'document' versus 'submission' versus 'approval request' versus 'version'; 'reviewer' versus 'approver'; 'administrator' (tenant admin versus platform/support admin); 'request changes' versus 'reject'; 'important action'; 'share' versus 'publish'; and 'usable' in the rolling-deployment requirement.",
+        "impact": [
+          "Each term currently denotes two or more operationally distinct things, so any requirement written on them is ambiguous by construction and will be implemented inconsistently across the API, the UI, the webhook event names, and the audit log.",
+          "'Document' meaning the record versus a specific version determines the primary entity identity and cardinality in the data model (AR-07).",
+          "These terms become API field names, webhook event names, and customer-facing text, where renaming later is a breaking change for integrators.",
+          "'Important action' is the entire scope of the audit requirement (AR-20); leaving it undefined leaves that requirement unbounded."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-27",
+        "question": "What is the MVP boundary across the eight stated capabilities? Which of external URL sharing, customer-configured webhooks, the metadata extractor, notifications, optimistic updates with caching, and the audit log ship in the first release; which are explicitly out of scope for now (comment threads, approval delegation, scheduled reminders, bulk actions, reporting and analytics, mobile apps, a public API for third parties); and what is explicitly never in scope?",
+        "impact": [
+          "Webhooks (AR-17 to AR-19), external sharing (AR-09), and the audit log (AR-20) are each large enough to be their own requirement document; deferring any one materially changes the plan's size, sequence, and risk profile.",
+          "A public third-party API turns the payload and idempotency contracts into published interfaces that cannot be changed later, which raises the bar on several decisions above.",
+          "Determines requirement-document count and dependency ordering, and prevents scope leak between 'must have' and 'later'.",
+          "Several questions above become moot if their feature is deferred \u2014 so this answer can shrink the rest of the register."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-28",
+        "question": "What are the non-functional targets: number of tenants and users per tenant, documents per tenant and in total, peak submission and list-request rates, maximum document size, p95 latency budgets for list and detail reads and for the approval mutation, end-to-end metadata-extraction and notification time targets, webhook delivery latency target, availability target, and backup/restore RPO and RTO?",
+        "impact": [
+          "Sets the performance and availability acceptance criteria for the mandatory non-functional requirement document, and bounds whether the five-minute cache in AR-14 is a necessity or an optimization worth removing.",
+          "Document size and volume drive the storage architecture (object store versus database blobs) and the extractor's resource limits.",
+          "Can be carried as an explicit stated assumption (for example: hundreds of tenants, interactive reads under 300ms, extraction within seconds, 99.9% availability) without invalidating the plan's structure, then corrected before implementation \u2014 so it need not block plan construction.",
+          "RPO and RTO determine whether a proven restore path is a deliverable within this scope."
+        ],
+        "must_block": false
+      },
+      {
+        "id": "AR-29",
+        "question": "What is the verification bar that discharges the correctness and security claims? Which authorization cases must be covered (a full negative matrix per AR-03, cross-tenant access attempts on every endpoint, expired and revoked share links, admin elevation paths); which interleavings must be tested (concurrent contradictory reviews, an action on a superseded version, duplicate job delivery, a timeout leaving the outcome unknown, a retry landing on another node, reordered webhook delivery, a rolling mixed-version deploy); and which security tests are mandatory (SSRF against webhook egress, stored XSS via uploaded content, cache-key isolation, share-token enumeration)?",
+        "impact": [
+          "Without a named bar, 'secure' and 'consistent' have no oracle and the plan's definition of done is unfalsifiable.",
+          "A sound default set is directly derivable from the selected domains' checklists and the mandatory security tests in the coding standards, so this can proceed as a stated assumption for the user to amend rather than blocking plan construction.",
+          "Determines whether a cross-tenant isolation harness and a concurrency/interleaving fixture are built as explicit deliverables.",
+          "Cache-key isolation and SSRF tests in particular have no natural home unless they are named here."
+        ],
+        "must_block": false
+      },
+      {
+        "id": "AR-30",
+        "question": "What are the accessibility, localization, and timezone requirements? Which conformance target applies (for example WCAG 2.2 AA) and is it contractual; how are optimistic-update results and asynchronous state changes announced to assistive technology (live regions, focus management after an approval); which languages and locales must be supported, including notification templates; and in whose timezone are submission, review, and audit timestamps displayed, with what stored representation?",
+        "impact": [
+          "Announcement of optimistic and asynchronous state changes is where an accessible approval flow is either built in or made expensive to retrofit, so the requirement should be stated even while the conformance target is provisional.",
+          "A conformance target is testable and belongs in acceptance criteria; without it, accessibility silently becomes discretionary.",
+          "Localization decided later forces a retrofit of every user-facing string, including notification templates.",
+          "Reasonable defaults (store UTC, display in the viewer's timezone, WCAG 2.2 AA, English-only at launch) can be carried as explicit stated assumptions without changing the architecture, so this need not block plan construction."
+        ],
+        "must_block": false
+      }
+    ],
+    "gate_verdict": "BLOCK"
+  },
+  {
+    "scenario": "Multi-tenant document approval workflow web application: users submit documents for approval within their organization; reviewers approve or request changes; administrators can act for any team; a background job extracts document metadata and sends notifications; the UI applies optimistic updates and caches document lists for five minutes; customers may configure webhooks for approval events; documents can be shared by URL with external collaborators; \"every important action\" must be logged; and the service must remain usable during rolling deployments. Evaluated under the make_requirements domain-selection protocol (references/domains/selection.md) and the Phase 2B Zero-Ambiguity Gate (_shared/zero-ambiguity-gate.md). No repository, existing schema, API, client, or identity provider was supplied; no files were created and no interview was conducted. Per the scenario's explicit instruction, no authorization or consistency behavior was invented \u2014 both are enumerated below as open questions with their competing readings.",
+    "selected_domains": [
+      "web-application",
+      "distributed-and-concurrent",
+      "data-and-migration"
+    ],
+    "material_ambiguities": [
+      {
+        "id": "AR-01",
+        "question": "What is the tenancy and identity model? Define \"organization\" and \"team\" and their relationship (is a team a subdivision of an organization, or a synonym?); may one user belong to several teams and several organizations simultaneously; is a document owned by its submitting user, by a team, or by the organization; is tenant isolation enforced by row-level scoping in a shared schema, a schema per tenant, or a database per tenant; and what happens to a user's in-flight submissions and pending reviews when they leave a team or the organization?",
+        "impact": [
+          "Tenant isolation strategy is the load-bearing security boundary and is effectively irreversible once data exists \u2014 retrofitting it is a full migration, not a refactor.",
+          "The scenario says \"within their organization\" but then speaks of \"any team\", so the resource-ownership hierarchy is currently undefined and every permission check below is written against it.",
+          "Multi-org membership decides whether the session carries an active tenant context, which changes every request path, every cache key (AR-07), and every audit record (AR-15).",
+          "Departure handling determines whether documents are reassigned, orphaned, or block the workflow \u2014 a guaranteed real case with no defined behavior."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-02",
+        "question": "What is the complete authorization matrix \u2014 for each actor (submitter, reviewer, team member, team admin, org admin, external collaborator, automated system) and each action (create, upload a new version, submit, view, list, download, approve, request changes, withdraw, reassign a reviewer, configure a webhook, create/revoke a share link, read the audit log, delete)? Specifically: may a submitter review their own document; is a reviewer explicitly assigned per document, or is anyone holding the reviewer role in the owning team eligible; and are permissions granted per-document, per-team, or per-organization?",
+        "impact": [
+          "The scenario forbids inventing authorization behavior, so no endpoint, no guard, and no authorization test can be specified until this matrix is supplied by the user.",
+          "Self-approval permitted vs. forbidden is a segregation-of-duties control, not a UI detail; adding it later invalidates every prior approval's meaning.",
+          "Explicit assignment introduces a reviewer-assignment entity, its own notifications, reassignment flow, and \"assigned to me\" queries \u2014 an entire requirement area that does not exist under role-based eligibility.",
+          "Per-document ACLs versus team-scoped roles are different data models with different query shapes, different cache keys (AR-07), and different revocation semantics (AR-08)."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-03",
+        "question": "What exactly does \"administrators can act for any team\" mean? Is the administrator scoped to their own organization only, or is this a cross-tenant platform/support role? Which actions may they take (approve, request changes, submit on behalf of a user, reassign, override or reverse a completed decision, delete, read another team's documents)? Is an administrator's action attributed to the administrator, to the user acted for, or to both? Is there an impersonation/break-glass mode, and does it require a reason, a time limit, or the affected party's notification?",
+        "impact": [
+          "A cross-organization administrator is a tenant-boundary exception \u2014 the single highest-risk authorization path in a multi-tenant system \u2014 and cannot be assumed into existence or out of it.",
+          "Attribution decides whether the audit trail (AR-15) can answer \"who approved this\", which is the whole point of an approval system; a mis-attributed admin approval is an undetectable integrity failure.",
+          "\"Override a completed decision\" is a distinct capability from \"approve\" and implies reversibility in the state machine (AR-04) that may otherwise not exist.",
+          "Break-glass with reason capture and notification is a compliance-grade control (AR-20) with its own entities and UI, or it is absent entirely \u2014 an order-of-magnitude scope difference."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-04",
+        "question": "What is the complete approval state machine? Enumerate every state (draft, submitted, under review, changes requested, approved, rejected, withdrawn, expired, superseded) and the legal transitions. Is approval by a single reviewer, all assigned reviewers (unanimous), a quorum of N, or a sequential chain where order matters? Does \"request changes\" return the document to the submitter and require an explicit resubmission, and are prior approvals discarded on resubmission? Is \"reject\" distinct from \"request changes\"? Can a submitted document be withdrawn, can an approval be revoked after the fact, and does a submitted document expire if nobody acts?",
+        "impact": [
+          "Every other requirement \u2014 notifications, webhooks, the audit log, the optimistic UI, the cache \u2014 is expressed in terms of these states and cannot be written before they exist.",
+          "Single-reviewer versus quorum versus sequential chain are three different products: quorum needs a per-reviewer decision record and a tallying rule, a chain needs ordering and a current-step pointer.",
+          "Whether a new version resets prior approvals is the difference between a defensible approval record and one that silently attests to a document nobody approved.",
+          "An unbounded \"submitted\" state means a document can sit forever with no owner and no resolution path."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-05",
+        "question": "How are concurrent and conflicting decisions resolved? What is the defined outcome when two reviewers approve and request changes at the same instant; when an administrator overrides while a reviewer is mid-decision; when a decision arrives against a document version that has since been superseded by a new upload; and when the same reviewer's decision is submitted twice (a retry)? Is a decision bound to a specific document version, and does the API use an optimistic concurrency token (ETag/version) with a defined 409 contract, a last-write-wins rule, or server-side serialization?",
+        "impact": [
+          "These interleavings are guaranteed to occur and have no defined outcome today; each candidate resolution requires different machinery (row locking, a version precondition, or a conflict-resolution rule with UI).",
+          "A decision not bound to a version means a reviewer's approval can silently attach to a document they never saw \u2014 the core integrity failure this system exists to prevent.",
+          "Last-write-wins versus a 409 conflict is a user-visible API contract that the optimistic UI (AR-06) must be built against; it cannot be decided after the client is written.",
+          "Sets the mandatory concurrency test interleavings the distributed-and-concurrent domain requires."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-06",
+        "question": "What is the exact optimistic-update contract? Which actions are applied optimistically (submit, approve, request changes, upload, share)? On server rejection \u2014 permission denied, stale version (AR-05), validation failure, network timeout with unknown outcome \u2014 is the local state rolled back silently, rolled back with a specific error surface, or left in a pending/conflicted state? Are failed mutations retried automatically, and are the mutation endpoints idempotent (client-supplied idempotency key or server-side duplicate detection) so a retry cannot produce a second decision? Is offline queuing of actions in scope?",
+        "impact": [
+          "Optimistic updates plus automatic retry plus a non-idempotent decision endpoint is a duplicate-decision defect by construction; the idempotency contract is the only thing preventing it.",
+          "The unknown-outcome timeout is the common real failure and currently has no specified observable behavior \u2014 whether the user sees \"approved\", \"failed\", or \"unknown\" is undefined.",
+          "Rollback semantics determine whether a user can act on a UI state the server never accepted and then report it as done \u2014 an integrity problem, not a polish problem.",
+          "Determines whether a durable dedup store with its own retention is part of the deliverable."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-07",
+        "question": "What precisely is the five-minute cache? Where does it live \u2014 browser memory, a service worker, HTTP/CDN caching, or a shared server-side cache (Redis/memcached)? What is the cache key, and does it include tenant, acting user, and effective permission scope? Is it invalidated on write (submit, approve, request changes, upload), or does it always serve up to five minutes stale? Is read-your-writes required after a user's own mutation? Is a five-minute-stale document list acceptable as the basis for a reviewer's approval decision, or must the decision path always read current state?",
+        "impact": [
+          "A shared server-side cache and a per-browser cache have entirely different isolation, invalidation, and deployment characteristics (AR-17); the scenario names a duration but not a location.",
+          "Without invalidation on write, a user who just submitted a document will not see it for five minutes \u2014 a defect or a specification, and only the user can say which.",
+          "The five-minute TTL is stated as a design decision, but whether it is a fixed requirement or a starting guess that may be replaced determines whether the plan implements it or reopens it.",
+          "The scenario explicitly forbids inventing consistency behavior, so the staleness contract per read path cannot be assumed (see AR-18)."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-08",
+        "question": "How does the cache interact with authorization changes? May a cached document list continue to show documents for up to five minutes after the viewer's access is revoked \u2014 removal from a team, role downgrade, share-link revocation, or account deactivation? Is there a required maximum propagation delay for a revocation, and is it enforced by cache invalidation, by short-lived permission tokens, or by re-checking authorization on every read? If the cache is shared server-side, what structurally guarantees that a cached entry can never be served across a tenant boundary?",
+        "impact": [
+          "A permission-scoped list served from cache after revocation is a real data-disclosure window, and its acceptable duration is a security decision the user must make explicitly rather than inherit from a performance TTL.",
+          "Cross-tenant cache-key collision is the classic multi-tenant leak; the defense must be a stated structural rule, not a convention.",
+          "Determines whether the design needs a revocation-propagation mechanism (invalidation fan-out, version-stamped permission epoch) that does not otherwise exist.",
+          "Sets a mandatory security test class: revoke access, then assert the previously cached read fails within the stated bound."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-09",
+        "question": "What is the background job's contract? What triggers metadata extraction (upload, submission, both, re-upload)? Is the document viewable, listable, or submittable before extraction completes, and what is displayed in the interim? What are the queue's delivery semantics (at-least-once, at-most-once) and ordering guarantees, and how does the consumer deduplicate? What are the retry count, backoff policy, and dead-letter behavior, and who owns a stuck job? What is the defined outcome for a corrupt, encrypted, password-protected, oversized, or unsupported document \u2014 does the workflow proceed without metadata, block, or fail the submission?",
+        "impact": [
+          "Whether extraction gates submission is a workflow-blocking dependency that changes the state machine in AR-04 and the entire submit UX.",
+          "At-least-once delivery without consumer idempotency re-runs extraction and re-sends notifications (AR-10) on every retry \u2014 user-visible duplicate emails at minimum.",
+          "A dead-lettered job is a customer's document stuck with no owner; the repair path is an operational requirement, not a runbook footnote.",
+          "Failure handling for unparseable documents is a guaranteed real case with no defined behavior, and each option produces a different failure state in the schema."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-10",
+        "question": "What is the notification contract? Which events notify whom (submitter, assigned reviewers, all team members, administrators, external collaborators), over which channels (email, in-app, push, chat integration), and are per-user or per-event opt-outs and digest/batching in scope? What content may a notification carry \u2014 document title, submitter identity, extracted metadata, or only an opaque link? What happens when delivery fails permanently, and is the failure visible to anyone? Is a notification allowed to arrive after a superseding decision, and if so what does it say? Does a retry of the extraction job (AR-09) re-send its notifications?",
+        "impact": [
+          "Recipients per event are the substance of the requirement; \"sends notifications\" specifies nothing implementable.",
+          "Document titles and submitter identity in an email body send tenant data to an external mail provider \u2014 a data-protection decision (AR-20), not a template choice.",
+          "Coupling notifications to the same at-least-once job as extraction means every retry re-notifies unless dedup is designed in; decoupling them is a different architecture.",
+          "Out-of-order or stale notifications are inevitable in an async system; whether that is acceptable, and what the message says, must be specified rather than discovered."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-11",
+        "question": "What is the webhook event and payload contract? Enumerate exactly which events are published (which subset of AR-04's transitions), the payload schema, and whether it carries document content, extracted metadata, and personal data or only opaque identifiers the receiver must fetch back. Is the payload versioned, and when the schema changes, how do existing customer endpoints keep working \u2014 additive-only fields, a version field, per-subscription pinned versions, or a parallel endpoint? What is the delivery guarantee (at-least-once with a stable delivery id for receiver-side dedup?), is ordering guaranteed, what are the retry schedule and maximum attempts, is a persistently failing endpoint auto-disabled and how is it re-enabled, and is manual replay/redelivery in scope?",
+        "impact": [
+          "A customer-configured webhook is a published external contract: once shipped, its payload shape cannot be changed without a version boundary, which is exactly the data-and-migration obligation the rolling-deploy requirement (AR-17) also triggers.",
+          "At-least-once without a stable delivery id forces every customer to build their own dedup, or to double-process approval events in their systems.",
+          "Auto-disable policy is the difference between a failing customer endpoint and an unbounded retry queue that degrades the whole delivery pipeline.",
+          "Whether payloads carry content or only ids determines the blast radius if a customer endpoint is compromised or misconfigured (AR-12)."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-12",
+        "question": "What is the webhook security model? How does a receiver authenticate that a payload came from us (HMAC signature over the raw body with a timestamp and replay window, mTLS, or a shared bearer secret), and how are those secrets generated, stored, displayed once, and rotated? How is server-side request forgery prevented against customer-supplied URLs \u2014 scheme and port allowlist, rejection of private, loopback, link-local and metadata-service address ranges, re-resolution defence against DNS rebinding, redirect-following policy, and response size and timeout limits? What per-tenant concurrency and rate limits apply to delivery? Who within a tenant may create or modify a webhook, and is the endpoint verified (challenge-response) at registration?",
+        "impact": [
+          "A user-supplied URL fetched by the server is a textbook SSRF sink reaching internal services and cloud metadata endpoints; the defence must be specified as a requirement, since it cannot be added credibly after the delivery worker exists.",
+          "Without payload signing, any party who learns a customer's endpoint URL can forge approval events into their systems \u2014 the integrity of the entire integration rests on this choice.",
+          "Secret rotation without a dual-secret overlap window means every rotation is a delivery outage; the mechanism has to be designed, not assumed.",
+          "Webhook configuration is a privileged action that can exfiltrate tenant data to an arbitrary destination, so its authorization sits in the AR-02 matrix and cannot be left to a default."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-13",
+        "question": "What exactly does a shared URL grant, and how is it controlled? Which capabilities come with the link \u2014 view only, download, comment, or the ability to approve or request changes? Is the link time-limited (what default and maximum), single-use or reusable, and bound to a specific document version or always the latest? Is it a high-entropy unguessable token, and is optional password or email-verification protection required? Can it be revoked, and does revocation take effect immediately or after the cache window (AR-08)? Are shared pages excluded from search-engine indexing and referrer leakage? May an organization administrator disable external sharing entirely by policy, and who may create a link (AR-02)?",
+        "impact": [
+          "A URL that grants approval rights to an unauthenticated holder would make link possession equivalent to reviewer authority \u2014 a possibility the scenario neither states nor excludes, and the answer changes the whole authorization model.",
+          "Whether the link tracks the latest version or a pinned one decides if an external party can be shown content that was substituted after they were given access.",
+          "Unbounded, non-expiring, non-revocable links are a permanent data-exposure surface; expiry and revocation semantics are the primary control and cannot be defaults.",
+          "Indexing and referrer leakage turn a \"secret URL\" into a public one, which is how this pattern most often fails in practice."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-14",
+        "question": "Who is an \"external collaborator\" as an identity? An entirely unauthenticated holder of a link, an invited party who must verify an email address, or a limited guest account within the tenant? Can they act in the workflow at all, and if so how are their actions attributed in the audit log (AR-15) and in notifications? Do their actions trigger webhooks? Are they counted, listed, or manageable by the organization, and can their access be enumerated and revoked as a set?",
+        "impact": [
+          "Attribution for an anonymous actor is either impossible or degrades to an IP address, which directly limits what the audit requirement can promise.",
+          "A guest identity means an invitation flow, an account lifecycle, and a distinct role in the AR-02 matrix; an anonymous link means none of that but weaker accountability.",
+          "Determines whether external parties are inside or outside the tenant isolation boundary defined in AR-01.",
+          "Without an enumerable set of external grants, an organization cannot answer \"who outside our company can see this document\" \u2014 commonly a hard compliance requirement (AR-20)."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-15",
+        "question": "What does \"every important action should be logged\" require concretely? Enumerate the auditable actions (are reads and downloads audited, or only mutations?). What fields are mandatory \u2014 actor with any impersonation chain (AR-03), tenant, target document and version, before/after state, request correlation id, source IP and user agent, timestamp with timezone? Is the store append-only and tamper-evident (hash chain, WORM) or an ordinary table? What is the retention period, who may read it (platform staff only, or tenant administrators), and is export in scope? Is the audit write inside the action's transaction or best-effort? How is personal data in the log reconciled with erasure requests (AR-20)?",
+        "impact": [
+          "\"Important\" is not a specification; without the enumerated action list, the requirement has no acceptance criteria and cannot be tested.",
+          "A best-effort audit write means audit gaps precisely under failure conditions \u2014 when the log matters most; an in-transaction write constrains the write path and its latency budget.",
+          "Tamper-evidence and retention are infrastructure and storage decisions that must precede the schema, not follow it.",
+          "Auditing reads as well as writes can change log volume by orders of magnitude, which drives cost, storage, and query design.",
+          "An immutable log containing personal data cannot satisfy an erasure request without a designed strategy (pseudonymization or crypto-shredding)."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-16",
+        "question": "What is the document storage and lifecycle model? Which file types and maximum sizes are accepted, and is content-type validated by inspection rather than by extension? Is malware scanning required before a document becomes viewable or downloadable? Where are files stored, encrypted with which key ownership, and are downloads served via time-limited signed URLs? Does uploading a revision create a new immutable version or replace the file in place? Is deletion soft or hard, and what does deleting a document do to its approvals, audit entries (AR-15), active share links (AR-13), and already-delivered webhooks (AR-11)? Are retention schedules or legal hold in scope?",
+        "impact": [
+          "User-uploaded files processed by a background parser (AR-09) are untrusted input to a parsing library \u2014 the primary code-execution surface in this system, and scanning plus type validation must be a stated requirement.",
+          "Versioning is a schema-level decision that interacts directly with AR-04 (does a new version reset approvals) and AR-13 (does a share link follow the latest version).",
+          "Hard delete versus soft delete determines whether the audit trail can still be reconstructed after deletion, which decides whether the audit requirement survives contact with a deletion request.",
+          "Signed-URL download versus proxied download changes whether authorization is enforced at each fetch or only at link issuance."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-17",
+        "question": "What must \"remain usable during rolling deployments\" guarantee, and what is the mixed-version contract? Is the requirement zero dropped requests, no user-visible errors, preserved sessions, or best-effort availability with a stated error budget? During the window when both versions run: can an old browser client with queued optimistic mutations (AR-06) call a new API and vice versa \u2014 is the API versioned or additive-only? Do old and new background workers consume the same queue, is the message schema forward- and backward-compatible, and can one job be half-processed by two versions (AR-09)? Are cached entries written by the old version readable by the new, or must the cache be namespaced by build or flushed (AR-07)? Are database migrations expand/contract with a proven rollback path, and does rollback have to tolerate data written by the newer version?",
+        "impact": [
+          "This is compatibility language, which the domain-selection protocol treats as evidence: it makes the version boundary, upgrade path, rollback behavior, and mixed-version window required questions rather than deployment preferences.",
+          "A cache entry serialized by one version and deserialized by another is a silent corruption path that the five-minute TTL guarantees will be exercised on every deploy.",
+          "Two worker versions splitting one document's extraction-then-notify sequence produces partial results with no defined outcome today.",
+          "Whether the API must stay backward compatible determines if versioning, feature flags, and a deprecation policy are part of the deliverable or absent entirely.",
+          "Expand/contract migrations with rollback are substantially more work than in-place schema changes, and the difference is visible in the plan's phase count."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-18",
+        "question": "What is the consistency model per read path? For the document list, a single document view, a decision result, the audit log, and the webhook payload's view of state \u2014 is each strongly consistent, read-your-writes for the acting user, or bounded-stale with a stated bound? Are read replicas in play, and if so what is the maximum replication lag the design may assume? Must the approve/request-changes endpoint re-validate against current authoritative state at write time regardless of what the reader saw, and what error does the user get when the state moved underneath them?",
+        "impact": [
+          "The scenario explicitly forbids inventing consistency behavior, and a five-minute cache plus optimistic updates plus async workers means staleness is present on every path \u2014 so the acceptable bound must be stated per path, not globally assumed.",
+          "Whether the decision endpoint re-validates is the difference between a reviewer's approval being authoritative and it being an assertion about a possibly-stale view (compounds AR-05).",
+          "Determines whether balance-of-power between the cache (AR-07) and correctness is resolved by invalidation, by short TTLs, or by bypassing cache on decision paths.",
+          "Sets the acceptance criteria that make the staleness requirement testable rather than aspirational."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-19",
+        "question": "What is the authentication and session model? How do users authenticate \u2014 local passwords, enterprise SSO (SAML/OIDC), or both \u2014 and is SCIM or directory-based provisioning and deprovisioning in scope? Is MFA required or optional, and per-tenant configurable? What are session lifetime, idle timeout, and revocation semantics (does an admin-initiated revocation kill live sessions immediately, cf. AR-08)? What CSRF strategy applies to the browser UI, and what rate limits protect authentication, the public share-link endpoints (AR-13), and the webhook-configuration endpoints (AR-12)? Are long-lived API tokens for programmatic access in scope, and how are they scoped and revoked?",
+        "impact": [
+          "Enterprise SSO with directory-driven deprovisioning is a materially larger deliverable than local accounts, and it is the usual expectation for a multi-tenant B2B approval product \u2014 the answer changes the phase count.",
+          "Session revocation latency is the same class of decision as cache-based permission staleness (AR-08) and must be consistent with it, or a revoked user retains access by a different route.",
+          "Unauthenticated share-link endpoints without rate limiting are directly brute-forceable against the token space in AR-13.",
+          "The mandatory security tests in the coding standards (input validation, authz, injection, rate limiting) cannot be specified until the auth model exists."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-20",
+        "question": "What is the compliance and data-protection envelope, supplied by an accountable owner rather than inferred? Which regimes apply (GDPR, UK GDPR, CCPA, SOC 2, HIPAA, sector-specific rules)? Are there data-residency constraints on where documents, personal data, and audit records may be stored and processed, including by the email and webhook delivery paths? What are the retention and erasure obligations, and how do they reconcile with an append-only audit log (AR-15) and stored document versions (AR-16)? Does an approval in this system carry legal or e-signature weight \u2014 which would add identity-assurance, intent-capture, and evidence-package requirements to AR-04?",
+        "impact": [
+          "Data residency can forbid a single global datastore and a single delivery region, constraining the deployment topology before any code is planned.",
+          "E-signature weight, if required, adds signer-identity assurance and a tamper-evident evidence package to every approval \u2014 a requirement area that is entirely absent from the current scope.",
+          "Erasure obligations interact irreconcilably with immutable audit and document versioning unless a strategy is designed up front; retrofitting one means rewriting the storage model.",
+          "This class of requirement must come from a qualified owner: a plan built on assumed regulatory scope is both wrong and unsafe, and no auto-design delegation may resolve it."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-21",
+        "question": "Is this greenfield or an extension of an existing system, and what is the v1 scope boundary? If an existing system: what are the current schema, API surface, client application, identity provider, and queue technology, and which clients must keep working? Which of the eight stated capabilities ship in the first release \u2014 specifically, are webhooks, external URL sharing, and the background extraction job all in v1, or do some follow? What is explicitly out of scope (approval templates, delegation and out-of-office, bulk actions, e-signature, mobile apps, document editing, search)?",
+        "impact": [
+          "No repository or existing code was supplied, so every technical recommendation for this system is currently ungrounded and cannot cite real code as the working standards require.",
+          "Brownfield status determines whether a migration and backfill workstream exists at all and whether API versioning is mandatory (AR-17).",
+          "Webhooks and external sharing are each large enough to be their own requirement document with their own security surface; deferring either materially changes the plan's size and sequencing.",
+          "Without a stated out-of-scope list, the \"Won't Have\" sections cannot be written and scope leak between requirement documents is unpreventable."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-22",
+        "question": "Define the terms the brief uses inconsistently or without definition: \"organization\" vs. \"team\" vs. \"tenant\" vs. \"workspace\"; \"approve\" vs. \"sign off\"; \"request changes\" vs. \"reject\"; \"document\" vs. \"version\" vs. \"submission\"; \"reviewer\" vs. \"approver\" vs. \"assignee\"; \"administrator\" (team-level or organization-level or platform-level); \"important action\"; \"usable\" during a deployment; \"external collaborator\" vs. \"guest\" vs. \"user\"; and \"pending\".",
+        "impact": [
+          "Each of these currently denotes two or more operationally distinct things, so requirements written on them are ambiguous by construction and will be implemented inconsistently across the API, the UI, the webhook payloads, and the audit log.",
+          "\"Organization\" and \"team\" are used in adjacent sentences to scope two different permissions; until they are distinguished, AR-01 and AR-03 cannot both be answered coherently.",
+          "These terms become API field names, event type names, database columns, and customer-facing text, where renaming later is a breaking change to the webhook contract (AR-11).",
+          "\"Important action\" is the entire scope of the audit requirement; leaving it undefined makes AR-15 unverifiable."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-23",
+        "question": "What are the non-functional targets? Expected and peak counts of organizations, users per organization, documents per organization, and documents per list view; the latency budget for the document list (which is the only thing that can justify the five-minute cache); the end-to-end SLA for metadata extraction and for notification and webhook delivery; the availability target and error budget; deployment frequency; and maximum document size and total storage per tenant.",
+        "impact": [
+          "The five-minute cache is presently a solution with no stated problem \u2014 without a latency target and a data-volume figure, its necessity and its TTL cannot be evaluated against AR-07 and AR-18.",
+          "Volume figures determine whether the list path needs pagination, indexing strategy, and denormalization, but not the overall architecture, so the plan can be structured before they land.",
+          "Can be carried as an explicit stated assumption (interactive list under 300ms, extraction within seconds, moderate per-tenant volumes) and corrected before implementation without invalidating the plan's phase structure.",
+          "Sets the performance acceptance criteria for the mandatory non-functional requirement document."
+        ],
+        "must_block": false
+      },
+      {
+        "id": "AR-24",
+        "question": "What verification bar defines done? Which test classes are mandatory \u2014 a cross-tenant isolation suite, a full authorization-matrix suite derived from AR-02, concurrency interleavings (simultaneous conflicting decisions, admin override racing a reviewer, optimistic retry duplicates, decision against a superseded version), stale-cache-after-revocation assertions, webhook signature and SSRF tests, malicious-upload tests, and a mixed-version rolling-deploy test? Is an end-to-end suite against a real browser in scope, and is there a required coverage or break-rate threshold?",
+        "impact": [
+          "Without a named bar the plan has no oracle for its security and concurrency requirements, and \"done\" is unfalsifiable.",
+          "A sound default set already exists in the project's testing standards and the selected domains' required-interleavings lists, so this can be proposed as a stated assumption without changing the architecture.",
+          "Determines whether a multi-tenant test fixture and a deploy-simulation harness are built as deliverables rather than assumed.",
+          "The specification-versus-implementation test split means the authorization matrix (AR-02) must be expressible as spec tests, which constrains how it is documented."
+        ],
+        "must_block": false
+      },
+      {
+        "id": "AR-25",
+        "question": "What is the user-facing surface for failure and edge states? What is shown when an optimistic action is rolled back, when a decision conflicts (AR-05), when a share link is expired or revoked, when metadata extraction failed, when a list is empty or a user has no permission, and when the service is mid-deployment? Are accessibility conformance (e.g. WCAG level) and internationalization or localization in scope, and which locales and timezone display rules apply?",
+        "impact": [
+          "Error text for a rolled-back optimistic action is the only signal a user gets that their action did not happen; its absence is a correctness problem disguised as a copy gap.",
+          "An expired share link's page reveals or conceals the document's existence to an unauthenticated visitor \u2014 an information-disclosure choice, though a narrow one.",
+          "Accessibility conformance level and locale set affect component choices and content pipeline but not the domain model, so the plan can proceed under a stated assumption.",
+          "Timezone display rules must agree with the audit log's stored timestamps (AR-15) or the two disagree in support conversations."
+        ],
+        "must_block": false
+      }
+    ],
+    "gate_verdict": "BLOCK"
+  }
+]
