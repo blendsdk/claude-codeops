@@ -72,6 +72,7 @@ export default defineConfig({
             { text: 'Coding & testing standards', link: '/reference/standards' },
             { text: 'Repository map', link: '/reference/repo-map' },
             { text: 'Agents', link: '/reference/agents' },
+            { text: 'Evaluation harness', link: '/reference/evaluation-harness' },
             { text: 'Troubleshooting', link: '/reference/troubleshooting' },
           ],
         },

@@ -17,3 +17,8 @@
 node_modules/
 docs/.vitepress/dist
 docs/.vitepress/cache
+
+# Python: dev virtualenv and bytecode (pytest suites for the standalone engines)
+.venv/
+__pycache__/
+*.py[co]

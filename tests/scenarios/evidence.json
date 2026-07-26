@@ -1,0 +1,40 @@
+{
+  "captures": [
+    {
+      "label": "baseline-3.12.0",
+      "captured": "2026-07-25",
+      "release": "3.12.0",
+      "plugin_commit": "bda8b5756b5369e5f8e663aebae98757736332b8",
+      "plugin_source": "~/.claude/plugins/marketplaces/codeops-marketplace (clean working tree)",
+      "cli_version": "2.1.219",
+      "model": "claude-opus-5[1m]",
+      "effort": "high",
+      "runs_per_scenario": 3,
+      "scenarios": ["compiler", "financial", "web"],
+      "invocation": "claude -p --no-session-persistence --permission-mode dontAsk --tools Read --plugin-dir <plugin> --effort high --output-format json --json-schema <result.schema.json>",
+      "files": {
+        "compiler": "compiler/baseline-3.12.0.json",
+        "financial": "financial/baseline-3.12.0.json",
+        "web": "web/baseline-3.12.0.json"
+      },
+      "notes": [
+        "Read-only: the CLI was given the Read tool alone, session persistence disabled, and no file was written into a scenario directory by a run.",
+        "The three scenarios were captured concurrently; runs within a scenario are sequential.",
+        "This release has no domain classification, so the selection field carries generic question categories whose names vary between runs. Scored with the domain check disabled.",
+        "Only the structured result of each run is retained. Per-run cost, latency, and session ids are not recorded."
+      ]
+    },
+    {
+      "label": "retained-3.12.0-2026-07-23",
+      "captured": "2026-07-23",
+      "release": "3.12.0",
+      "runs_per_scenario": 1,
+      "scenarios": ["compiler", "financial", "web"],
+      "provenance": "Ported from the source edition's scenario fixtures, where it is the Claude-side reading taken alongside that edition's own capture.",
+      "notes": [
+        "A single run per scenario. It fixes a point, not a distribution, and cannot be compared to a median on equal terms.",
+        "Field naming follows the source edition; the loader maps it on read."
+      ]
+    }
+  ]
+}
