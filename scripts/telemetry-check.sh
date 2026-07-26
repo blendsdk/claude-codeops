@@ -14,7 +14,7 @@
 # It NEVER mutates a committed fixture — fixtures are copied into temp dirs first, and
 # every utility invocation runs with an overridden HOME inside the sandbox.
 #
-# CodeOps Skills Version: 3.14.0
+# CodeOps Skills Version: 3.15.0
 #
 # Usage:  ./scripts/telemetry-check.sh
 # Exit:   0 = all checks pass (green); non-zero = at least one check failed (red).
@@ -579,6 +579,56 @@ if [[ "$RC" -eq 0 && "$(jget '.project' "$line")" == "unknown" ]]; then
 else
   fail "non-repo emit mishandled (rc=$RC project='$(jget '.project' "$line")')"
 fi
+
+# -----------------------------------------------------------------------------
+# SPEC-17 — the specialist auditors are visible to telemetry by name, and their
+# completions are subject to the gap report.
+#
+# Attribution alone is not enough: an agent that produces findings but sits outside
+# the reviewer roster is never asked whether its findings were ruled on, which reads
+# in the report as an agent with nothing outstanding rather than one nobody checked.
+# -----------------------------------------------------------------------------
+section "SPEC-17: specialist auditors are attributed and gap-checked"
+h17="$(mk_home)"
+ev17="$h17/$EVENTS_REL"
+spec17_ok=1
+for agent in concurrency-auditor financial-integrity-auditor semantics-reviewer; do
+  payload="$SANDBOX/hook-$agent.json"
+  jq -n --arg a "$agent" '{
+    hook_event_name: "PostToolUse",
+    tool_name: "Agent",
+    tool_input: {description: "Audit the phase", prompt: "Audit exactly this packet.", subagent_type: ("codeops:" + $a)},
+    duration: {elapsed_milliseconds: 9000}
+  }' > "$payload"
+  run_util "$h17" "$WORK" emit --src hook --stdin <"$payload"
+  [[ "$RC" -eq 0 ]] || { fail "$agent emit exited $RC"; spec17_ok=0; }
+done
+if [[ "$(count_lines "$ev17")" == "3" ]]; then
+  pass "three specialist completions recorded"
+else
+  fail "expected 3 lines, got $(count_lines "$ev17")"
+  spec17_ok=0
+fi
+for n in 1 2 3; do
+  line="$(sed -n "${n}p" "$ev17" 2>/dev/null || true)"
+  name="$(jget '.agent' "$line")"
+  case "$name" in
+    concurrency-auditor|financial-integrity-auditor|semantics-reviewer)
+      pass "attributed by name: $name" ;;
+    *)
+      fail "line $n attributed as '${name:-<none>}'"
+      spec17_ok=0 ;;
+  esac
+done
+# No review_run or finding_decided follows any of them, so every completion is a gap.
+run_util "$h17" "$WORK" gaps
+if [[ "$RC" -eq 0 ]] && grep -q 'completions: *3' <<<"$OUT" && grep -q '100%' <<<"$OUT"; then
+  pass "all three count as reviewer completions in the gap report"
+else
+  fail "specialists missing from the reviewer roster: '${OUT:0:160}'"
+  spec17_ok=0
+fi
+[[ "$spec17_ok" -eq 1 ]] && pass "specialist telemetry surface complete"
 
 # -----------------------------------------------------------------------------
 # SPEC-16 — containment meta-assertion: the whole run wrote nothing to the real home's

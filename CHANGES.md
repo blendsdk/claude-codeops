@@ -2,6 +2,50 @@
 
 ## Changelog
 
+### 3.15.0 — Three specialist auditors (2026-07-25)
+
+Concurrency, financial integrity, and formal semantics each get a dedicated read-only auditor.
+The first two were dimensions competing for attention inside a shared reviewer; the third had no
+coverage at all. All three are opt-in through the quality profile, as every agent is.
+
+- **`concurrency-auditor` (CA findings).** Establishes the concurrency model — shared state,
+  ownership, synchronization, ordering, cancellation, retry, failure — before judging the diff,
+  and must exhibit a concrete interleaving for each finding. What it cannot exhibit one for is
+  reported as unverified risk, not as a defect.
+- **`financial-integrity-auditor` (FA findings).** Treats monetary correctness and auditability
+  as invariants and tries to falsify each with concrete amounts, orderings, and failure points.
+- **`semantics-reviewer` (SR findings).** Traces a change across decoding, resolution, typing,
+  IR, lowering, optimization, diagnostics, and compatibility, hunting the disagreements *between*
+  phases. Each finding carries a minimal counterexample. It will not infer intended semantics
+  from the implementation under review — that reasoning makes every implementation correct.
+- **Supersession now lands on both sides.** A specialist replacing a shared reviewer's dimension
+  is written into both prompts, not just the convention: the security auditor is told to omit the
+  `financial-integrity` checklist when the specialist runs, and to name which checklists it
+  applied, so a withdrawn one is visible rather than assumed.
+- **The semantics reviewer is keyed on a domain, not a new profile field.** `compiler-and-language`
+  already means "this system has formal transformation semantics"; a fourth key would only give a
+  repo two places to disagree with itself. Its dispatch still requires a quality profile.
+- **All three inherit the session model** rather than pinning a tier, and `agent_models`
+  overrides them like any other agent.
+
+### 3.14.0 — Domain classification (2026-07-25)
+
+Requirements work now starts by naming what kind of system is being built, so the questions that
+follow are the ones that domain actually demands.
+
+- **Five domains, additively selected** — `compiler-and-language`, `financial-system`,
+  `web-application`, `distributed-and-concurrent`, `data-and-migration`. A system is usually
+  more than one, and selecting several is the normal case rather than an escape hatch.
+- **Detected from repository evidence, then confirmed with you.** Classification is proposed with
+  the evidence behind it and never applied silently.
+- **It runs for every repo.** Unlike the quality loop, classification dispatches no agent and
+  emits no telemetry — the two things the profile's absence rule governs — so gating it would
+  have denied it to every repo that never opts in. The `domains` key can pin the selection; it
+  cannot switch it off.
+- **Wired into `make_requirements`, `preflight`, `grill_me`, and `retro_requirements`.**
+- **Domains are not lenses.** A domain selects which questions to ask about the system; a lens
+  selects which concerns a reviewer applies to a diff. A guard keeps the words from bleeding.
+
 ### 3.13.0 — An evaluation harness for release quality (2026-07-25)
 
 Development tooling. Nothing in the installed plugin changes: the harness, its scenarios, and its

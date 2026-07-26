@@ -2,7 +2,7 @@
 #
 # agents-sync-check.sh — specification-test suite for the agent-sync engine.
 #
-# CodeOps Skills Version: 3.14.0
+# CodeOps Skills Version: 3.15.0
 #
 # Drives scripts/codeops-agents-sync.sh against throwaway temp git repos whose CLAUDE.md carries
 # a quality-profile block, and asserts the engine's contract: only effort-bearing overrides
@@ -282,6 +282,38 @@ run_sync "$repo" --dry-run
 [[ "$RC" -eq 0 ]] && pass "exit 0" || fail "exit $RC, expected 0 ($OUT)"
 [[ ! -f "$repo/.claude/agents/phase-reviewer.md" ]] && pass "wrote nothing" || fail "--dry-run wrote a file"
 is_clean "$repo" && pass "repo untouched" || fail "repo was modified"
+
+# -----------------------------------------------------------------------------
+# ST-15 — overrides reach the specialist auditors too, and an agent that inherits
+# the session model keeps inheriting it when only its effort is raised.
+#
+# These three carry no tier pin, so they are the case where a naive rewrite would
+# have to invent a model to write down. Inheritance must survive the round trip.
+# -----------------------------------------------------------------------------
+section "ST-15: specialist auditors accept effort and model overrides"
+repo="$(mk_repo '{concurrency-auditor: {effort: xhigh}, semantics-reviewer: {model: opus, effort: max}}')"
+run_sync "$repo"
+[[ "$RC" -eq 0 ]] && pass "exit 0" || fail "exit $RC, expected 0 ($OUT)"
+gen="$repo/.claude/agents/concurrency-auditor.md"
+if [[ -f "$gen" ]]; then
+  pass "materialized concurrency-auditor.md"
+  [[ "$(fm "$gen" effort)" == "xhigh" ]] && pass "effort: xhigh" || fail "effort is '$(fm "$gen" effort)'"
+  [[ "$(fm "$gen" model)" == "inherit" ]] && pass "model still inherits" || fail "model is '$(fm "$gen" model)'"
+  if diff -q <(body_of "$gen") <(body_of "$REPO_ROOT/agents/concurrency-auditor.md") >/dev/null; then
+    pass "body byte-identical to the plugin's"
+  else
+    fail "body drifted from the plugin's"
+  fi
+else
+  fail "no file materialized for concurrency-auditor"
+fi
+gen="$repo/.claude/agents/semantics-reviewer.md"
+if [[ -f "$gen" ]]; then
+  [[ "$(fm "$gen" model)" == "opus" ]] && pass "semantics-reviewer model: opus" || fail "model is '$(fm "$gen" model)'"
+  [[ "$(fm "$gen" effort)" == "max" ]] && pass "semantics-reviewer effort: max" || fail "effort is '$(fm "$gen" effort)'"
+else
+  fail "no file materialized for semantics-reviewer"
+fi
 
 # -----------------------------------------------------------------------------
 printf '\n'

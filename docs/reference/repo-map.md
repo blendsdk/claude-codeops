@@ -31,7 +31,7 @@ codeops-skills/                # repo root == plugin root
 │   └── …                      #   + thin alias commands that delegate to a parent skill
 ├── _shared/                   # shared reference docs (layout convention, gates, hardening,
 │                              #   quality-profile.md — the quality-loop convention)
-├── agents/                    # plugin-shipped subagents: 2 executors + 7 quality agents
+├── agents/                    # plugin-shipped subagents: 2 executors + 10 quality agents
 │                              #   (phase-reviewer, spec-test-author, security-auditor,
 │                              #   preflight-auditor, design-challenger, perf-auditor,
 │                              #   codebase-scout)

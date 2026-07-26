@@ -32,7 +32,7 @@ If the execution plan can't be loaded cleanly, **STOP** and handle as follows:
 
 ### Version Check (auto-suggest)
 
-After loading, check the version stamp against the current **CodeOps Skills Version: 3.14.0**:
+After loading, check the version stamp against the current **CodeOps Skills Version: 3.15.0**:
 
 1. Read `00-index.md` or `99-execution-plan.md`.
 2. Look for `> **CodeOps Version**: X.Y.Z` (or `CodeOps Skills Version`).
@@ -121,11 +121,15 @@ whole-task diff. Activation rules, packets, supersession, and caps are defined i
 1. **Determine activation.** No profile block, or `review_hook: off` → skip silently (no
    skill-side emissions; hook events still fire natively). Trivial tasks are never reviewed.
    A docs-only diff → phase-reviewer only, and the auditor skip is logged — never silent.
-2. **Dispatch in parallel:** the phase-reviewer plus every active auditor (security-auditor when
+2. **Dispatch in parallel:** the phase-reviewer plus every active auditor — security-auditor when
    the profile names security profiles; perf-auditor when `perf_critical` and the diff touches
-   code), each with the dispatch header on line 1 of its prompt and its packet
-   (diff = `git diff <phase-ref>..HEAD`).
-3. **Merge findings** (RV/SA/PE) and present them in severity-grouped batches (reuse the
+   code; concurrency-auditor when `lenses` contains `concurrency` and the diff touches code;
+   financial-integrity-auditor when `security_profile` contains `financial-integrity`;
+   semantics-reviewer when `compiler-and-language` is among the selected domains and the diff
+   touches code — each with the dispatch header on line 1 of its prompt and its packet
+   (diff = `git diff <phase-ref>..HEAD`). State every superseded dimension in the packet of the
+   reviewer that must stand down, rather than leaving it to infer the supersession.
+3. **Merge findings** (RV/SA/PE/CA/FA/SR) and present them in severity-grouped batches (reuse the
    preflight skill's batch pacing). 🔴 CRITICAL / 🟠 MAJOR findings PAUSE execution for the
    user's ruling in ALL commit modes; 🟡 MINOR findings are report-only.
 4. **Emit `finding_decided`** per finding immediately after each ruling batch.

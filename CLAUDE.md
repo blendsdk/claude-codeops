@@ -39,7 +39,7 @@
 - `skills/<name>/SKILL.md` — the 11 skills; every `skills/<dir>` needs a `SKILL.md` (loader requirement).
 - `_shared/` — reference docs linked by skills (layout-convention, zero-ambiguity-gate, spec-first-ordering, recommendation-hardening, quality-profile); at the plugin root, not under `skills/`, linked as `../../_shared/…`.
 - `commands/*.md` — the 21 slash commands (frontmatter `description`), incl. `/codeops_stats` + `/codeops_retro` (telemetry consumers).
-- `agents/` — plugin-shipped subagents: 2 executors (`plan-task-executor`, `plan-task-executor-opus`) + 7 quality agents (`phase-reviewer`, `spec-test-author`, `security-auditor`, `preflight-auditor`, `design-challenger`, `perf-auditor`, `codebase-scout`).
+- `agents/` — plugin-shipped subagents: 2 executors (`plan-task-executor`, `plan-task-executor-opus`) + 10 quality agents (`phase-reviewer`, `spec-test-author`, `security-auditor`, `preflight-auditor`, `design-challenger`, `perf-auditor`, `codebase-scout`, `concurrency-auditor`, `financial-integrity-auditor`, `semantics-reviewer`).
 - `hooks/hooks.json` — SessionStart standards + output-style hooks + PreToolUse `.codeops.yml` marker guard + PostToolUse telemetry hook (`Skill|Task|Agent` → `codeops-events.sh`).
 - `standards/coding-standards.md` — always-on injected core (≤50 lines); full text in `coding-standards-full.md`.
 - `standards/output-style.md` — always-on injected reporting rules; the two injected files are capped together at 65 lines (ST-74).

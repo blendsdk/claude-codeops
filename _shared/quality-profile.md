@@ -1,6 +1,6 @@
 # Quality Profile (shared convention)
 
-> **CodeOps Skills Version**: 3.14.0
+> **CodeOps Skills Version**: 3.15.0
 
 This is the **single canonical definition** of the per-repo quality profile and the quality-agent
 conventions built on it. It lives at the plugin root in `_shared/` (deliberately outside
@@ -122,7 +122,8 @@ Findings reuse the preflight severity scale **by reference** — 🔴 CRITICAL /
 
 ### Finding prefixes
 
-RV (phase-reviewer) · SA (security-auditor) · PA (preflight-auditor) · PE (perf-auditor), each
+RV (phase-reviewer) · SA (security-auditor) · PA (preflight-auditor) · PE (perf-auditor) ·
+CA (concurrency-auditor) · FA (financial-integrity-auditor) · SR (semantics-reviewer), each
 numbered `XX-NNN`. Every finding-producing agent reports "no findings" explicitly rather than
 returning empty output.
 
@@ -136,9 +137,22 @@ returning empty output.
 | Docs-only diff | Phase reviewer still runs; security/perf auditors skip — the skip is logged, never silent |
 | `security_profile` non-empty | Security auditor dispatches once per phase with the union of the named checklists, and **supersedes** the reviewer's `security` lens |
 | `perf_critical: true` + diff touches code | Perf auditor dispatches and **supersedes** the reviewer's `perf` lens |
+| `lenses` contains `concurrency` + diff touches code | Concurrency auditor dispatches and **supersedes** the reviewer's `concurrency` lens |
+| `security_profile` contains `financial-integrity` | Financial-integrity auditor dispatches and **supersedes** that one checklist inside the security auditor, which still runs for the rest |
+| `compiler-and-language` among the selected domains + diff touches code | `semantics-reviewer` dispatches; it supersedes nothing, being a discipline no shared reviewer covers |
 
 Supersession exists so the same ground is never reviewed twice at different depths: a dedicated
-agent replaces the reviewer's matching add-on lens for that phase.
+agent replaces the reviewer's matching add-on lens for that phase. It is implemented on **both**
+sides — the specialist's prompt claims the ground and the shared reviewer's prompt stands down —
+because a supersession recorded only here would leave both agents reviewing, and the shallower
+pass is the one that sets expectations.
+
+> **The semantics reviewer is domain-activated, not profile-keyed.** It reads its trigger from the
+> `compiler-and-language` domain rather than a fourth profile field, because that domain already
+> means "this system has formal transformation semantics" — inventing a key to restate it would
+> give a repo two places to disagree with itself. Classification runs unconditionally, but this
+> dispatch does not: like every other agent, it requires a profile block. Domain selection decides
+> *whether the discipline applies*; the profile decides *whether agents run at all*.
 
 ## Dispatch packets & header
 
@@ -153,7 +167,7 @@ produces a completion event with those fields omitted, so missing headers are me
 
 | Agent | Packet contents (the agent receives nothing else and must need nothing else) |
 |-------|------------------------------------------------------------------------------|
-| phase-reviewer, security-auditor, perf-auditor | Phase diff (`git diff <phase-start-ref>..HEAD`), the phase's task + Deliverable lines, active lenses, profile excerpt, verify command + last result |
+| phase-reviewer, security-auditor, perf-auditor, concurrency-auditor, financial-integrity-auditor, semantics-reviewer | Phase diff (`git diff <phase-start-ref>..HEAD`), the phase's task + Deliverable lines, active lenses, profile excerpt, verify command + last result. The packet names every dimension superseded for this phase, so a reviewer standing down never has to infer it |
 | spec-test-author | Spec excerpts + test cases, planned interface signatures from the plan documents, test framework/conventions, the FORBIDDEN implementation-file list, verify command (expected RED) |
 | preflight-auditor | The artifact under audit + ONE assigned dimension cluster |
 | design-challenger | Problem + candidate options, **without** the parent's preferred choice (per `_shared/recommendation-hardening.md`) |

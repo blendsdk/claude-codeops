@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.14.0"
+CODEOPS_VERSION="3.15.0"
 
 FAILURES=0
 
@@ -1599,12 +1599,13 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# ST-69 — roster drift guard: exactly the 9 expected agent files (2 executors +
-# 7 quality agents), no strays.
+# ST-69 — roster drift guard: exactly the 12 expected agent files (2 executors +
+# 10 quality agents), no strays.
 # -----------------------------------------------------------------------------
-section "ST-69: agent roster is exactly the 9 expected files"
-EXPECTED_AGENTS=(codebase-scout design-challenger perf-auditor phase-reviewer
-  plan-task-executor plan-task-executor-opus preflight-auditor security-auditor
+section "ST-69: agent roster is exactly the 12 expected files"
+EXPECTED_AGENTS=(codebase-scout concurrency-auditor design-challenger
+  financial-integrity-auditor perf-auditor phase-reviewer plan-task-executor
+  plan-task-executor-opus preflight-auditor security-auditor semantics-reviewer
   spec-test-author)
 roster_ok=1
 for a in "${EXPECTED_AGENTS[@]}"; do
@@ -1614,11 +1615,11 @@ for a in "${EXPECTED_AGENTS[@]}"; do
   fi
 done
 actual_agents="$(ls agents/*.md 2>/dev/null | wc -l | tr -d ' ')"
-if [[ "$actual_agents" != "9" ]]; then
-  fail "agents/ holds $actual_agents .md files; expected exactly 9"
+if [[ "$actual_agents" != "12" ]]; then
+  fail "agents/ holds $actual_agents .md files; expected exactly 12"
   roster_ok=0
 fi
-[[ "$roster_ok" -eq 1 ]] && pass "all 9 expected agent files present, no strays"
+[[ "$roster_ok" -eq 1 ]] && pass "all 12 expected agent files present, no strays"
 
 # -----------------------------------------------------------------------------
 # ST-70 — _shared/quality-profile.md: present, non-empty, stamped, carries the
@@ -2082,6 +2083,147 @@ if grep -qE '^\| `domains` \|' "$QP" 2>/dev/null; then
   fi
 else
   fail "quality-profile.md does not document the domains key"
+fi
+
+# =============================================================================
+# Specialist auditors (ST-87…ST-91)
+#
+# SPECIFICATION tests written from the contract BEFORE the three agents exist —
+# red on the unmodified repo, green once the prompts, the supersession edits, and
+# the registrations land.
+# =============================================================================
+
+SPECIALIST_AGENTS=(concurrency-auditor financial-integrity-auditor semantics-reviewer)
+
+# -----------------------------------------------------------------------------
+# ST-87 — each specialist is present, read-only, and inherits the session model.
+#
+# Read-only is enforced by the tools list, not by the prompt: a prompt that says
+# "never edit" while the frontmatter grants Edit is one careless dispatch away
+# from a review agent rewriting the work it is judging. Model inheritance is the
+# port's own constraint — these three carry no tier pin.
+# -----------------------------------------------------------------------------
+section "ST-87: specialist auditors are read-only and inherit the model"
+for a in "${SPECIALIST_AGENTS[@]}"; do
+  f="agents/$a.md"
+  if [[ ! -s "$f" ]]; then
+    fail "$f missing"
+    continue
+  fi
+  a_tools="$(sed -n '/^---$/,/^---$/p' "$f" | sed -n 's/^tools:[[:space:]]*//p' | head -1)"
+  a_model="$(sed -n '/^---$/,/^---$/p' "$f" | sed -n 's/^model:[[:space:]]*//p' | head -1)"
+  if [[ -z "$a_tools" ]]; then
+    fail "$f declares no tools"
+  elif grep -qE '\b(Write|Edit|NotebookEdit)\b' <<<"$a_tools"; then
+    fail "$f grants a mutating tool ($a_tools) — specialists are read-only"
+  else
+    pass "$f is read-only (tools: $a_tools)"
+  fi
+  if [[ "$a_model" == "inherit" ]]; then
+    pass "$f inherits the session model"
+  else
+    fail "$f pins model '${a_model:-<missing>}' — the specialists must use inherit"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-88 — supersession is implemented on BOTH sides.
+#
+# Adding a specialist without withdrawing the dimension from the shared reviewer
+# leaves the supersession documentation-only: the ground is then covered twice,
+# at two different depths, and the shallower pass is the one that sets
+# expectations. The reviewer prompts must say they stand down.
+# -----------------------------------------------------------------------------
+# The frontmatter is excluded deliberately: both descriptions already claim the
+# supersessions these agents *win*, and matching those would pass this check
+# without a single instruction reaching the agent that has to stand down.
+section "ST-88: superseded dimensions are withdrawn from the shared reviewers"
+agent_body() { awk 'BEGIN{d=0} /^---$/{d++; next} d>=2' "$1"; }
+if agent_body agents/phase-reviewer.md | grep -qi 'supersed'; then
+  pass "phase-reviewer stands down on superseded lenses"
+else
+  fail "agents/phase-reviewer.md must instruct the reviewer to skip a superseded lens"
+fi
+if agent_body agents/security-auditor.md | grep -qi 'supersed'; then
+  pass "security-auditor stands down on a superseded checklist"
+else
+  fail "agents/security-auditor.md must instruct the auditor to omit a superseded checklist"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-89 — the profile documents activation, supersession, and finding prefixes.
+#
+# quality-profile.md is the naming authority for the quality loop; an agent that
+# dispatches without appearing there is invisible to every skill that reads it.
+# -----------------------------------------------------------------------------
+section "ST-89: quality-profile.md registers the three specialists"
+for a in "${SPECIALIST_AGENTS[@]}"; do
+  if grep -qF "$a" "$QP"; then
+    pass "$QP names $a"
+  else
+    fail "$QP does not name $a"
+  fi
+done
+if grep -qE 'CA \(concurrency-auditor\)|CA-NNN' "$QP" \
+  && grep -qE 'FA \(financial-integrity-auditor\)|FA-NNN' "$QP" \
+  && grep -qE 'SR \(semantics-reviewer\)|SR-NNN' "$QP"; then
+  pass "the CA / FA / SR finding prefixes are registered"
+else
+  fail "$QP must register the CA, FA, and SR finding prefixes"
+fi
+if grep -qF 'compiler-and-language' "$QP" \
+  && sed -n '/semantics-reviewer/p' "$QP" | grep -qF 'compiler-and-language'; then
+  pass "semantics-reviewer activation derives from the compiler-and-language domain"
+else
+  fail "$QP must derive semantics-reviewer activation from the compiler-and-language domain"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-90 — the telemetry roster covers the three.
+#
+# The gap report asks which reviewer completions were never followed by a ruling.
+# A finding-producing agent absent from that roster is silently exempt from the
+# question, which reads as an agent with a perfect record rather than an unseen one.
+# -----------------------------------------------------------------------------
+section "ST-90: the telemetry reviewer roster covers the specialists"
+EVENTS_UTIL="scripts/codeops-events.sh"
+roster_line="$(grep -E '^REVIEWER_AGENTS=' "$EVENTS_UTIL" 2>/dev/null || true)"
+if [[ -z "$roster_line" ]]; then
+  fail "$EVENTS_UTIL declares no REVIEWER_AGENTS roster"
+else
+  for a in "${SPECIALIST_AGENTS[@]}"; do
+    if grep -qF "$a" <<<"$roster_line"; then
+      pass "REVIEWER_AGENTS covers $a"
+    else
+      fail "REVIEWER_AGENTS omits $a — its completions would never be gap-checked"
+    fi
+  done
+fi
+
+# -----------------------------------------------------------------------------
+# ST-91 — the published roster documents every agent and every supersession.
+# -----------------------------------------------------------------------------
+section "ST-91: docs/reference/agents.md documents all twelve agents"
+AGENT_DOC="docs/reference/agents.md"
+if [[ ! -s "$AGENT_DOC" ]]; then
+  fail "$AGENT_DOC missing"
+else
+  doc_ok=1
+  for f in agents/*.md; do
+    a="$(basename "$f" .md)"
+    grep -qF "\`$a\`" "$AGENT_DOC" || { fail "$AGENT_DOC omits $a"; doc_ok=0; }
+  done
+  [[ "$doc_ok" -eq 1 ]] && pass "$AGENT_DOC lists every shipped agent"
+  if grep -qi 'nine subagents' "$AGENT_DOC"; then
+    fail "$AGENT_DOC still claims nine subagents"
+  else
+    pass "$AGENT_DOC's count claim is current"
+  fi
+  if grep -qi 'supersed' "$AGENT_DOC"; then
+    pass "$AGENT_DOC documents supersession"
+  else
+    fail "$AGENT_DOC must document every supersession relationship"
+  fi
 fi
 
 # -----------------------------------------------------------------------------

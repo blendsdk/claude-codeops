@@ -1,0 +1,823 @@
+[
+  {
+    "scenario": "Multi-currency transfer ledger: transfers between customer accounts in differing currencies, with a fetched exchange rate and a configurable percentage fee, debit/credit applied asynchronously via a queue, client-side retry on timeout, an immediately displayed converted amount, cancellation while pending, refund after completion, mandatory auditability and balance correctness, and daily reconciliation against an external settlement file.",
+    "selected_domains": [
+      "financial-system",
+      "distributed-and-concurrent",
+      "web-application",
+      "data-and-migration"
+    ],
+    "material_ambiguities": [
+      {
+        "id": "AR-01",
+        "question": "What is the ledger model: double-entry postings with a balancing invariant, or mutable balance rows with a separate transaction log? Which accounts exist beyond customer accounts (in-transit/suspense, FX position/revaluation, fee revenue, rounding residual)? Is the ledger append-only, with corrections as new compensating entries only?",
+        "impact": [
+          "Determines the core schema and every write path; not retrofittable later",
+          "Decides whether 'balances must never be wrong' is enforced by an invariant (sum of postings = 0) or only by reconciliation",
+          "Sets whether a balance is derived from entries or stored, which changes read performance, locking, and audit reconstruction",
+          "Without a suspense/in-transit account there is nowhere for money to legally sit between the async debit and credit"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-02",
+        "question": "How is monetary value represented and stored: integer minor units, fixed-point decimal, or something else? Which currency set is in scope, including zero-decimal (JPY) and three-decimal (BHD, TND) currencies? What scale is kept for intermediate FX arithmetic before the final rounding?",
+        "impact": [
+          "Fixes column types, arithmetic library, and serialization on the queue payload",
+          "Wrong minor-unit handling silently misstates amounts by 100x for JPY-class currencies",
+          "Intermediate precision determines whether the fee and conversion compose reproducibly",
+          "Blocks any spec test for amount arithmetic"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-03",
+        "question": "What rounding mode applies (half-up, half-even, toward zero, away from zero), at which step(s), and who absorbs the residual \u2014 the customer, the recipient, or a house rounding account?",
+        "impact": [
+          "Changes the credited amount on essentially every conversion",
+          "Unassigned residual is precisely how a double-entry ledger fails to balance",
+          "Determines whether debit + fee + credit reconcile exactly against the settlement file or only within a tolerance",
+          "Rounding mode is an immutable spec-test oracle; changing it later invalidates historical figures"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-04",
+        "question": "Exact fee semantics: percentage of the source amount or the converted destination amount? Applied before or after conversion? Charged in which currency? Inclusive (deducted from the transfer) or exclusive (added on top)? Any minimum/maximum or per-corridor/per-customer override? Which fee-config version applies to a transfer that was quoted under an older config?",
+        "impact": [
+          "Each combination yields a different credited amount for identical input",
+          "Inclusive vs exclusive changes what the debited total is, and therefore the sufficiency check",
+          "Config versioning decides whether an in-flight transfer can silently change price mid-flight",
+          "Blocks the fee calculation spec tests and the fee revenue posting rule"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-05",
+        "question": "What is the rate source, and is the rate quoted at submission binding on execution? What is the quote TTL, what happens if the rate moves or the provider is unavailable between quote and posting, and who absorbs the slippage? Is there a spread/markup distinct from the stated fee?",
+        "impact": [
+          "Decides whether the system carries FX risk (needs an FX position account) or passes it to the customer",
+          "Determines whether a stale or unavailable rate fails the transfer, queues it, or falls back to a last-known rate",
+          "Sets the rate-timestamp field that reconciliation and audit reconstruction depend on",
+          "A hidden spread vs. a disclosed fee is a regulatory disclosure question, not a technical one"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-06",
+        "question": "Is the converted amount shown immediately after submission an indicative estimate or a guaranteed final amount? If the async posting later produces a different figure, what does the client see, and is the customer notified?",
+        "impact": [
+          "This is the direct contradiction between line 9 (immediate display) and line 7 (async posting) in the scenario",
+          "A guaranteed figure forces rate locking, a reservation, and house-absorbed slippage; an estimate forces UI language, a pending state, and a settled-amount notification",
+          "Changes the API contract: synchronous priced response vs. accepted-with-quote-id",
+          "Determines whether a discrepancy is a bug or expected behavior"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-07",
+        "question": "What are the idempotency semantics for retried submissions: client-supplied idempotency key or server-derived fingerprint? What is the key scope and uniqueness/dedup retention window? What is returned when a retry matches an in-flight request, matches a completed one, or reuses a key with a different payload?",
+        "impact": [
+          "Without this, 'clients may retry' means duplicate transfers and permanently wrong balances",
+          "Determines a uniqueness constraint and a dedup store with its own retention and cleanup",
+          "Same-key-different-payload must be an explicit rejection, not last-write-wins",
+          "Blocks the duplicate-delivery and concurrent-duplicate-request spec tests both domains require"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-08",
+        "question": "What does the client observe when a request times out before commit versus after commit? Is there a status-lookup endpoint or a client-visible transfer id issued before commit, and can a timed-out request still result in a posted transfer?",
+        "impact": [
+          "'Timeout' currently has no defined observable outcome, which the financial domain explicitly requires",
+          "Deciding an id is issued pre-commit changes the write ordering and the API response shape",
+          "Without a lookup path, the client cannot resolve an unknown outcome except by retrying, compounding AR-07",
+          "Drives the error taxonomy and the UI's unknown/pending state"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-09",
+        "question": "Where does authority over funds move: is the debit (or a hold/reservation) authoritative and durable at submission, with only the credit asynchronous, or are both legs performed by the worker? May a balance go negative, and at what instant is sufficiency checked relative to concurrent transfers on the same account?",
+        "impact": [
+          "Determines whether funds can be double-spent by two concurrent transfers passing the same check-then-act window",
+          "Decides the locking/serialization strategy per account (row lock, per-account partition key, optimistic version)",
+          "Sets whether holds are a first-class entity with their own expiry and state transitions",
+          "Without a hold, the money is untracked between debit and credit and reconciliation cannot classify it"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-10",
+        "question": "If the credit leg permanently fails after the debit committed, what is the compensation: automatic reversal or manual ops action? Is the reversal booked at the original rate or the current rate, is the fee refunded, and who absorbs the FX difference?",
+        "impact": [
+          "This is the saga compensation path; without it, failure leaves funds in suspense indefinitely",
+          "Original-rate vs current-rate reversal is a real money difference charged to either the customer or the house",
+          "Determines whether an FX loss account and its posting rule exist",
+          "Blocks the failure-after-durable-commit interleaving test"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-11",
+        "question": "What are the queue's delivery and ordering guarantees: at-least-once or exactly-once claimed, ordered per account/partition key or unordered? What are the max attempts, backoff, retry budget, poison-message/DLQ policy, and terminal failure state? May two messages for the same account be processed concurrently?",
+        "impact": [
+          "At-least-once delivery makes worker-side idempotency mandatory, separate from the API-level key in AR-07",
+          "Ordering per account decides whether a cancel can overtake a post, and whether balances can be applied out of order",
+          "DLQ policy decides whether a stuck transfer is silently abandoned or surfaced to ops",
+          "Any exactly-once claim must be substantiated or dropped; the concurrency gate fails on unstated delivery semantics"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-12",
+        "question": "What is the complete transfer state machine \u2014 the exact state names, permitted transitions, terminal states, and any timeout that moves a long-pending transfer to a failed/expired state?",
+        "impact": [
+          "Cancellation, refund, retry, and reconciliation are all defined relative to states that do not yet exist",
+          "Terminal-state definition decides what 'after completion' in the refund requirement means",
+          "Missing pending-expiry means transfers can hang forever with funds in suspense",
+          "The state column and its transition guards are schema and every guard is a spec test"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-13",
+        "question": "Cancellation semantics: which exact states are cancellable, how is the race between a cancel request and a worker that is already posting serialized, and who wins? Is cancellation best-effort or guaranteed? Is the fee refunded on cancel? What does the client see when the cancel loses the race?",
+        "impact": [
+          "The cancel/post race is the classic double-effect bug; without a deterministic winner, both can apply",
+          "Best-effort vs guaranteed changes the API response (accepted vs confirmed) and the UI affordance",
+          "Fee-on-cancel is a real charge decision, not an implementation detail",
+          "Requires a defined compare-and-set on the state column, which depends on AR-12"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-14",
+        "question": "Refund semantics: full only or partial? Booked at the original rate or the current rate? Is the fee refunded? Is a refund a new reversing transfer, a negating adjustment, or a linked child entity? Is there a time limit, can a refund be refunded, and who authorizes one?",
+        "impact": [
+          "Rate choice determines who bears the FX movement between transfer and refund, and whether an FX gain/loss posting is needed",
+          "Reversal-vs-new-transfer changes the audit trail shape and how reconciliation matches the pair",
+          "Partial refunds require proportional fee and rounding rules, re-opening AR-03 and AR-04",
+          "Authorization is a segregation-of-duties control, not a UI toggle"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-15",
+        "question": "Reconciliation specifics: what is the settlement file's format, encoding, schema, and delivery mechanism? What are the matching keys and tolerance thresholds? What is the workflow for unmatched items, and does the system have authority to auto-adjust balances or only to raise exceptions? Who holds repair authority? What happens on a late, missing, duplicated, or truncated file, or on reprocessing a file already ingested?",
+        "impact": [
+          "Ingest is a data-import surface needing validation, provenance, and duplicate/collision rules before any code exists",
+          "Auto-adjust vs exception-only is the difference between an automated system that can corrupt balances and one that cannot",
+          "File-level idempotency prevents a re-delivered file from double-applying adjustments",
+          "Tolerance thresholds interact directly with the rounding decision in AR-03"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-16",
+        "question": "Which timestamps exist and govern: event, booking/posting, value, and settlement dates? In which timezone is the 'daily' reconciliation boundary and cut-off defined? Are backdated entries permitted, and if so how do they affect an already-reconciled period?",
+        "impact": [
+          "'Daily' is undefined until a timezone and cut-off exist; a UTC vs local-day boundary reshuffles which transfers land in which file",
+          "Multiple date fields are schema, and picking one later silently misdates history",
+          "Backdating into a closed period breaks historical reproducibility and needs a restatement rule",
+          "Blocks the reconciliation window query and its tests"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-17",
+        "question": "What exactly must the audit trail capture (which events, which actor, which before/after values), by what mechanism is it immutable (append-only table, hash chain, WORM storage), what is its retention period, does it contain PII, and who may read it? Can any balance as of any past instant be reconstructed from it?",
+        "impact": [
+          "'Auditable' is currently unfalsifiable; without an explicit completeness list it cannot be verified or tested",
+          "Immutability mechanism is infrastructure with cost and operational consequences",
+          "PII in audit records collides with retention/erasure obligations under AR-19",
+          "Historical reconstruction is the only real proof that 'balances are never wrong'"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-18",
+        "question": "Who may initiate a transfer between which accounts (the actor/action/resource authorization matrix)? What per-transaction, daily, and velocity limits apply? What approval thresholds, segregation-of-duties rules, and sanctions/AML screening holds exist for transfers, refunds, and manual reconciliation repairs?",
+        "impact": [
+          "The web-application gate fails outright while any actor/action/resource combination lacks an authorization result",
+          "Limits are enforcement points inside the same transaction as the balance check, not an afterthought",
+          "Refund and repair without segregation of duties is an internal-fraud path",
+          "A screening hold introduces another pending state, feeding back into AR-12"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-19",
+        "question": "Which jurisdictions and regulatory regimes apply (licensing, KYC/AML, travel rule, consumer-disclosure rules, data residency, reporting obligations), and who is the qualified owner supplying these constraints?",
+        "impact": [
+          "Regulatory constraints can invalidate otherwise-correct designs (e.g. mandated disclosure of the FX spread from AR-05)",
+          "Data residency dictates storage topology and can forbid a single-region deployment",
+          "Retention minimums and erasure rights jointly constrain AR-17's audit design",
+          "This must be supplied explicitly by a qualified owner; it cannot be inferred from the scenario"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-20",
+        "question": "What are the non-functional targets: quote latency, expected and maximum time from submission to settled, availability target, transfer and account volumes, peak throughput, queue depth bounds, and the behavior under overload (reject, shed, or unbounded backlog)?",
+        "impact": [
+          "Queue bounds and backpressure policy are architecture, not tuning; an unbounded queue fails the concurrency gate",
+          "A settlement-time SLA determines whether pending-expiry (AR-12) is minutes or days",
+          "Scale assumptions decide partitioning and index strategy for the ledger",
+          "Without targets there is no pass/fail criterion for performance verification"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-21",
+        "question": "Is this greenfield, or must an existing ledger, schema, account model, or in-flight transfer keep working? How are the fee config, rate records, and queue message schema versioned, and what is the mixed-version behavior during a rolling deploy while transfers are in flight?",
+        "impact": [
+          "A message-schema change mid-flight can strand or misinterpret queued transfers",
+          "Existing data forces a migration with preconditions, backfill, and rollback planning",
+          "Config versioning ties back to AR-04: which version prices an in-flight transfer",
+          "Determines whether zero-downtime deployment is a constraint on the whole design"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-22",
+        "question": "What is the scope boundary: is this a closed-loop internal ledger between customers of one platform, or does money leave to external banks/partners? Which currencies and corridors ship first? Are multi-leg or intermediary-routed transfers in scope? Whose settlement file is being reconciled against, and what is explicitly out of scope for the MVP?",
+        "impact": [
+          "Closed-loop vs external settlement changes whether external payment rails, their failure modes, and their timelines exist at all",
+          "Determines whether the settlement file (AR-15) is a partner bank's statement or an internal export",
+          "The corridor set bounds which currency edge cases from AR-02 must be handled now",
+          "An unclear MVP boundary makes every subsequent estimate and phase plan unreliable"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-23",
+        "question": "What are the boundary rules on amounts and accounts: minimum and maximum transfer amount, whether zero-amount transfers are permitted, overflow bounds, whether a same-currency transfer skips conversion but still charges the fee, whether self-transfers between a customer's own accounts are allowed, and whether a customer may hold multiple accounts or multi-currency accounts (one balance per currency or one account per currency)?",
+        "impact": [
+          "Account cardinality is a schema decision that changes every balance query and the transfer's source/target model",
+          "Same-currency behavior is currently undefined even though it is the most common real case",
+          "Zero/negative/extreme values are required financial edge cases and are each a spec test",
+          "Self-transfer touches the same-account locking assumption in AR-09"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-24",
+        "question": "How are amounts, currencies, and dates formatted and localized for display, and what is the required accessibility conformance level for the transfer UI?",
+        "impact": [
+          "Affects user-facing strings and formatting utilities, but not the ledger or any monetary invariant",
+          "Can be closed as a named deferral (decision, owner, revisit trigger) without endangering correctness",
+          "Deferring silently would still violate the gate; the row must exist in the register",
+          "Locale rules for currency symbols and separators do affect disclosure clarity in regulated markets, so AR-19 may pull this forward"
+        ],
+        "must_block": false
+      },
+      {
+        "id": "AR-25",
+        "question": "What is the confirmed glossary: precise definitions of transfer, pending, completed, settled, cancellation, reversal, refund, and adjustment, and the naming of the corresponding API resources, states, and ledger entry types?",
+        "impact": [
+          "The scenario already uses cancellation, refund, and reconciliation as if distinct, without defining them",
+          "Inconsistent terms produce inconsistent state names, endpoints, and audit event types across documents",
+          "Can be deferred as a named item only if the state machine in AR-12 is resolved first, since the states are the terms",
+          "Low correctness risk on its own, high downstream churn cost if left unfixed"
+        ],
+        "must_block": false
+      }
+    ],
+    "gate_verdict": "BLOCK"
+  },
+  {
+    "scenario": "tests/scenarios/financial/scenario.md \u2014 multi-currency transfer ledger: cross-currency customer transfers with live FX rate and configurable percentage fee, asynchronous debit/credit via a queue, client retries on timeout, immediate converted-amount display, cancellation while pending, refund after completion, daily reconciliation against an external settlement file, under \"auditable and balances must never be wrong\".",
+    "selected_domains": [
+      "financial-system",
+      "distributed-and-concurrent",
+      "web-application",
+      "data-and-migration"
+    ],
+    "material_ambiguities": [
+      {
+        "id": "AR-01",
+        "question": "What is the ledger model: double-entry journal with balancing postings, or mutable per-account balances? Which account types exist (customer, FX position, fee revenue, suspense/clearing), and which accounts absorb FX gain/loss and the fee?",
+        "impact": [
+          "Determines the core data model and every write path; changing it later is a full rewrite plus a historical backfill.",
+          "Without named FX and fee accounts, a cross-currency transfer cannot balance and the 'balances never wrong' invariant is unstatable.",
+          "Decides whether audit reconstruction is possible from entries or requires a separate event store."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-02",
+        "question": "Which currencies are supported, is currency identity ISO-4217 only (or crypto/non-ISO), what minor-unit exponent applies per currency (JPY=0, KWD=3), and is money stored as integer minor units or fixed-point decimal?",
+        "impact": [
+          "Integer-minor-unit vs decimal storage changes every arithmetic operation, the DB column types, and the API wire format.",
+          "Assuming 2 decimal places silently corrupts JPY and KWD amounts.",
+          "Sets the boundary for overflow limits and extreme-scale test cases."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-03",
+        "question": "What rounding mode applies (half-even, half-up, floor), at what precision are intermediate FX products carried, in what order are conversion and fee applied, and which account receives the rounding residual?",
+        "impact": [
+          "Different orders (fee-then-convert vs convert-then-fee) produce different credited amounts for the same input.",
+          "Unspecified residual handling means the ledger fails to balance by sub-cent amounts on every transfer, breaking the stated invariant.",
+          "Spec tests for money arithmetic cannot be written at all until this is fixed."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-04",
+        "question": "Is the configurable percentage fee taken on the source amount or the converted target amount; is it added on top (sender pays) or deducted from the credit (recipient pays); in which currency is it charged; are there minimum/maximum fee bounds; and is the fee refunded on cancellation and on refund?",
+        "impact": [
+          "Directly changes what each party is debited and credited for identical inputs.",
+          "Determines whether the source account needs funds beyond the transfer amount, which changes the sufficiency check and hold amount.",
+          "Fee refundability is a separate posting path in reversal handling."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-05",
+        "question": "Which rate provider is authoritative; is the rate shown at submission a binding quote with a TTL or an indicative figure; what slippage tolerance triggers re-quote versus rejection when the rate moves before execution; and what happens when the provider is unavailable (max stale-rate age, fallback source, or reject the transfer)?",
+        "impact": [
+          "Decides whether a quote must be persisted and honored, which adds a quote entity, expiry, and reservation of FX risk.",
+          "Provider-outage behavior is the difference between a rejected transfer and a transfer executed at an unknown rate.",
+          "Sets who bears the loss when the executed rate differs from the displayed rate."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-06",
+        "question": "Is the converted amount displayed immediately after submission contractually binding on the platform, or explicitly indicative and subject to the rate at execution time?",
+        "impact": [
+          "If binding, the platform carries FX risk between display and settlement and needs a rate-lock and hedging/position account.",
+          "If indicative, the API and UI must carry an explicit disclaimer and a defined 'final amount differs' notification path.",
+          "Determines whether a rate move after display is an error state or a normal outcome."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-07",
+        "question": "What is the idempotency contract for transfer submission: is the key client-supplied or server-derived, what is its uniqueness scope and retention window, what is returned when the same key arrives with a different payload, and what is returned when it arrives while the original is still in flight?",
+        "impact": [
+          "Client retry on timeout is unimplementable without this; the default outcome is duplicate transfers of real money.",
+          "Retention window sets a storage and lookup requirement on the hot submission path.",
+          "Same-key-different-payload handling is a security boundary, not just an edge case."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-08",
+        "question": "When a request times out with the outcome unknown, what does the client observe: is submission synchronous-with-result or accepted-then-polled (202 + status resource), is there a lookup-by-idempotency-key endpoint, and is a client permitted to re-submit a request that may already have committed?",
+        "impact": [
+          "Determines the entire API shape and the client integration contract.",
+          "Without a status-observation path, 'clients may retry' cannot be made safe even with idempotency keys.",
+          "Drives the state visibility model that cancellation and refund depend on."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-09",
+        "question": "Are funds held/reserved on the source account at submission, or is the debit only applied when the queue consumer runs? May a balance go negative (overdraft) and by how much? Which figure is the authoritative 'available balance' \u2014 posted only, or posted minus pending holds?",
+        "impact": [
+          "Without holds, concurrent transfers can each pass a sufficiency check and overdraw the account.",
+          "Defines the pending/posted split that every balance read, statement, and reconciliation must agree on.",
+          "Determines whether cancellation releases a hold or requires a compensating posting."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-10",
+        "question": "If the debit commits and the credit fails permanently (invalid target, closed account, dependency outage), what is the observable outcome: automatic compensating reversal to the source, funds parked in a suspense account pending manual repair, or retry indefinitely? At which rate is a compensation converted, and who absorbs the FX difference?",
+        "impact": [
+          "This is the primary money-loss path in an asynchronous two-sided posting design.",
+          "Compensation at the original vs current rate decides whether the customer or the platform takes the FX movement.",
+          "Determines whether a suspense account, an operator repair workflow, and its authorization model are in scope."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-11",
+        "question": "What are the queue's delivery semantics (at-least-once, at-most-once, exactly-once claimed), is ordering guaranteed per account or per transfer, how are duplicate deliveries deduplicated at the consumer, and what is the poison-message/DLQ behavior and who has authority to replay or repair from it?",
+        "impact": [
+          "At-least-once delivery without consumer-side dedup double-posts every redelivered debit.",
+          "Per-account ordering decides whether balance checks can be done optimistically or need locking.",
+          "DLQ replay authority is a segregation-of-duties control over real money movement."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-12",
+        "question": "What is the complete transfer state machine \u2014 enumerate the states (e.g. quoted, submitted, held, debited, credited, completed, failed, cancelled, reversed), the legal transitions, which are terminal, and which are visible to the client?",
+        "impact": [
+          "Cancellation and refund rules are defined relative to states that do not yet exist.",
+          "Reconciliation matching needs a defined terminal state per transfer.",
+          "Every API status response and UI state depends on this enumeration."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-13",
+        "question": "Exactly which states count as 'pending' for cancellation; what happens when a cancel arrives after the debit has been dispatched but before the credit is applied; is cancel best-effort with a defined losing outcome (transfer completes, cancel returns 'too late'); is cancel idempotent; and who is authorized to cancel?",
+        "impact": [
+          "This is a race with money on both sides; an unspecified loser produces either double refunds or lost funds.",
+          "Determines whether cancellation must synchronously fence the consumer (lease/fencing token) or is advisory.",
+          "Sets the required interleaving tests for cancellation during a side effect."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-14",
+        "question": "For refund after completion: is partial refund supported; is the reversal computed at the original transfer rate or the current rate; is the fee refunded; what happens when the recipient has already spent the funds (allow negative balance, reject, or partial); is there a time limit; and can a refund itself be refunded or reversed?",
+        "impact": [
+          "Original-rate vs current-rate refunds assign FX losses to different parties and require different stored data.",
+          "Insufficient recipient funds is the common case and currently has no defined outcome.",
+          "Partial refund support changes the ledger from one-reversal-per-transfer to a linked-entry model."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-15",
+        "question": "Are reversals, refunds, and corrections represented as new correcting entries against an immutable history, or as mutations of existing records? Is backdating/effective-dating supported, and is the effective date distinct from the posting date?",
+        "impact": [
+          "Mutation makes the 'auditable' requirement unachievable and breaks as-of balance reconstruction.",
+          "Effective-vs-posting date determines whether a closed reporting period can be restated.",
+          "Sets the storage model for the audit trail and the retention obligations that attach to it."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-16",
+        "question": "Which timezone is authoritative for the ledger; what daily cut-off applies; which business-day/holiday calendar per currency; and which of effective, posting, settlement, and event timestamps determines the day a transfer belongs to for reconciliation and reporting?",
+        "impact": [
+          "Reconciliation against a daily settlement file cannot define its window without this.",
+          "Transfers near the cut-off will be assigned to different days by the platform and the counterparty, producing permanent breaks.",
+          "Affects whether a transfer submitted on a non-business day is queued, dated forward, or rejected."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-17",
+        "question": "For the external settlement file: what is its format and schema, how is it delivered and its authenticity verified, what is the expected arrival window, how are late/partial/duplicate/malformed files handled, what fields are the matching keys, what tolerance applies per currency, and what does a mismatch trigger \u2014 alert only, automatic adjusting entry, or halt of processing? Who is authorized to repair a break?",
+        "impact": [
+          "Reconciliation is currently a one-line requirement with no contract; nothing about it is implementable.",
+          "Automatic adjustment versus alert-only is the difference between a self-correcting and a self-corrupting ledger.",
+          "Repair authority is a segregation-of-duties control; leaving it implicit grants it to whoever writes the job."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-18",
+        "question": "How are unmatched reconciliation breaks aged and categorized, what write-off thresholds exist, and what approval is required to write one off?",
+        "impact": [
+          "Determines whether a break-management workflow and its approval model are in scope for this delivery.",
+          "Affects reporting surface and operator tooling, but the ledger stays correct while it is unspecified.",
+          "Can be delivered under a stated assumption (alert-and-hold, no auto-write-off) and revised without data migration."
+        ],
+        "must_block": false
+      },
+      {
+        "id": "AR-19",
+        "question": "What exactly must the audit trail record (state transitions only, or every read and config change), what immutability guarantee is required (append-only table, WORM storage, external anchoring), what is the retention period, may it contain PII, who may read it, and must the system reconstruct any account balance as of an arbitrary past timestamp?",
+        "impact": [
+          "As-of reconstruction is an architectural requirement, not a feature that can be added later.",
+          "Retention and PII rules constrain storage, encryption, and deletion design from the first schema.",
+          "Read authorization on audit data is a compliance control with its own access model."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-20",
+        "question": "State 'balances must never be wrong' as a falsifiable invariant: is it sum-of-entries equals stored balance per account, global conservation per currency, both? Is a transient inconsistency window acceptable while a transfer is mid-queue, and if so how is it bounded and made observable to clients and operators?",
+        "impact": [
+          "The headline quality attribute is currently untestable; no acceptance criterion can be written against it.",
+          "If no transient window is permitted, the asynchronous queue design in the scenario is invalid as stated and must be reconciled.",
+          "Determines whether a continuous invariant-checking job and its alerting are required deliverables."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-21",
+        "question": "Who is authorized to initiate a transfer between two accounts (account owner only, operator, both), what per-transaction and per-period limits apply and in which currency are they denominated, what thresholds require secondary approval, and is sanctions/AML screening in scope before release of funds?",
+        "impact": [
+          "Authorization is a required result for every actor/action/resource combination; leaving it unstated ships an open money-movement endpoint.",
+          "Limits denominated in source vs a reference currency give different outcomes for the same transfer.",
+          "Screening in scope adds a mandatory pre-release state to the transfer state machine."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-22",
+        "question": "Which jurisdictions and regulatory regimes apply, is this the ledger of record or a mirror of an external core banking system, and what KYC/AML, travel-rule, data-residency, and retention obligations bind it? (Must be supplied by a qualified compliance owner, not inferred.)",
+        "impact": [
+          "Ledger-of-record vs mirror changes which system arbitrates a discrepancy and inverts the reconciliation design.",
+          "Data residency constrains deployment topology and the queue/storage choices before any code is written.",
+          "Statutory retention overrides any retention decision made on engineering grounds."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-23",
+        "question": "Who may change the fee percentage and the rate configuration, are those changes versioned and effective-dated, are they audited, and does a change apply to transfers already in flight or only to new submissions?",
+        "impact": [
+          "Applying a fee change to in-flight transfers changes amounts customers were already shown.",
+          "Unversioned config makes historical transfers irreproducible, breaking audit and dispute handling.",
+          "Change authority over fees is a financial control requiring segregation of duties."
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-24",
+        "question": "What are the throughput, quote/display latency, and end-to-end completion targets; what queue depth and backpressure limits apply under overload; and what are the RPO/RTO for the ledger?",
+        "impact": [
+          "Display latency targets influence whether quoting is synchronous or precomputed.",
+          "Queue bounds and overload behavior affect availability but not ledger correctness once idempotency and invariants are fixed.",
+          "Can be delivered against stated provisional targets and tuned without changing the data model."
+        ],
+        "must_block": false
+      }
+    ],
+    "gate_verdict": "BLOCK"
+  },
+  {
+    "scenario": "Multi-currency transfer ledger: transfers between customer accounts in differing currencies, with a fetched exchange rate and configurable percentage fee, debit/credit executed asynchronously over a queue, client retries on timeout, an immediately displayed converted amount, hard auditability and balance-correctness requirements, cancellation while pending, refund after completion, and daily reconciliation against an external settlement file. Evaluated under make_requirements Phase 2B (Zero-Ambiguity Gate) with domain classification per references/domains/selection.md. No files created, no interview conducted; no financial semantics chosen on the user's behalf.",
+    "selected_domains": [
+      "financial-system",
+      "distributed-and-concurrent",
+      "data-and-migration",
+      "web-application"
+    ],
+    "material_ambiguities": [
+      {
+        "id": "AR-01",
+        "question": "Which side of the transfer is the fixed amount: does the sender specify an exact debit amount in the source currency (recipient receives a computed amount), or an exact credit amount in the destination currency (sender is debited a computed amount)?",
+        "impact": [
+          "Determines the direction of the conversion arithmetic and which side absorbs rounding, so the core calculation cannot be written either way",
+          "Changes the API request contract (which amount+currency fields are input vs derived) and therefore the client display in the 'show converted amount immediately' requirement",
+          "Changes what the acceptance/spec tests assert as the invariant amount, making spec tests unwritable"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-02",
+        "question": "How is monetary value represented and stored: minor units as integers, fixed-point decimal with what scale, per-currency precision (including zero-decimal and three-decimal currencies), and what currency identifier set (ISO-4217 alphabetic, numeric, or an internal code including any non-fiat units)?",
+        "impact": [
+          "Fixes the ledger column types and the language-level money type; changing it later is a data migration of every historical entry",
+          "Determines whether intermediate conversion results can be represented at all without silent precision loss",
+          "Governs validation rules for inbound amounts and for parsing the external settlement file"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-03",
+        "question": "What rounding mode applies at each rounding point (half-up, half-even, floor toward the platform, etc.), at how many intermediate steps is rounding performed, and who receives the residual sub-unit \u2014 the sender, the recipient, or a platform rounding account?",
+        "impact": [
+          "Directly changes posted amounts; an unstated mode produces defensible-looking but wrong balances that only surface at reconciliation",
+          "Determines whether the double-entry zero-sum invariant needs an explicit rounding-difference account to balance",
+          "Defines the exact expected values in every conversion and fee spec test"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-04",
+        "question": "Where does the exchange rate come from (which provider(s), with what fallback), what rate is used (mid, bid/ask, marked-up), how long is a fetched quote valid, and is the quote shown to the customer binding on the platform or explicitly indicative?",
+        "impact": [
+          "Binding vs indicative is an architectural fork: binding requires quote persistence, expiry, and reservation of the rate; indicative does not",
+          "Determines the external integration contract, caching, and the rate-provenance fields the audit record must carry",
+          "Sets whether the immediately displayed amount is a promise or an estimate, which changes user-facing copy and legal exposure"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-05",
+        "question": "If the rate moves, the quote expires, or the rate provider is unavailable between submission and the asynchronous settlement, what is the observable outcome \u2014 settle at the original quote, re-quote and settle, hold for re-confirmation, or fail the transfer \u2014 and who absorbs the difference (customer, platform FX account, fee)?",
+        "impact": [
+          "Without it the async worker has no defined behavior for the single most likely real-world divergence, so the queue consumer cannot be implemented",
+          "Determines whether an FX gain/loss ledger account and its posting rules exist at all",
+          "Defines the pending-state timeout policy and the notification/UX path when the displayed amount cannot be honored"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-06",
+        "question": "Fee semantics: is the configurable percentage applied to the pre-conversion source amount or the post-conversion destination amount, in which currency is it assessed and posted, does it round before or after conversion, are there minimum/maximum or tiered floors, is it deducted from the sender or the recipient, and to which account does fee revenue post?",
+        "impact": [
+          "Fee-before-conversion and fee-after-conversion yield different debits for identical inputs; the calculation cannot be coded until fixed",
+          "Determines the number and identity of ledger legs per transfer and therefore the balancing invariant",
+          "Drives the cancellation/refund fee questions (AR-16, AR-17) and the configurability surface (per-tenant, per-pair, per-tier)"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-07",
+        "question": "What is the ledger model: strict double-entry with append-only entries and balances derived by summation, or stored mutable balances with a separate transaction log? Which internal accounts exist (FX position/nostro, fee revenue, suspense/clearing, rounding), and what is the exact balancing invariant per transfer across two currencies?",
+        "impact": [
+          "Derived vs stored balances is the central schema decision; it determines correctness strategy, read performance, index design, and the repair path",
+          "A cross-currency transfer cannot be a single balanced journal without a defined FX bridging account, so posting rules are unspecifiable",
+          "Determines whether audit reconstruction and historical balance-as-of queries are possible at all"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-08",
+        "question": "What is the testable definition of 'balances must never be wrong': which invariant (sum of entries equals stated balance, per-transfer zero-sum including fee and FX legs), over what consistency window (immediately consistent at request-completion, or eventually consistent once the queue drains), and is there a distinction between available and ledger balance that customers see?",
+        "impact": [
+          "'Never wrong' is unverifiable as stated; without a formal invariant no spec test, no reconciliation check, and no acceptance criterion can be written",
+          "Immediate consistency conflicts with the stated asynchronous debit/credit, so one of the two stated requirements must be reinterpreted by the user",
+          "Determines whether an available/ledger balance split, and therefore an extra balance field and its API exposure, exists"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-09",
+        "question": "When are funds checked and committed: is the source account validated and debited (or a hold placed) synchronously at submission, or only when the queue message is processed? Are overdrafts/negative balances permitted, and are reservations/holds a first-class concept with their own expiry?",
+        "impact": [
+          "Decides whether a hold/reservation entity exists in the data model and in the state machine",
+          "Determines the behavior when funds are sufficient at submission but not at processing time \u2014 currently an undefined failure path",
+          "Sets the concurrency-control requirement for the source account (AR-18) and the observable balance during flight (AR-10)"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-10",
+        "question": "How is in-flight money represented between the asynchronous debit and credit, and what do sender and recipient each observe during that window (funds gone from sender and not yet at recipient, a visible pending entry, or a suspense-account balance)?",
+        "impact": [
+          "Determines whether a suspense/clearing account and its reconciliation rules exist",
+          "Defines the API/UI contract for balance and transfer-status reads during the pending window",
+          "Without it, the system can transiently appear to have destroyed money, violating the auditability requirement with no defined explanation"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-11",
+        "question": "Idempotency of client retries: who mints the idempotency key (client-supplied header vs server-derived fingerprint), over what scope and time window is it unique, and what exactly does a retry return when the original request is still pending, has committed, has failed, or falls outside the dedupe window?",
+        "impact": [
+          "Without this, the stated client retry behavior produces duplicate transfers \u2014 the single highest-severity correctness failure in the scenario",
+          "Determines a persisted idempotency store, its key schema, uniqueness constraints, and retention",
+          "Defines the API response contract and status codes for the retry path, which spec tests must assert"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-12",
+        "question": "When a request times out with the outcome genuinely unknown to the client, what is the specified resolution path: is there a status-lookup endpoint keyed by the client's identifier, is the pending transfer visible immediately, and is the client permitted to assume failure after any interval?",
+        "impact": [
+          "'Clients may retry' is not an implementable rule without an outcome-observation mechanism attached to it",
+          "Determines whether transfer identity is client-addressable before the server confirms, which changes the request contract",
+          "Drives the required failure narrative for timeout-before-commit vs timeout-after-commit that the financial domain gate demands"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-13",
+        "question": "What are the queue's guarantees and required handling: at-least-once or exactly-once delivery, ordering per account/per transfer or none, consumer-side deduplication, poison-message and dead-letter policy, and who is authorized to replay a message?",
+        "impact": [
+          "At-least-once delivery makes consumer idempotency mandatory in the ledger writes, not only at the API edge",
+          "Ordering guarantees decide whether a cancel can overtake a debit, which determines the cancellation design (AR-16)",
+          "Replay authority is a privileged money-moving operation requiring its own authorization and audit rules"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-14",
+        "question": "How is atomicity achieved between the request-handling database write and the queue publish, and between the debit and the credit: transactional outbox, saga with compensation, two-phase pattern, or something else? What recovers an orphaned half-transfer, on what schedule, and with what compensation entries?",
+        "impact": [
+          "Determines the core transactional architecture and the tables/workers that must exist",
+          "Fixes whether compensation is a reversing journal entry (auditable) or a mutation (not), interacting with AR-07 and AR-22",
+          "Defines the crash-during-recovery narrative the financial domain gate requires before implementation"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-15",
+        "question": "What is the exact transfer state machine: the full state set (e.g. quoted, submitted, pending, debited, credited, completed, failed, cancelled, reversed), which transitions are legal, which states are terminal, and how long may a transfer remain pending before automatic expiry or escalation?",
+        "impact": [
+          "Cancellation, refund, retry, and reconciliation semantics are all defined relative to states that do not yet exist",
+          "Determines the persisted status column, its allowed values, and every guard in the workers and API",
+          "Without terminal-state and expiry rules, stuck transfers have no defined resolution, leaving money indefinitely in suspense"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-16",
+        "question": "Cancellation semantics: up to which precise point is cancellation accepted, is it guaranteed or best-effort, what is the observable outcome when a cancel arrives after the debit has been dispatched but before the credit, can a transfer be partially cancelled, and is the fee refunded on cancellation?",
+        "impact": [
+          "Cancel-versus-completion is a race that must be resolved by an explicit rule (state guard, fencing, or compensation) before any code is written",
+          "Guaranteed cancellation may force a synchronous-hold design, contradicting the stated asynchronous flow",
+          "Determines what the customer is told when a cancellation is accepted but the transfer completes anyway"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-17",
+        "question": "Refund semantics after completion: is a refund a reversing journal entry against the original transfer or a new opposite transfer, is it converted at the original rate or the current rate, is the fee refunded, are partial refunds supported, and who is authorized to initiate one?",
+        "impact": [
+          "Original-rate vs current-rate refunds produce different amounts and different FX gain/loss postings \u2014 the platform's exposure depends on the answer",
+          "Reversal vs new transfer determines whether history is preserved as required by auditability and how reporting reconciles",
+          "Sets the authorization and limits surface for a money-returning operation (interacts with AR-23)"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-18",
+        "question": "What concurrency control governs simultaneous operations on the same account and the same transfer: isolation level, row/account locking or optimistic versioning, guaranteed ordering of concurrent debits, and the resolution when a cancel and a completion execute concurrently?",
+        "impact": [
+          "Determines the database isolation and locking strategy, which is not retrofittable without re-testing every money path",
+          "Decides whether concurrent transfers can drive a balance negative despite per-request checks (interacts with AR-09)",
+          "Defines the required interleaving tests the concurrency domain gate demands"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-19",
+        "question": "What is the external settlement file contract: format and schema, encoding, delivery mechanism, arrival time and cutoff with timezone, which fields form the matching key against internal transfers, and what amount/timing tolerance counts as a match?",
+        "impact": [
+          "No parser, validator, or matcher can be built without the schema and matching keys",
+          "Cutoff time and timezone determine which transfers belong to a reconciliation day, and therefore whether same-data runs agree",
+          "Tolerance thresholds decide what is a match versus an exception, defining the entire exception workload"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-20",
+        "question": "Reconciliation exception handling: what happens for unmatched internal transfers, unmatched external rows, duplicated rows, a missing or late file, and a corrected re-delivered file? Are discrepancies auto-corrected or queued for manual action, who holds repair authority, and may a repair post into an already-closed period?",
+        "impact": [
+          "Auto-correction is itself a money-moving capability requiring its own authorization, audit, and invariants; whether it exists changes the scope materially",
+          "Re-delivered and late files determine whether reconciliation runs must be idempotent and re-runnable, which changes the job design",
+          "Backdating into closed periods determines whether the ledger needs period-close and restatement mechanics at all"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-21",
+        "question": "Which timestamps are recorded and which is authoritative for each purpose: request time, effective/value date, posting date, settlement date; in which timezone are business days and cutoffs defined; and is backdating or future-dating of transfers permitted?",
+        "impact": [
+          "Reconciliation day assignment and daily balance reporting are undefined without an authoritative date per entry",
+          "Timezone choice changes which transfers fall in which settlement file and can produce chronic phantom mismatches",
+          "Determines whether the ledger schema needs separate effective and posting dates, a schema decision affecting every query"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-22",
+        "question": "Audit requirements: which events must be recorded, is the audit trail append-only and immutable by construction, which provenance fields are mandatory (rate value and source, quote timestamp, fee basis, actor, idempotency key, correlation id), what is the retention period, how is PII handled, and who may read it?",
+        "impact": [
+          "'Auditable' is untestable until the required event set and immutability guarantee are fixed",
+          "Retention and PII rules determine storage design, encryption, and deletion capability \u2014 and conflict directly with immutability if not reconciled now",
+          "Provenance fields must be captured at write time; adding them later cannot reconstruct past transfers"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-23",
+        "question": "Authorization model: which actors may initiate, cancel, refund, replay, or repair, on which accounts; what per-transaction, daily, and cumulative limits apply; which operations need second-person approval; and what segregation-of-duties boundaries exist between customer, support, and operations roles?",
+        "impact": [
+          "Every money-moving endpoint needs an authorization result before it can be specified or security-tested",
+          "Limits and approval thresholds are enforcement points in the request path, not add-ons",
+          "Segregation of duties determines the role model and therefore the data model for actors and approvals"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-24",
+        "question": "Regulatory scope, to be supplied explicitly by a qualified owner: which jurisdictions and licenses apply, are AML/KYC/sanctions screening and transaction monitoring in scope, what are the mandated record-retention periods, and are there data-residency constraints on ledger and audit data?",
+        "impact": [
+          "Screening in scope introduces a blocking pre-transfer step and a hold state that reshapes the transfer flow",
+          "Data residency can force per-region deployment and storage topology \u2014 the most expensive decision to reverse",
+          "Mandated retention overrides any internally chosen retention in AR-22 and constrains deletion capability"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-25",
+        "question": "Scope boundaries: which currencies and pairs are in scope for MVP, are same-currency transfers included, are transfers internal-to-platform only or do they reach external banks/rails, what is the account-to-currency cardinality (one balance per account, or a multi-currency account with per-currency balances), and are self-transfers between one customer's own accounts included?",
+        "impact": [
+          "Account-to-currency cardinality is a foundational data-model decision that every balance query and posting rule depends on",
+          "External rails introduce settlement risk, additional pending states, and third-party failure modes absent from an internal-only design",
+          "MVP pair scope determines rate-provider coverage and the size of the reconciliation matching problem"
+        ],
+        "must_block": true
+      },
+      {
+        "id": "AR-26",
+        "question": "Non-functional targets: expected and peak transfer volume, the latency budget behind 'display the converted amount immediately', the acceptable pending-to-completed duration and its SLA, availability targets, and required behavior when the rate provider or queue is degraded.",
+        "impact": [
+          "'Immediately' has no measurable acceptance criterion, so the quote path cannot be verified",
+          "Volume and pending-SLA targets decide whether derived balances (AR-07) are viable or need materialization",
+          "Degradation behavior determines whether the submission path fails closed or queues without a quote"
+        ],
+        "must_block": false
+      },
+      {
+        "id": "AR-27",
+        "question": "User-facing terminology and messaging: the status vocabulary exposed in the API and UI (pending, processing, completed, settled, reversed, cancelled) and their precise definitions, plus the exact messaging shown for an indicative-vs-final amount, an unknown-outcome timeout, and a failed or reversed transfer.",
+        "impact": [
+          "Inconsistent status vocabulary between ledger, API, and UI produces support and audit ambiguity that is expensive to rename later",
+          "Message content for unknown outcomes is a correctness-adjacent concern: telling a customer 'failed' for a transfer that later completes causes duplicate sends",
+          "Defines the glossary that every RD and acceptance criterion must use consistently"
+        ],
+        "must_block": false
+      }
+    ],
+    "gate_verdict": "BLOCK"
+  }
+]
