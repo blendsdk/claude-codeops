@@ -41,7 +41,8 @@ codeops-skills/                # repo root == plugin root
 ├── standards/output-style.md      # always-on reporting rules (injected beside the standards)
 ├── scripts/                   # validate.sh, docs-check.sh, migration-check.sh,
 │                              #   codeops-migrate.sh, codeops-roadmap-sync.sh,
-│                              #   codeops-events.sh (telemetry), telemetry-check.sh, fixtures/
+│                              #   codeops-events.sh (telemetry), telemetry-check.sh,
+│                              #   codeops_worktree_snapshot.py (review packet), fixtures/
 ├── docs/                      # this VitePress documentation website
 ├── install.sh / uninstall.sh  # optional in-repo dev installer (symlink loop)
 ├── LICENSE                    # MIT

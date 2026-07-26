@@ -32,7 +32,7 @@ DESC_LIMIT=1024
 DESC_COMBINED_LIMIT=1536
 # The single expected release version. Every "CodeOps Skills Version" stamp AND plugin.json's
 # "version" must equal this (ST-4, ST-24). Bump it here — and only here — per release.
-CODEOPS_VERSION="3.16.0"
+CODEOPS_VERSION="3.17.0"
 
 FAILURES=0
 
@@ -1866,6 +1866,7 @@ fi
 # checks below by simply never being listed.
 PY_MODULES=(
   "scripts/codeops_eval.py"
+  "scripts/codeops_worktree_snapshot.py"
 )
 
 # -----------------------------------------------------------------------------
@@ -2444,6 +2445,105 @@ if [[ -s "$AUTO_DESIGN" ]]; then
     ad_fields_ok=0
   fi
   [[ "$ad_fields_ok" -eq 1 ]] && pass "the provenance record is complete"
+fi
+
+# -----------------------------------------------------------------------------
+# ST-99 — the review packet comes from the worktree snapshot, not a commit range.
+# A commit-range diff is empty in --no-commit mode, so a reviewer fed one reports
+# clean on code it never received. Naming the engine is half the fix; the other
+# half is that the old definition is gone, because a document carrying both
+# leaves the reader to pick, and the wrong pick is the silent failure.
+# -----------------------------------------------------------------------------
+section "ST-99: the review packet is the worktree snapshot"
+SNAPSHOT_ENGINE="scripts/codeops_worktree_snapshot.py"
+for consumer in "$QP" "$EXEC_PROTO"; do
+  if [[ ! -s "$consumer" ]]; then
+    fail "$consumer is missing"
+    continue
+  fi
+  if grep -qF "codeops_worktree_snapshot" "$consumer"; then
+    pass "$consumer names the snapshot engine"
+  else
+    fail "$consumer must name $SNAPSHOT_ENGINE as the source of the review packet"
+  fi
+  # `<phase-ref>..HEAD` and its spelled variants are the commit-range definition
+  # this phase replaces. Any surviving instance is a second, contradicting rule.
+  if grep -qE 'git diff [^|]*\.\.HEAD' "$consumer"; then
+    fail "$consumer still defines the packet as a commit-range diff (…..HEAD)"
+  else
+    pass "$consumer no longer defines the packet as a commit-range diff"
+  fi
+done
+
+# -----------------------------------------------------------------------------
+# ST-100 — the packet definition carries the snapshot's four invariants.
+# quality-profile.md owns what a dispatched reviewer receives, so a reviewer or
+# a future editor can read the guarantees at the point of use rather than
+# inferring them from an engine they will never open.
+# -----------------------------------------------------------------------------
+section "ST-100: the packet definition states the snapshot invariants"
+# Scoped to the packet section, not the whole file. A whole-file sweep for
+# "omitted" already matches a telemetry sentence about missing headers, which
+# would report the bounded-output invariant as present while no such rule
+# existed anywhere — the guard has to look where the packet is actually defined.
+qp_packets="$(awk '/^## Dispatch packets/{inside=1; print; next} inside && /^## /{exit} inside' "$QP" 2>/dev/null)"
+if [[ -z "$qp_packets" ]]; then
+  fail "$QP has no '## Dispatch packets' section to check"
+else
+  # Each pattern is an invariant, not a wording: read-only, mode-invariance,
+  # bounded-with-omissions, and loud failure.
+  declare -A SNAP_INVARIANTS=(
+    ["read-only"]='read-only'
+    ["commit-mode invariance"]='(commit mode|commit modes).*(identical|invariant)|(identical|invariant).*(commit mode|commit modes)'
+    ["bounded output"]='truncat'
+    ["loud failure"]='blocker'
+  )
+  for name in "${!SNAP_INVARIANTS[@]}"; do
+    if printf '%s\n' "$qp_packets" | grep -qiE "${SNAP_INVARIANTS[$name]}"; then
+      pass "$QP states the $name invariant where the packet is defined"
+    else
+      fail "$QP does not state the $name invariant in its packet section"
+    fi
+  done
+fi
+
+# -----------------------------------------------------------------------------
+# ST-101 — a failed snapshot blocks the quality step; nothing is substituted.
+# The dangerous fallback is a partial diff reviewed as if it were complete, so
+# the protocol has to forbid the substitution explicitly, not merely omit it.
+# -----------------------------------------------------------------------------
+section "ST-101: snapshot failure is a blocker, never a partial fallback"
+if [[ -s "$EXEC_PROTO" ]]; then
+  if grep -qiE 'snapshot' "$EXEC_PROTO" && grep -qiE 'blocker' "$EXEC_PROTO"; then
+    pass "$EXEC_PROTO reports a failed snapshot as a blocker"
+  else
+    fail "$EXEC_PROTO must report a failed snapshot as a blocker"
+  fi
+  if grep -qiE '(never|no) (falls? back|partial|substitut)' "$EXEC_PROTO"; then
+    pass "$EXEC_PROTO forbids substituting a partial diff"
+  else
+    fail "$EXEC_PROTO must forbid substituting a partial diff for a failed snapshot"
+  fi
+fi
+
+# -----------------------------------------------------------------------------
+# ST-102 — the snapshot is documented with the blind spot it closes.
+# A user who never sees why the packet changed cannot tell whether their own
+# --no-commit phases were ever genuinely reviewed before this release.
+# -----------------------------------------------------------------------------
+section "ST-102: the worktree snapshot is documented"
+snapshot_doc="docs/reference/worktree-snapshot.md"
+if [[ ! -s "$snapshot_doc" ]]; then
+  fail "$snapshot_doc is missing — the snapshot must be documented"
+else
+  pass "$snapshot_doc exists"
+  for phrase in "no-commit" "untracked" "gitignore" "read-only" "truncat"; do
+    if grep -qiF "$phrase" "$snapshot_doc"; then
+      pass "$snapshot_doc covers \"$phrase\""
+    else
+      fail "$snapshot_doc does not cover \"$phrase\""
+    fi
+  done
 fi
 
 # -----------------------------------------------------------------------------

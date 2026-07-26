@@ -75,6 +75,7 @@ export default defineConfig({
             { text: 'Repository map', link: '/reference/repo-map' },
             { text: 'Agents', link: '/reference/agents' },
             { text: 'Evaluation harness', link: '/reference/evaluation-harness' },
+            { text: 'Worktree snapshot', link: '/reference/worktree-snapshot' },
             { text: 'Troubleshooting', link: '/reference/troubleshooting' },
           ],
         },

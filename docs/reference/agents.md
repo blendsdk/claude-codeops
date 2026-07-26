@@ -62,7 +62,8 @@ does. See [Domains](/guide/domains).
 
 Every quality dispatch carries a machine-readable header on line 1 —
 `[codeops-dispatch agent=<name> feature=<slug> phase=<id>]` — plus a self-contained packet: the
-reviewers/auditors get the phase diff, task lines, active lenses, and verify context; the
+reviewers/auditors get the phase [worktree snapshot](/reference/worktree-snapshot), task lines,
+active lenses, and verify context; the
 spec-test-author gets spec excerpts, planned interfaces, and a FORBIDDEN implementation-file
 list it must never open; the challenger gets the problem and options without the dispatcher's
 preference. The canonical packet definitions live in the plugin's `_shared/quality-profile.md`.
