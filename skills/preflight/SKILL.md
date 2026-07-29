@@ -21,7 +21,7 @@ arguments: artifact
 
 # preflight — Multi-Dimensional, Codebase-Grounded Quality Audit
 
-> **CodeOps Skills Version**: 3.19.0
+> **CodeOps Skills Version**: 3.20.0
 
 Run a rigorous quality audit of the artifact named in `$ARGUMENTS`, **grounded in the actual
 codebase**. Find every issue, ambiguity, contradiction, gap, and risk; verify every claim and
@@ -169,7 +169,11 @@ when subagents are unavailable.
 **Telemetry:** with an active quality profile, emit `preflight_run` when the report is compiled,
 `finding_decided` per finding immediately after each ruling batch, and `gate_summary`
 (gate `preflight_gate`) at the verdict step (one `codeops-events.sh emit` call each; failures
-never block the scan).
+never block the scan). `preflight_run` carries the scan's own finding counts —
+`findings_critical`, `findings_major`, `findings_minor`, counted from the compiled report before
+any ruling. A scan that found nothing emits explicit zeros; a scan that reported findings must
+never emit zeros, because that is what makes a silent scan and a clean artifact distinguishable
+afterwards.
 
 ## Iterative re-scanning
 

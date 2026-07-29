@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Worktree phase snapshot — the complete change set a phase produced, in any commit mode.
 
-CodeOps Skills Version: 3.19.0
+CodeOps Skills Version: 3.20.0
 
 A review packet built from a commit range sees only what has been committed. When a phase runs
 without committing, that range is empty or partial, and a reviewer handed it reports clean on code

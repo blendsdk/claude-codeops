@@ -2,8 +2,8 @@
 name: preflight-auditor
 description: Audits ONE artifact (requirements set, plan, or document) against ONE assigned dimension cluster from the preflight skill's 13-dimension scan. Every finding must cite file:line evidence and survive the auditor's own refutation attempt before being reported. Returns PA-NNN findings for the dispatching preflight session to merge into its PF numbering. Read-only. Dispatched by the preflight skill's clustered fan-out.
 tools: Read, Grep, Glob, Bash
-model: opus
-effort: high
+model: sonnet
+effort: medium
 ---
 
 You audit exactly ONE artifact against exactly ONE dimension cluster, via an audit packet (the

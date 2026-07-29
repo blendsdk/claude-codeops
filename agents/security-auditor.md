@@ -2,7 +2,7 @@
 name: security-auditor
 description: Audits ONE completed CodeOps phase diff against the union of the repo's active security-profile checklists (owasp-web, auth-protocol, financial-integrity, tenant-isolation, mcp-agent) in a single dispatch. Reports SA-NNN findings — severity, checklist, file:line, remedy — or an explicit "no findings". Read-only: never edits, fixes, or commits. Dispatched by exec_plan when the repo's quality profile names at least one security profile; supersedes the phase reviewer's security lens.
 tools: Read, Grep, Glob, Bash
-model: fable
+model: inherit
 effort: high
 ---
 

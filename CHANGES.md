@@ -2,6 +2,19 @@
 
 ## Changelog
 
+### 3.20.0 — Agent routing corrected, review counts actually recorded (2026-07-29)
+
+- **Quality agents no longer pin a premium model.** `design-challenger`, `security-auditor`, and
+  `spec-test-author` move from `fable` to `inherit`, so they run on the session's own model
+  instead of the only model that costs more than Opus. `preflight-auditor` moves to
+  `sonnet`/`medium` — it is the highest-volume agent in the set, and its findings do not need the
+  top tier to be correct.
+- **`review_run` and `preflight_run` now carry their finding counts.** Both events were being
+  emitted with empty counts, so every run recorded zero findings no matter what the agent
+  reported — leaving `/codeops_stats` and `/codeops_retro` unable to tell a silent agent from a
+  clean phase. The emitting skills now state where the counts come from and require explicit
+  zeros for a genuinely clean run.
+
 ### 3.19.0 — Zero-ambiguity gate reconciled with delegated authority (2026-07-26)
 
 `--auto-design` shipped in 3.16.0, but `_shared/zero-ambiguity-gate.md` was left saying that every
