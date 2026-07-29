@@ -36,7 +36,7 @@ If the execution plan can't be loaded cleanly, **STOP** and handle as follows:
 
 ### Version Check (auto-suggest)
 
-After loading, check the version stamp against the current **CodeOps Skills Version: 3.19.0**:
+After loading, check the version stamp against the current **CodeOps Skills Version: 3.20.0**:
 
 1. Read `00-index.md` or `99-execution-plan.md`.
 2. Look for `> **CodeOps Version**: X.Y.Z` (or `CodeOps Skills Version`).
@@ -164,7 +164,11 @@ whole task's snapshot. Activation rules, packets, supersession, and caps are def
    visible in `--no-commit` mode, where there is no fix commit to point at. A fix the re-review
    still rejects is reported; the user decides.
 6. **Emit `review_run`** (one per reviewer/auditor that ran) **and `phase_completed`**, then
-   proceed to the next phase.
+   proceed to the next phase. Each `review_run` carries that agent's own finding counts —
+   `findings_critical`, `findings_major`, `findings_minor`, counted from what it actually
+   reported, before any ruling. A reviewer that found nothing emits explicit zeros; a reviewer
+   that reported findings must never emit zeros, because that is what makes a silent agent and a
+   clean phase distinguishable afterwards.
 
 A dispatch that fails or dies mid-loop is reported — the phase completes UNreviewed only on the
 user's explicit say-so.

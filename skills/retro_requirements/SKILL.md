@@ -19,7 +19,7 @@ argument-hint: "[--scope <path>] [--continue]"
 
 # Reverse Requirements Engineering
 
-> **CodeOps Skills Version**: 3.19.0
+> **CodeOps Skills Version**: 3.20.0
 
 Analyze an existing codebase — any language, any framework — and produce a
 structured **reconstruction brief** that can be fed to the make_requirements

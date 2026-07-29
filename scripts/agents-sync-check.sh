@@ -2,7 +2,7 @@
 #
 # agents-sync-check.sh — specification-test suite for the agent-sync engine.
 #
-# CodeOps Skills Version: 3.19.0
+# CodeOps Skills Version: 3.20.0
 #
 # Drives scripts/codeops-agents-sync.sh against throwaway temp git repos whose CLAUDE.md carries
 # a quality-profile block, and asserts the engine's contract: only effort-bearing overrides
